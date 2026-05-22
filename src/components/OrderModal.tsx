@@ -16,6 +16,8 @@ interface OrderModalProps {
   channels: Channel[];
   orders: Order[];
   onSaveOrder: (newOrder: Order) => void;
+  editingOrder?: Order | null;
+  onUpdateOrder?: (updatedOrder: Order, oldOrder: Order) => void;
 }
 
 interface CartItem {
@@ -38,7 +40,9 @@ export default function OrderModal({
   stocks,
   channels,
   orders,
-  onSaveOrder
+  onSaveOrder,
+  editingOrder = null,
+  onUpdateOrder
 }: OrderModalProps) {
   // Basic properties
   const [orderNumber, setOrderNumber] = useState<string>('');
@@ -70,33 +74,74 @@ export default function OrderModal({
   // Initialize Default dates-relative details on open
   useEffect(() => {
     if (isOpen) {
-      // Set timestamp relative to 2026-05-22
-      const timePart = new Date().toTimeString().slice(0, 8); // e.g. "08:15:30"
-      setDateTime(`2026-05-22T${timePart}.000Z`);
+      if (editingOrder) {
+        setOrderNumber(editingOrder.orderNumber);
+        setChannelId(editingOrder.channelId);
+        setIsCod(editingOrder.isCod);
+        setDiscounts(editingOrder.discounts);
+        setDateTime(editingOrder.dateTime);
+        
+        const mappedCart = editingOrder.products.map(p => {
+          const matchedProduct = products.find(prod => prod.id === p.productId);
+          return {
+            productId: p.productId,
+            productName: matchedProduct ? matchedProduct.name : 'Produk Master',
+            color: p.color,
+            size: p.size,
+            qty: p.qty,
+            price: p.price,
+            hpp: p.hpp,
+            imageUrl: matchedProduct ? matchedProduct.imageUrl : '',
+            searchQuery: matchedProduct ? matchedProduct.name : '',
+            showDropdown: false
+          };
+        });
+        
+        setCart(mappedCart.length > 0 ? mappedCart : [
+          {
+            productId: '',
+            productName: '',
+            color: '',
+            size: 'M',
+            qty: 1,
+            price: 0,
+            hpp: 0,
+            imageUrl: '',
+            searchQuery: '',
+            showDropdown: false
+          }
+        ]);
+        setStockError(null);
+        setOrderNumberError(null);
+      } else {
+        // Set timestamp relative to 2026-05-22
+        const timePart = new Date().toTimeString().slice(0, 8); // e.g. "08:15:30"
+        setDateTime(`2026-05-22T${timePart}.000Z`);
 
-      // Reset values
-      setOrderNumber('');
-      setChannelId('shopee');
-      setIsCod(false);
-      setDiscounts(0);
-      setStockError(null);
-      setOrderNumberError(null);
-      setCart([
-        {
-          productId: '',
-          productName: '',
-          color: '',
-          size: 'M',
-          qty: 1,
-          price: 0,
-          hpp: 0,
-          imageUrl: '',
-          searchQuery: '',
-          showDropdown: false
-        }
-      ]);
+        // Reset values
+        setOrderNumber('');
+        setChannelId('shopee');
+        setIsCod(false);
+        setDiscounts(0);
+        setStockError(null);
+        setOrderNumberError(null);
+        setCart([
+          {
+            productId: '',
+            productName: '',
+            color: '',
+            size: 'M',
+            qty: 1,
+            price: 0,
+            hpp: 0,
+            imageUrl: '',
+            searchQuery: '',
+            showDropdown: false
+          }
+        ]);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, editingOrder, products]);
 
   // Validate Order Number on change
   useEffect(() => {
@@ -109,13 +154,16 @@ export default function OrderModal({
       setOrderNumberError('Spasi terdeteksi! Gunakan karakter strip (-) atau tanpa spasi.');
       return;
     }
-    const isDuplicate = orders.some(o => o.orderNumber.toUpperCase() === trimmed.toUpperCase());
+    const isDuplicate = orders.some(o => 
+      o.id !== editingOrder?.id && 
+      o.orderNumber.toUpperCase() === trimmed.toUpperCase()
+    );
     if (trimmed && isDuplicate) {
       setOrderNumberError('No Pesanan Ganda! ID transaksi ini sudah pernah terekam.');
       return;
     }
     setOrderNumberError(null);
-  }, [orderNumber, orders]);
+  }, [orderNumber, orders, editingOrder]);
 
   if (!isOpen) return null;
 
@@ -268,13 +316,27 @@ export default function OrderModal({
     let stockErrorFound = false;
     for (let i = 0; i < cart.length; i++) {
       const item = cart[i];
+      if (!item.productId) continue;
+      
       // StockItem is generated as productid_color
       const key = `${item.productId}_${item.color}`;
       const stockItem = stocks.find(s => s.id === key);
-      const available = stockItem?.stocks[item.size] ?? 0;
+      let available = stockItem?.stocks[item.size] ?? 0;
+
+      // Add back the previous order allocation quantity for correct delta calculation
+      if (editingOrder) {
+        const oldItem = editingOrder.products.find(op => 
+          op.productId === item.productId &&
+          op.color === item.color &&
+          op.size === item.size
+        );
+        if (oldItem) {
+          available += oldItem.qty;
+        }
+      }
 
       if (item.qty > available) {
-        setStockError(`Stok produk "${item.productName}" (${item.color} - ${item.size}) tidak mencukupi! Tersedia di gudang saat ini: ${available} pcs.`);
+        setStockError(`Stok produk "${item.productName}" (${item.color} - ${item.size}) tidak mencukupi! Tersedia di gudang saat ini (termasuk alokasi pesanan ini): ${available} pcs.`);
         stockErrorFound = true;
         break;
       }
@@ -298,7 +360,7 @@ export default function OrderModal({
     }));
 
     const finalOrderObj: Order = {
-      id: `ord_${Date.now()}`,
+      id: editingOrder ? editingOrder.id : `ord_${Date.now()}`,
       orderNumber: trimmedOrderNum,
       dateTime: dateTime || new Date().toISOString(),
       channelId,
@@ -318,12 +380,16 @@ export default function OrderModal({
       netProfit: simulatedNetProfit
     };
 
-    onSaveOrder(finalOrderObj);
+    if (editingOrder && onUpdateOrder) {
+      onUpdateOrder(finalOrderObj, editingOrder);
+    } else {
+      onSaveOrder(finalOrderObj);
+    }
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       {/* Background layer */}
       <div 
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-150"
@@ -337,9 +403,21 @@ export default function OrderModal({
         <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-20 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-extrabold text-gray-950 flex items-center gap-2">
-              <span>➕</span> Input Pencatatan Pesanan & Potong Stok Baru
+              {editingOrder ? (
+                <>
+                  <span>✏️</span> Edit Detail & Koreksi Stok Pesanan
+                </>
+              ) : (
+                <>
+                  <span>➕</span> Input Pencatatan Pesanan & Potong Stok Baru
+                </>
+              )}
             </h2>
-            <p className="text-xs text-gray-400 mt-1">Formulir omnichannel cepat untuk mengurangi sediaan gudang instan</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {editingOrder 
+                ? `Mengubah rincian transaksi #${editingOrder.orderNumber} dan memulihkan/menyesuaikan alokasi produk di gudang secara otomatis.`
+                : 'Formulir omnichannel cepat untuk mengurangi sediaan gudang instan.'}
+            </p>
           </div>
           <button 
             type="button"

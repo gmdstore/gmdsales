@@ -11,8 +11,6 @@ interface StockMatrixProps {
   products: Product[];
   stocks: StockItem[];
   groups: string[];
-  userRole: 'owner' | 'staff';
-  onChangeRole: (role: 'owner' | 'staff') => void;
   onUpdateStock: (stockItemId: string, size: string, newQty: number) => void;
   onCreateGroup: (groupName: string) => void;
   onDeleteGroup: (groupName: string) => void;
@@ -26,8 +24,6 @@ export default function StockMatrix({
   products,
   stocks,
   groups,
-  userRole,
-  onChangeRole,
   onUpdateStock,
   onCreateGroup,
   onDeleteGroup,
@@ -178,51 +174,6 @@ export default function StockMatrix({
   return (
     <div id="stock_matrix_section" className="space-y-6 animate-fade-in text-slate-700">
       
-      {/* Upper Controls Bar: Security Permission demonstration */}
-      <div className="bg-slate-900 text-slate-100 rounded-3xl p-6 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center md:justify-between gap-5 relative overflow-hidden group">
-        <div className="absolute -right-12 -top-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/15 transition-all duration-500 pointer-events-none" />
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/60 shadow-inner">
-            {userRole === 'owner' ? (
-              <ShieldCheck className="h-6 w-6 text-emerald-400" />
-            ) : (
-              <ShieldAlert className="h-6 w-6 text-amber-500" />
-            )}
-          </div>
-          <div>
-            <h3 className="font-extrabold text-sm tracking-wide text-white flex items-center gap-2">
-              Hak Akses Menu Finansial
-              <span className={`text-[10px] uppercase font-black px-2 py-0.5 rounded-md ${userRole === 'owner' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                {userRole === 'owner' ? 'Owner / Pemilik' : 'Staff Admin'}
-              </span>
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {userRole === 'owner' 
-                ? 'Semua kolom & laba bersih diaktifkan. Anda bisa mengaktifkan mode privasi HPP.' 
-                : 'Peringatan: Kolom HPP Gudang disembunyikan otomatis untuk staf operasional biasa.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 bg-slate-800/40 p-1.5 rounded-2xl border border-slate-700/30">
-          <span className="text-xs font-semibold text-slate-400 pl-2">Simulasi Role:</span>
-          <div className="inline-flex rounded-xl bg-slate-950 p-1">
-            <button
-              onClick={() => onChangeRole('owner')}
-              className={`px-4 py-2 rounded-lg font-bold text-xs cursor-pointer transition-all ${userRole === 'owner' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              Owner
-            </button>
-            <button
-              onClick={() => onChangeRole('staff')}
-              className={`px-4 py-2 rounded-lg font-bold text-xs cursor-pointer transition-all ${userRole === 'staff' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
-            >
-              Admin Staff
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Visibility Control & Tools Card */}
       <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -254,18 +205,14 @@ export default function StockMatrix({
             <span className="group-hover:text-slate-900">Tampilkan Warna</span>
           </label>
 
-          <label 
-            className={`flex items-center gap-2.5 select-none ${userRole === 'owner' ? 'cursor-pointer font-bold text-slate-700 group hover:text-slate-900' : 'cursor-not-allowed opacity-40 text-slate-400'}`}
-            title={userRole !== 'owner' ? "Hanya bisa diakses oleh Owner" : ""}
-          >
+          <label className="flex items-center gap-2.5 cursor-pointer font-bold select-none group">
             <input
               type="checkbox"
-              checked={userRole === 'owner' ? showHpp : false}
-              disabled={userRole !== 'owner'}
+              checked={showHpp}
               onChange={(e) => setShowHpp(e.target.checked)}
-              className="h-5 w-5 rounded-lg text-emerald-600 focus:ring-emerald-500 border-slate-300 disabled:bg-slate-200"
+              className="h-5 w-5 rounded-lg text-emerald-600 focus:ring-emerald-500 border-slate-300 transition-colors"
             />
-            <span>Tampilkan HPP (Protected)</span>
+            <span className="group-hover:text-slate-900">Tampilkan HPP (Harga Pokok Penjualan)</span>
           </label>
         </div>
       </div>
@@ -424,10 +371,8 @@ export default function StockMatrix({
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400 mt-0.5 font-semibold space-x-2">
-                          {userRole === 'owner' && (
-                            <span className="text-rose-600">HPP: {formatRp(p.hpp)}</span>
-                          )}
-                          <span className="text-slate-500">Jual: {formatRp(p.price)}</span>
+                          <span className="text-rose-600 font-bold">HPP: {formatRp(p.hpp)}</span>
+                          <span className="text-slate-500 font-bold">Jual: {formatRp(p.price)}</span>
                         </div>
                         <div className="text-[9px] text-slate-400 font-mono mt-1 font-semibold truncate max-w-xs" title={p.colors.join(', ')}>
                           Warna: {p.colors.map(col => (
@@ -538,7 +483,7 @@ export default function StockMatrix({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* HPP (restricted for Owner role show/simulation) */}
+                  {/* HPP (Harga Pokok Penjualan) */}
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">HPP (Modal Prod.):</label>
                     <input
@@ -546,15 +491,11 @@ export default function StockMatrix({
                       required
                       min="0"
                       step="5000"
-                      disabled={userRole !== 'owner'}
                       placeholder="100000"
                       value={prodHpp}
                       onChange={(e) => setProdHpp(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
                     />
-                    {userRole !== 'owner' && (
-                      <span className="text-[9px] text-amber-600 block mt-0.5">🔒 Owner only</span>
-                    )}
                   </div>
 
                   {/* Harga Jual */}
@@ -636,7 +577,7 @@ export default function StockMatrix({
                   {showPhoto && <th className="py-3 px-4 w-12 text-center">Ikon</th>}
                   <th className="py-3 px-4">Nama Produk Master</th>
                   {showColor && <th className="py-3 px-4">Warna</th>}
-                  {showHpp && userRole === 'owner' && <th className="py-3 px-4 text-right text-rose-800 font-extrabold bg-rose-50/50">HPP</th>}
+                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-extrabold bg-rose-50/50">HPP</th>}
                   <th className="py-3 px-4 text-right">Harga Jual</th>
                   
                   {/* Sizegroup columns S-4XL */}
@@ -674,7 +615,7 @@ export default function StockMatrix({
                       )}
 
                       {/* Optional Protected HPP */}
-                      {showHpp && userRole === 'owner' && (
+                      {showHpp && (
                         <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-700 bg-rose-50/40 select-none">
                           {formatRp(product.hpp)}
                         </td>

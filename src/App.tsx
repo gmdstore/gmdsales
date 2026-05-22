@@ -15,29 +15,46 @@ import {
 import Dashboard from './components/Dashboard';
 import StockMatrix from './components/StockMatrix';
 import OrderModal from './components/OrderModal';
-import ChannelsConfig from './components/ChannelsConfig';
+import SettingsComponent from './components/Settings';
+import OrdersList from './components/OrdersList';
 
 import { 
   Plus, 
   LayoutDashboard, 
   Layers, 
   Settings2, 
-  ShieldAlert, 
-  ShieldCheck, 
-  FileText,
-  HelpCircle,
-  TrendingDown,
-  BookOpen
+  RotateCcw,
+  Menu,
+  X,
+  Heart,
+  ClipboardList
 } from 'lucide-react';
 
 export default function App() {
   // Navigation active tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'stocks' | 'channels'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings'>('dashboard');
   
-  // Security Role simulation: 'owner' | 'staff'
-  const [userRole, setUserRole] = useState<'owner' | 'staff'>('owner');
+  // Mobile sidebar visibility toggle state
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
-  // Load and preserve operational state in localStorage
+  // Active editing order
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+
+  // Dynamic Brand Identity configurations
+  const [brandName, setBrandName] = useState<string>(() => {
+    return localStorage.getItem('omni_brand_name') || 'OmniOrder';
+  });
+  const [brandLogo, setBrandLogo] = useState<string>(() => {
+    return localStorage.getItem('omni_brand_logo') || '📦';
+  });
+  const [brandProfile, setBrandProfile] = useState<string>(() => {
+    return localStorage.getItem('omni_brand_profile') || 'Sistem Pengelola Transaksi Omnichannel';
+  });
+  const [brandFooter, setBrandFooter] = useState<string>(() => {
+    return localStorage.getItem('omni_brand_footer') || 'OmniOrder – All rights reserved © 2026.';
+  });
+
+  // Preserve operational state in localStorage
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('omni_products');
     return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
@@ -63,11 +80,26 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_ORDERS;
   });
 
-  // Modal control triggers
+  // Order modal triggers
   const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
-  const [showPrdHelper, setShowPrdHelper] = useState<boolean>(false);
 
   // Sync to localStorage
+  useEffect(() => {
+    localStorage.setItem('omni_brand_name', brandName);
+  }, [brandName]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_brand_logo', brandLogo);
+  }, [brandLogo]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_brand_profile', brandProfile);
+  }, [brandProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_brand_footer', brandFooter);
+  }, [brandFooter]);
+
   useEffect(() => {
     localStorage.setItem('omni_products', JSON.stringify(products));
   }, [products]);
@@ -88,9 +120,10 @@ export default function App() {
     localStorage.setItem('omni_orders', JSON.stringify(orders));
   }, [orders]);
 
-  // Operational function adjustments 
 
-  // F-01: Update specific stock level (Excel-like edit)
+  // Business Operations implementation
+
+  // F-01: Update specific stock level inline (Excel-like matrix edit)
   const handleUpdateStock = (stockItemId: string, size: string, newQty: number) => {
     setStocks(prev => 
       prev.map(item => {
@@ -108,27 +141,98 @@ export default function App() {
     );
   };
 
-  // F-03/F-04: Save Order and Automatically subtract warehouse matrix stock!
+  // F-03/F-04: Save Order and subtract warehouse matrix stock dynamically!
   const handleSaveOrder = (newOrder: Order) => {
-    // 1. Save new Order into local registry
+    // 1. Add order to state
     setOrders(prev => [newOrder, ...prev]);
 
-    // 2. Subtract warehouse matrix stock levels immediately
+    // 2. Subtract stocks from warehouse metrics
     setStocks(prevStocks => {
-      // Create a mutable copy of stocks
       return prevStocks.map(stockItem => {
-        // Find if this stockItem correlates to any item purchased in the order
-        // Key format is `${productId}_${color}`
         const matchedPurchasedItems = newOrder.products.filter(purchased => 
           `${purchased.productId}_${purchased.color}` === stockItem.id
         );
 
         if (matchedPurchasedItems.length > 0) {
-          // Subtract quantities from the sizes in stocks
           const updatedSizeStocks = { ...stockItem.stocks };
           matchedPurchasedItems.forEach(purchased => {
             const currentStockVal = updatedSizeStocks[purchased.size] ?? 0;
-            // Deduct the quantity, lock at 0 min
+            updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
+          });
+
+          return {
+            ...stockItem,
+            stocks: updatedSizeStocks
+          };
+        }
+
+        return stockItem;
+      });
+    });
+  };
+
+  // Restore previous stocks when deleting an order
+  const handleDeleteOrder = (orderId: string) => {
+    const targetOrder = orders.find(o => o.id === orderId);
+    if (!targetOrder) return;
+
+    // 1. Remove order from list
+    setOrders(prev => prev.filter(o => o.id !== orderId));
+
+    // 2. Return items back to stocks
+    setStocks(prevStocks => {
+      return prevStocks.map(stockItem => {
+        const matchedPurchasedItems = targetOrder.products.filter(purchased => 
+          `${purchased.productId}_${purchased.color}` === stockItem.id
+        );
+
+        if (matchedPurchasedItems.length > 0) {
+          const updatedSizeStocks = { ...stockItem.stocks };
+          matchedPurchasedItems.forEach(purchased => {
+            const currentStockVal = updatedSizeStocks[purchased.size] ?? 0;
+            updatedSizeStocks[purchased.size] = currentStockVal + purchased.qty;
+          });
+
+          return {
+            ...stockItem,
+            stocks: updatedSizeStocks
+          };
+        }
+
+        return stockItem;
+      });
+    });
+  };
+
+  // Adjust warehouse stocks properly by rollback old and commit new quantities
+  const handleUpdateOrder = (updatedOrder: Order, oldOrder: Order) => {
+    // 1. Update order metadata in state list
+    setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+
+    // 2. Adjust warehouse stocks by adding back old bought items, then subtracting updated bought items
+    setStocks(prevStocks => {
+      return prevStocks.map(stockItem => {
+        // Rollback old order allocation
+        const matchedOldItems = oldOrder.products.filter(purchased => 
+          `${purchased.productId}_${purchased.color}` === stockItem.id
+        );
+        // Commit new order allocation
+        const matchedNewItems = updatedOrder.products.filter(purchased => 
+          `${purchased.productId}_${purchased.color}` === stockItem.id
+        );
+
+        if (matchedOldItems.length > 0 || matchedNewItems.length > 0) {
+          const updatedSizeStocks = { ...stockItem.stocks };
+          
+          // Phase 1: Add back old quantities
+          matchedOldItems.forEach(purchased => {
+            const currentStockVal = updatedSizeStocks[purchased.size] ?? 0;
+            updatedSizeStocks[purchased.size] = currentStockVal + purchased.qty;
+          });
+
+          // Phase 2: Deduct new quantities
+          matchedNewItems.forEach(purchased => {
+            const currentStockVal = updatedSizeStocks[purchased.size] ?? 0;
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
@@ -155,7 +259,6 @@ export default function App() {
     const nextGroups = groups.filter(g => g !== groupName);
     setGroups(nextGroups);
 
-    // Relocate products in the deleted group to the first remaining group
     const fallbackGroup = nextGroups[0] || 'Uncategorized';
     setProducts(prev => 
       prev.map(p => {
@@ -179,12 +282,10 @@ export default function App() {
     );
   };
 
-  // F-01 Master Product Datatables Modifications: Add, Edit, Delete
+  // F-01 Product Master mutations: Add, Edit, Delete
   const handleAddProduct = (newProduct: Product) => {
-    // 1. Add to products list
     setProducts(prev => [...prev, newProduct]);
 
-    // 2. Initialize stock items for its colors with zero quantity
     const newStockObjects: StockItem[] = newProduct.colors.map(color => ({
       id: `${newProduct.id}_${color}`,
       productId: newProduct.id,
@@ -196,20 +297,13 @@ export default function App() {
   };
 
   const handleUpdateProduct = (updatedProduct: Product) => {
-    // 1. Update in products list
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
 
-    // 2. Align stock matrix entries for this product
     setStocks(prevStocks => {
-      // First, filter out other products' stocks
       const otherStocks = prevStocks.filter(s => s.productId !== updatedProduct.id);
-      
-      // Get current stocks for this specific product to preserve quantities
       const currentProductStocks = prevStocks.filter(s => s.productId === updatedProduct.id);
 
-      // Create new aligned stock items for each color in updatedProduct.colors
       const alignedStocks: StockItem[] = updatedProduct.colors.map(color => {
-        // Try to find if we already have this color representation
         const existing = currentProductStocks.find(s => s.color === color);
         if (existing) {
           return {
@@ -232,224 +326,281 @@ export default function App() {
   };
 
   const handleDeleteProduct = (productId: string) => {
-    // 1. Remove from products list
     setProducts(prev => prev.filter(p => p.id !== productId));
-    
-    // 2. Remove associated stock items
     setStocks(prev => prev.filter(s => s.productId !== productId));
   };
 
-  // Update Sales channels guidelines
+  // Brand Info and Channels management handlers
+  const handleUpdateBrand = (updated: {
+    brandName: string;
+    brandLogo: string;
+    brandProfile: string;
+    brandFooter: string;
+  }) => {
+    setBrandName(updated.brandName);
+    setBrandLogo(updated.brandLogo);
+    setBrandProfile(updated.brandProfile);
+    setBrandFooter(updated.brandFooter);
+  };
+
+  const handleAddChannel = (newChannel: Channel) => {
+    setChannels(prev => [...prev, newChannel]);
+  };
+
   const handleUpdateChannel = (updatedChannel: Channel) => {
     setChannels(prev => 
       prev.map(c => c.id === updatedChannel.id ? updatedChannel : c)
     );
   };
 
-  // Restore mock factory defaults handler
+  const handleDeleteChannel = (channelId: string) => {
+    setChannels(prev => prev.filter(c => c.id !== channelId));
+  };
+
+  // Full hard factory settings reset to restore original mock template
   const handleResetFactoryDefaults = () => {
-    if (confirm("Apakah Anda yakin ingin mengembalikan data awal simulasi OmniOrder? Kontak order baru dan perubahan stok kustom Anda akan dibersihkan.")) {
+    if (confirm("Apakah Anda yakin ingin menyetel ulang data? Ini akan mengosongkan transaksi order & produk, mengembalikan parameter brand ke setelan default.")) {
       localStorage.removeItem('omni_products');
       localStorage.removeItem('omni_stocks');
       localStorage.removeItem('omni_channels');
       localStorage.removeItem('omni_groups');
       localStorage.removeItem('omni_orders');
+      localStorage.removeItem('omni_brand_name');
+      localStorage.removeItem('omni_brand_logo');
+      localStorage.removeItem('omni_brand_profile');
+      localStorage.removeItem('omni_brand_footer');
 
       setProducts(INITIAL_PRODUCTS);
       setStocks(INITIAL_STOCKS);
       setChannels(INITIAL_CHANNELS);
       setGroups(INITIAL_GROUPS);
       setOrders(INITIAL_ORDERS);
+      setBrandName('OmniOrder');
+      setBrandLogo('📦');
+      setBrandProfile('Sistem Pengelola Transaksi Omnichannel');
+      setBrandFooter('OmniOrder – All rights reserved © 2026.');
       setActiveTab('dashboard');
+      setIsMobileSidebarOpen(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-950">
+    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-950">
       
-      {/* Top Main Navigation Navigation Board */}
-      <header className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 shadow-2xs">
-        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            
-            {/* Logo Brand Title */}
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 bg-slate-900 text-white rounded-xl shadow-md text-base leading-none font-black select-none">
-                📦
-              </span>
-              <div>
-                <span className="text-base font-extrabold tracking-tight text-slate-900 font-sans">
-                  OmniOrder
-                </span>
-                <span className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-250 roundedpx px-2 py-0.5 ml-2 font-black tracking-wider uppercase align-middle shadow-3xs">
-                  MVP Fase 1
-                </span>
-              </div>
-            </div>
+      {/* Mobile Top Navigation Header */}
+      <div className="flex md:hidden items-center justify-between px-5 h-16 bg-white border-b border-slate-205 sticky top-0 z-40 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="text-xl font-emoji select-none">{brandLogo}</span>
+          <span className="font-extrabold tracking-tight text-slate-900 text-sm">{brandName}</span>
+        </div>
+        <button
+          onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          className="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+        >
+          {isMobileSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
 
-            {/* Quick action simulation stats */}
-            <div className="hidden md:flex items-center gap-4 text-xs font-bold text-slate-600">
-              <button
-                onClick={() => setShowPrdHelper(!showPrdHelper)}
-                className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-900 cursor-pointer transition-all"
-              >
-                <BookOpen className="h-4 w-4 text-slate-400" />
-                Daftar Fitur Checklist
-              </button>
+      {/* Left Sidebar Menu Navigation */}
+      <aside 
+        className={`fixed inset-y-0 left-0 transform ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out md:static flex flex-col w-64 md:w-72 bg-slate-950 text-slate-100 border-r border-slate-900 shrink-0 z-50 shadow-2xl md:shadow-none h-screen sticky top-0`}
+      >
+        {/* Mobile close overlay icon */}
+        <div className="flex md:hidden justify-end p-4 pb-0">
+          <button
+            onClick={() => setIsMobileSidebarOpen(false)}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg"
+          >
+            <X className="h-4.5 w-4.5" />
+          </button>
+        </div>
 
-              <div className="h-4 w-px bg-slate-200" />
-
-              <span className="text-slate-500">
-                User Role: <span className="text-slate-950 font-black">{userRole === 'owner' ? '👑 Owner' : '👥 Staff Admin'}</span>
-              </span>
-            </div>
-            
+        {/* Company Logo Badge Info Section */}
+        <div className="p-6 pb-5 flex flex-col items-center text-center border-b border-slate-900">
+          <div className="h-14 w-14 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner flex items-center justify-center text-2xl font-emoji select-none scale-102 mb-3.5">
+            {brandLogo}
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-lg font-black tracking-tight text-white line-clamp-1">
+              {brandName}
+            </h1>
+            <p className="text-[10px] text-slate-550 leading-relaxed line-clamp-2 px-1 font-medium">
+              {brandProfile}
+            </p>
           </div>
         </div>
 
-        {/* Dynamic Nav Tabs Navigation Panel */}
-        <div className="bg-slate-50 border-t border-slate-150 py-1.5 px-2">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between flex-wrap gap-2 text-xs font-bold">
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-xl transition-all font-extrabold cursor-pointer border text-xs shadow-3xs ${activeTab === 'dashboard' ? 'bg-slate-900 border-slate-950 text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard Finansial
-              </button>
+        {/* Navigation List Item Section */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <span className="block px-3 text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-2 font-mono">
+            Menu Operasional
+          </span>
 
-              <button
-                onClick={() => setActiveTab('stocks')}
-                className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-xl transition-all font-extrabold cursor-pointer border text-xs shadow-3xs ${activeTab === 'stocks' ? 'bg-slate-900 border-slate-950 text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Layers className="h-4 w-4" />
-                Matriks Stok Gudang
-              </button>
+          <button
+            onClick={() => {
+              setActiveTab('dashboard');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'dashboard' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Dashboard Finansial
+          </button>
 
-              <button
-                onClick={() => setActiveTab('channels')}
-                className={`inline-flex items-center gap-1.5 px-4.5 py-2 rounded-xl transition-all font-extrabold cursor-pointer border text-xs shadow-3xs ${activeTab === 'channels' ? 'bg-slate-900 border-slate-950 text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'}`}
-              >
-                <Settings2 className="h-4 w-4" />
-                Kanal Omnichannel
-              </button>
-            </div>
+          <button
+            onClick={() => {
+              setActiveTab('orders');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'orders' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            Daftar Pesanan & Detail
+          </button>
 
+          <button
+            onClick={() => {
+              setActiveTab('stocks');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'stocks' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <Layers className="h-4 w-4" />
+            Matriks Stok Gudang
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('settings');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <Settings2 className="h-4 w-4" />
+            Pengaturan Brand & Kanal
+          </button>
+
+          <div className="pt-4 border-t border-slate-900">
+            {/* Quick Record Order button */}
             <button
-              onClick={handleResetFactoryDefaults}
-              className="text-[11px] font-bold text-slate-400 hover:text-red-500 hover:underline cursor-pointer transition-colors"
-              title="Reset manual order database & stocks data back to initial draft values"
+              onClick={() => {
+                setEditingOrder(null);
+                setIsOrderModalOpen(true);
+                setIsMobileSidebarOpen(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-black rounded-xl text-xs transition-transform transform active:scale-95 cursor-pointer shadow-sm"
             >
-              🔄 Reset Simulasi Awal
+              <Plus className="h-3.5 w-3.5 text-slate-950 strike-2" />
+              Pencatatan Order Baru
             </button>
           </div>
-        </div>
-      </header>
+        </nav>
 
-      {/* Main Dynamic View Area */}
-      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        
-        {/* Dynamic display views */}
-        {activeTab === 'dashboard' && (
-          <Dashboard 
-            orders={orders} 
-            channels={channels}
-            onOpenOrderModal={() => setIsOrderModalOpen(true)}
-          />
-        )}
+        {/* Global Sidebar Footer & System actions */}
+        <div className="p-4 border-t border-slate-900 space-y-4">
+          <div className="px-2 flex items-center justify-between">
+            <button
+              onClick={handleResetFactoryDefaults}
+              className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-red-400 cursor-pointer transition-colors"
+              title="Kembalikan sistem ke data kosong instan"
+            >
+              <RotateCcw className="h-3 w-3 shrink-0" />
+              Reset setelan sistem
+            </button>
+            <span className="text-[9px] font-semibold text-slate-400 font-mono tracking-wider uppercase bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-md">MVP</span>
+          </div>
 
-        {activeTab === 'stocks' && (
-          <StockMatrix
-            products={products}
-            stocks={stocks}
-            groups={groups}
-            userRole={userRole}
-            onChangeRole={setUserRole}
-            onUpdateStock={handleUpdateStock}
-            onCreateGroup={handleCreateGroup}
-            onDeleteGroup={handleDeleteGroup}
-            onUpdateProductGroup={handleUpdateProductGroup}
-            onAddProduct={handleAddProduct}
-            onUpdateProduct={handleUpdateProduct}
-            onDeleteProduct={handleDeleteProduct}
-          />
-        )}
-
-        {activeTab === 'channels' && (
-          <ChannelsConfig
-            channels={channels}
-            onUpdateChannel={handleUpdateChannel}
-            userRole={userRole}
-          />
-        )}
-
-        {/* PRD Features Checklist Panel Overlay */}
-        {showPrdHelper && (
-          <div className="mt-8 bg-emerald-50/70 border border-emerald-150 p-6 rounded-3xl space-y-4 animate-fade-in text-xs text-gray-700">
-            <div className="flex items-center justify-between border-b border-emerald-200/50 pb-2">
-              <h3 className="font-bold text-emerald-950 text-sm flex items-center gap-1.5">
-                <FileText className="h-4.5 w-4.5 text-emerald-600" />
-                Checklist Implementasi Fitur Sesuai Dokumen PRD
-              </h3>
-              <button
-                onClick={() => setShowPrdHelper(false)}
-                className="text-gray-400 hover:text-gray-650 cursor-pointer text-sm font-bold"
-              >
-                ✕ Sembunyikan
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <span className="block font-bold text-emerald-900 leading-normal uppercase text-[10px] tracking-wider">F-01: Master Data & Matriks Stok:</span>
-                <ul className="space-y-1.5 list-disc list-inside text-gray-600">
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Dynamic Tab Category Navigation**: Pilih Best Seller, Cashcow, dll.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Kelola Grup**: Tambah/Hapus kategori, relocasi produk aman.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Tabel Matriks Silang**: Baris (Nama + Warna) & Kolom (Ukuran S-4XL).</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Excel Inline Edit**: Klik sel ukuran untuk set kuantitas.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Protected HPP Column**: Menggunakan Role switcher (Owner vs Staff).</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <span className="block font-bold text-emerald-900 leading-normal uppercase text-[10px] tracking-wider">F-02, F-03 & F-04: Dashboard & Input Order:</span>
-                <ul className="space-y-1.5 list-disc list-inside text-gray-600">
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Ringkasan Finansial**: Banding Hari Ini vs Bulan Ini lengkap.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Interactive Trend Chart**: Grafis dengan hovering & floating label.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Instant Spaces/Duplicate Validation**: Merah jika spasi/ganda.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Auto-Search Autocomplete**: Keranjang item mencari mengetik 3+ huruf.</li>
-                  <li><span className="text-emerald-600 font-extrabold">✓</span> **Auto Potong Stok**: Gudang otomatis berkurang saat disave.</li>
-                </ul>
-              </div>
+          <div className="px-2 text-[10px] text-slate-550 border-t border-slate-900/40 pt-3 flex flex-col gap-1 font-medium">
+            <span className="leading-relaxed font-sans">{brandFooter}</span>
+            <div className="flex items-center gap-2 text-[9px] text-slate-600 mt-1 font-mono font-semibold">
+              <span>Local Time: 22 Mei 2026</span>
             </div>
           </div>
-        )}
+        </div>
+      </aside>
 
+      {/* Backdrop for mobile active drawer state */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/40 z-30 md:hidden animate-fade-in"
+        />
+      )}
+
+      {/* Dynamic Render Workspace Area */}
+      <main className="flex-1 h-screen overflow-y-auto p-4 md:p-8 flex flex-col justify-between">
+        <div className="flex-1">
+          {activeTab === 'dashboard' && (
+            <Dashboard 
+              orders={orders} 
+              channels={channels}
+              products={products}
+              onOpenOrderModal={() => {
+                setEditingOrder(null);
+                setIsOrderModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'orders' && (
+            <OrdersList
+              orders={orders}
+              channels={channels}
+              products={products}
+              onEditOrder={(order) => {
+                setEditingOrder(order);
+                setIsOrderModalOpen(true);
+              }}
+              onDeleteOrder={handleDeleteOrder}
+            />
+          )}
+
+          {activeTab === 'stocks' && (
+            <StockMatrix
+              products={products}
+              stocks={stocks}
+              groups={groups}
+              onUpdateStock={handleUpdateStock}
+              onCreateGroup={handleCreateGroup}
+              onDeleteGroup={handleDeleteGroup}
+              onUpdateProductGroup={handleUpdateProductGroup}
+              onAddProduct={handleAddProduct}
+              onUpdateProduct={handleUpdateProduct}
+              onDeleteProduct={handleDeleteProduct}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsComponent
+              brandName={brandName}
+              brandLogo={brandLogo}
+              brandProfile={brandProfile}
+              brandFooter={brandFooter}
+              onUpdateBrand={handleUpdateBrand}
+              channels={channels}
+              onAddChannel={handleAddChannel}
+              onUpdateChannel={handleUpdateChannel}
+              onDeleteChannel={handleDeleteChannel}
+            />
+          )}
+        </div>
       </main>
 
-      {/* Floating Modal pencatatan pesanan */}
+      {/* Record sales purchase model */}
       <OrderModal
         isOpen={isOrderModalOpen}
-        onClose={() => setIsOrderModalOpen(false)}
+        onClose={() => {
+          setIsOrderModalOpen(false);
+          setEditingOrder(null);
+        }}
         products={products}
         stocks={stocks}
         channels={channels}
         orders={orders}
         onSaveOrder={handleSaveOrder}
+        editingOrder={editingOrder}
+        onUpdateOrder={handleUpdateOrder}
       />
-
-      {/* Subtle Site Footer */}
-      <footer className="bg-white border-t border-gray-150 py-4 mt-12 text-center text-[11px] text-gray-400 font-medium">
-        <div className="w-full max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>OmniOrder – All rights reserved © 2026.</span>
-          <div className="flex items-center gap-3">
-            <span>Versi Dokumen PRD: v1.5</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-            <span>Local Time: 22 Mei 2026</span>
-          </div>
-        </div>
-      </footer>
 
     </div>
   );

@@ -4,16 +4,17 @@
  */
 
 import React, { useState } from 'react';
-import { Order, Channel } from '../types';
+import { Order, Channel, Product } from '../types';
 import { TrendingUp, ShoppingBag, BadgeAlert, Coins, Percent, DollarSign, ArrowRight, Clipboard } from 'lucide-react';
 
 interface DashboardProps {
   orders: Order[];
   channels: Channel[];
+  products: Product[];
   onOpenOrderModal: () => void;
 }
 
-export default function Dashboard({ orders, channels, onOpenOrderModal }: DashboardProps) {
+export default function Dashboard({ orders, channels, products, onOpenOrderModal }: DashboardProps) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
   // Helper formatting currency
@@ -480,15 +481,15 @@ export default function Dashboard({ orders, channels, onOpenOrderModal }: Dashbo
                         </span>
                       </td>
                       <td className="py-3.5 px-3 space-y-1">
-                        {ord.products.map((p, pIdx) => (
-                           <div key={pIdx} className="font-mono text-slate-700 font-medium">
-                            • {p.productId === 'p1' ? 'Classic Oversized Hoodie' : 
-                               p.productId === 'p2' ? 'Slim-Fit Cargo Pants' : 
-                               p.productId === 'p3' ? 'Pique Cotton Polo Shirt' : 
-                               p.productId === 'p4' ? 'Heavyweight Pocket Tee' : 
-                               p.productId === 'p5' ? 'Vintage Bomber Jacket' : 'Produk'} ({p.color} - {p.size}) <span className="text-slate-900 font-bold">x{p.qty}</span>
-                          </div>
-                        ))}
+                        {ord.products.map((p, pIdx) => {
+                          const matchedProduct = products.find(prod => prod.id === p.productId);
+                          const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
+                          return (
+                            <div key={pIdx} className="font-mono text-slate-700 font-medium">
+                              • {resolvedName} ({p.color} - {p.size}) <span className="text-slate-900 font-bold">x{p.qty}</span>
+                            </div>
+                          );
+                        })}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono font-semibold text-slate-500">
                         {formatRp(ord.totalPrice)}
