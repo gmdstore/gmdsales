@@ -179,6 +179,66 @@ export default function App() {
     );
   };
 
+  // F-01 Master Product Datatables Modifications: Add, Edit, Delete
+  const handleAddProduct = (newProduct: Product) => {
+    // 1. Add to products list
+    setProducts(prev => [...prev, newProduct]);
+
+    // 2. Initialize stock items for its colors with zero quantity
+    const newStockObjects: StockItem[] = newProduct.colors.map(color => ({
+      id: `${newProduct.id}_${color}`,
+      productId: newProduct.id,
+      productName: newProduct.name,
+      color: color,
+      stocks: { S: 0, M: 0, L: 0, XL: 0, '2XL': 0, '3XL': 0, '4XL': 0 }
+    }));
+    setStocks(prev => [...prev, ...newStockObjects]);
+  };
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    // 1. Update in products list
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+
+    // 2. Align stock matrix entries for this product
+    setStocks(prevStocks => {
+      // First, filter out other products' stocks
+      const otherStocks = prevStocks.filter(s => s.productId !== updatedProduct.id);
+      
+      // Get current stocks for this specific product to preserve quantities
+      const currentProductStocks = prevStocks.filter(s => s.productId === updatedProduct.id);
+
+      // Create new aligned stock items for each color in updatedProduct.colors
+      const alignedStocks: StockItem[] = updatedProduct.colors.map(color => {
+        // Try to find if we already have this color representation
+        const existing = currentProductStocks.find(s => s.color === color);
+        if (existing) {
+          return {
+            ...existing,
+            productName: updatedProduct.name
+          };
+        } else {
+          return {
+            id: `${updatedProduct.id}_${color}`,
+            productId: updatedProduct.id,
+            productName: updatedProduct.name,
+            color: color,
+            stocks: { S: 0, M: 0, L: 0, XL: 0, '2XL': 0, '3XL': 0, '4XL': 0 }
+          };
+        }
+      });
+
+      return [...otherStocks, ...alignedStocks];
+    });
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    // 1. Remove from products list
+    setProducts(prev => prev.filter(p => p.id !== productId));
+    
+    // 2. Remove associated stock items
+    setStocks(prev => prev.filter(s => s.productId !== productId));
+  };
+
   // Update Sales channels guidelines
   const handleUpdateChannel = (updatedChannel: Channel) => {
     setChannels(prev => 
@@ -310,6 +370,9 @@ export default function App() {
             onCreateGroup={handleCreateGroup}
             onDeleteGroup={handleDeleteGroup}
             onUpdateProductGroup={handleUpdateProductGroup}
+            onAddProduct={handleAddProduct}
+            onUpdateProduct={handleUpdateProduct}
+            onDeleteProduct={handleDeleteProduct}
           />
         )}
 

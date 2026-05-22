@@ -17,6 +17,9 @@ interface StockMatrixProps {
   onCreateGroup: (groupName: string) => void;
   onDeleteGroup: (groupName: string) => void;
   onUpdateProductGroup: (productId: string, newGroup: string) => void;
+  onAddProduct: (newProduct: Product) => void;
+  onUpdateProduct: (updatedProduct: Product) => void;
+  onDeleteProduct: (productId: string) => void;
 }
 
 export default function StockMatrix({
@@ -28,12 +31,25 @@ export default function StockMatrix({
   onUpdateStock,
   onCreateGroup,
   onDeleteGroup,
-  onUpdateProductGroup
+  onUpdateProductGroup,
+  onAddProduct,
+  onUpdateProduct,
+  onDeleteProduct
 }: StockMatrixProps) {
   // Tabs & Grouping Selection
   const [activeGroup, setActiveGroup] = useState<string>(groups[0] || 'Best Seller');
   const [isManagingGroups, setIsManagingGroups] = useState<boolean>(false);
   const [newGroupName, setNewGroupName] = useState<string>('');
+
+  // Master Data Product ADD/EDIT States
+  const [isManagingProducts, setIsManagingProducts] = useState<boolean>(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [prodName, setProdName] = useState<string>('');
+  const [prodGroup, setProdGroup] = useState<string>(groups[0] || 'Best Seller');
+  const [prodHpp, setProdHpp] = useState<number>(100000);
+  const [prodPrice, setProdPrice] = useState<number>(250000);
+  const [prodImageUrl, setProdImageUrl] = useState<string>('👕');
+  const [prodColorsText, setProdColorsText] = useState<string>('');
 
   // Column Visibility state
   const [showPhoto, setShowPhoto] = useState<boolean>(true);
@@ -96,6 +112,67 @@ export default function StockMatrix({
       onDeleteGroup(gName);
       setActiveGroup(groups.find(g => g !== gName) || '');
     }
+  };
+
+  const handleStartEditProduct = (p: Product) => {
+    setEditingProductId(p.id);
+    setProdName(p.name);
+    setProdGroup(p.group);
+    setProdHpp(p.hpp);
+    setProdPrice(p.price);
+    setProdImageUrl(p.imageUrl);
+    setProdColorsText(p.colors.join(', '));
+  };
+
+  const handleCancelEditProduct = () => {
+    setEditingProductId(null);
+    setProdName('');
+    setProdGroup(groups[0] || 'Best Seller');
+    setProdHpp(100000);
+    setProdPrice(250000);
+    setProdImageUrl('👕');
+    setProdColorsText('');
+  };
+
+  const handleSubmitProductForm = () => {
+    const trimmedName = prodName.trim();
+    if (!trimmedName) return;
+
+    const colors = prodColorsText
+      .split(',')
+      .map(col => col.trim())
+      .filter(col => col.length > 0);
+
+    if (colors.length === 0) {
+      alert("Harus ada minimal 1 variasi warna.");
+      return;
+    }
+
+    if (editingProductId) {
+      const updatedProduct: Product = {
+        id: editingProductId,
+        name: trimmedName,
+        group: prodGroup,
+        hpp: prodHpp,
+        price: prodPrice,
+        imageUrl: prodImageUrl,
+        colors: colors
+      };
+      onUpdateProduct(updatedProduct);
+    } else {
+      const newProduct: Product = {
+        id: `p_${Date.now()}`,
+        name: trimmedName,
+        group: prodGroup,
+        hpp: prodHpp,
+        price: prodPrice,
+        imageUrl: prodImageUrl,
+        colors: colors
+      };
+      onAddProduct(newProduct);
+    }
+
+    handleCancelEditProduct();
   };
 
   return (
@@ -203,21 +280,38 @@ export default function StockMatrix({
               onClick={() => {
                 setActiveGroup(group);
                 setIsManagingGroups(false);
+                setIsManagingProducts(false);
               }}
-              className={`px-4 py-2.5 text-xs font-extrabold rounded-2xl whitespace-nowrap border cursor-pointer select-none transition-all active:scale-95 ${activeGroup === group && !isManagingGroups ? 'bg-slate-900 text-white border-slate-950 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200/80 shadow-3xs'}`}
+              className={`px-4 py-2.5 text-xs font-extrabold rounded-2xl whitespace-nowrap border cursor-pointer select-none transition-all active:scale-95 ${activeGroup === group && !isManagingGroups && !isManagingProducts ? 'bg-slate-900 text-white border-slate-950 shadow-sm' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200/80 shadow-3xs'}`}
             >
               {group} ({products.filter(p => p.group === group).length})
             </button>
           ))}
         </div>
 
-        {/* Manage Groups Mode Switcher */}
-        <button
-          onClick={() => setIsManagingGroups(!isManagingGroups)}
-          className={`px-3.5 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 cursor-pointer select-none transition-all ${isManagingGroups ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' : 'bg-slate-100 text-slate-850 border-slate-205 hover:bg-slate-150 shadow-3xs'}`}
-        >
-          ⚙️ Kelola Grup {isManagingGroups ? 'Selesai' : ''}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Manage Products Switcher */}
+          <button
+            onClick={() => {
+              setIsManagingProducts(!isManagingProducts);
+              setIsManagingGroups(false);
+            }}
+            className={`px-3.5 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 cursor-pointer select-none transition-all ${isManagingProducts ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' : 'bg-slate-100 text-slate-850 border-slate-205 hover:bg-slate-150 shadow-3xs'}`}
+          >
+            📦 Kelola Produk {isManagingProducts ? 'Selesai' : ''}
+          </button>
+
+          {/* Manage Groups Mode Switcher */}
+          <button
+            onClick={() => {
+              setIsManagingGroups(!isManagingGroups);
+              setIsManagingProducts(false);
+            }}
+            className={`px-3.5 py-2 text-xs font-bold rounded-xl border flex items-center gap-1.5 cursor-pointer select-none transition-all ${isManagingGroups ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100' : 'bg-slate-100 text-slate-850 border-slate-205 hover:bg-slate-150 shadow-3xs'}`}
+          >
+            ⚙️ Kelola Grup {isManagingGroups ? 'Selesai' : ''}
+          </button>
+        </div>
       </div>
 
       {/* Category CRUD Modal Drawer inline details */}
@@ -293,6 +387,227 @@ export default function StockMatrix({
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Product CRUD Management Panel */}
+      {isManagingProducts && (
+        <div className="bg-gradient-to-br from-[#f0fdf4] to-emerald-50/10 border border-emerald-200/70 rounded-3xl p-6 space-y-5 shadow-sm animate-fade-in text-xs text-slate-700">
+          <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
+            <h4 className="font-extrabold text-sm text-emerald-900 flex items-center gap-2">
+              <span>📦</span> Kelola Master Produk & Variasi Warna
+            </h4>
+            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold uppercase px-2 py-0.5 rounded border border-emerald-200">
+              Operational Database
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* Left: Master Products List (7 span) */}
+            <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-150 space-y-4 max-h-[450px] overflow-y-auto">
+              <span className="block font-bold text-slate-800 text-xs">Daftar Produk Master ({products.length}):</span>
+              
+              <div className="divide-y divide-slate-100">
+                {products.map(p => (
+                  <div key={p.id} className="py-3.5 flex items-center justify-between gap-4 group">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="h-9 w-9 rounded-xl border border-slate-100 shadow-3xs flex items-center justify-center font-emoji text-lg bg-slate-50 select-none">
+                        {p.imageUrl}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
+                          <span>{p.name}</span>
+                          <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md font-extrabold">
+                            {p.group}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-semibold space-x-2">
+                          {userRole === 'owner' && (
+                            <span className="text-rose-600">HPP: {formatRp(p.hpp)}</span>
+                          )}
+                          <span className="text-slate-500">Jual: {formatRp(p.price)}</span>
+                        </div>
+                        <div className="text-[9px] text-slate-400 font-mono mt-1 font-semibold truncate max-w-xs" title={p.colors.join(', ')}>
+                          Warna: {p.colors.map(col => (
+                            <span key={col} className="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.2 rounded mr-1">
+                              {col}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 opacity-90 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEditProduct(p)}
+                        className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
+                        title="Edit Produk ini"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteProduct(p.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
+                        title="Hapus Produk ini"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Add/Edit Product form (5 span) */}
+            <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-150 space-y-4 shadow-3xs">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="font-extrabold text-slate-900 text-xs">
+                  {editingProductId ? '📝 Edit Produk Master' : '✨ Tambah Produk Baru'}
+                </span>
+                {editingProductId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEditProduct}
+                    className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                  >
+                    Batal Edit
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {/* Nama Produk */}
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nama Produk:</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Premium Cotton Tee, Slim Chino Pants..."
+                    value={prodName}
+                    onChange={(e) => setProdName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Kategori / Group */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Grup/Kategori:</label>
+                    <select
+                      value={prodGroup}
+                      onChange={(e) => setProdGroup(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-extrabold text-slate-850"
+                    >
+                      {groups.map(g => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Icon Emoji Selection */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Ikon Emoji: <span className="font-emoji font-bold text-sm ml-1">{prodImageUrl}</span></label>
+                    <input
+                      type="text"
+                      maxLength={4}
+                      placeholder="👕"
+                      value={prodImageUrl}
+                      onChange={(e) => setProdImageUrl(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-center text-slate-800 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Popular Emojis selector row */}
+                <div className="p-2 border border-dashed border-slate-200 rounded-xl flex flex-wrap gap-2 items-center justify-center bg-slate-50/55">
+                  <span className="text-[10px] font-bold text-slate-400 mr-1 shrink-0">Ikon:</span>
+                  {['👕', '👖', '🎽', '🧥', '👟', '🎒', '🧢', '🕶️', '👗', '👚', '🧣', '👜'].map(em => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => setProdImageUrl(em)}
+                      className={`text-sm cursor-pointer hover:scale-125 transition-all p-1 rounded-lg ${prodImageUrl === em ? 'bg-emerald-100 border border-emerald-350 scale-110 shadow-3xs' : 'hover:bg-slate-200 border border-transparent'}`}
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* HPP (restricted for Owner role show/simulation) */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">HPP (Modal Prod.):</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="5000"
+                      disabled={userRole !== 'owner'}
+                      placeholder="100000"
+                      value={prodHpp}
+                      onChange={(e) => setProdHpp(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                    {userRole !== 'owner' && (
+                      <span className="text-[9px] text-amber-600 block mt-0.5">🔒 Owner only</span>
+                    )}
+                  </div>
+
+                  {/* Harga Jual */}
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Harga Jual:</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="5000"
+                      placeholder="200000"
+                      value={prodPrice}
+                      onChange={(e) => setProdPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {prodPrice > 0 && prodHpp > 0 && prodPrice < prodHpp && (
+                  <div className="bg-rose-50 border border-rose-100 px-3 py-2 text-rose-800 rounded-xl text-[10px] font-bold">
+                    ⚠️ Peringatan: Harga jual lebih rendah dari HPP (Rugi modal)!
+                  </div>
+                )}
+
+                {/* Variasi Warna (tags/comma separated) */}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Variasi Warna (koma):</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Misal: Hitam, Biru Navy, Putih"
+                    value={prodColorsText}
+                    onChange={(e) => setProdColorsText(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-850 focus:outline-none"
+                  />
+                  <span className="text-[9px] text-slate-400 block mt-1 leading-normal">
+                    Pemisah koma. Menghasilkan sedia baris entri stok tersendiri.
+                  </span>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="button"
+                  disabled={!prodName.trim() || !prodColorsText.trim()}
+                  onClick={handleSubmitProductForm}
+                  className="w-full mt-2 py-2.5 bg-slate-900 border border-slate-950 hover:bg-slate-850 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs animate-pulse"
+                >
+                  {editingProductId ? '💾 Simpan Perubahan Produk' : '✨ Daftarkan Produk & Buat Matriks'}
+                </button>
+              </div>
+
+            </div>
+
           </div>
         </div>
       )}
