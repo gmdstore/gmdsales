@@ -513,7 +513,7 @@ export default function OrderModal({
             </div>
 
             {/* Shopping ledger items lines */}
-            <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
+            <div className="space-y-3 overflow-visible pr-1 pb-4">
               {cart.map((item, idx) => {
                 const isProductSelected = !!item.productId;
                 const activeProduct = products.find(p => p.id === item.productId);
@@ -524,7 +524,11 @@ export default function OrderModal({
                 );
 
                 return (
-                  <div key={idx} className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl relative flex flex-col md:flex-row md:items-center gap-3 shadow-3xs hover:border-slate-350 transition-all">
+                  <div 
+                    key={idx} 
+                    className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl relative flex flex-col md:flex-row md:items-center gap-3 shadow-3xs hover:border-slate-350 transition-all"
+                    style={{ zIndex: item.showDropdown ? 50 : (cart.length - idx) }}
+                  >
                     
                     {/* Floating Delete button */}
                     {cart.length > 1 && (

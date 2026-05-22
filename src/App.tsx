@@ -83,9 +83,10 @@ export default function App() {
   // Order modal triggers
   const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
 
-  // Sync to localStorage
+  // Sync to localStorage and HTML page tab document title
   useEffect(() => {
     localStorage.setItem('omni_brand_name', brandName);
+    document.title = brandName;
   }, [brandName]);
 
   useEffect(() => {
