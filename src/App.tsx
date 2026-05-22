@@ -54,6 +54,10 @@ export default function App() {
     return localStorage.getItem('omni_brand_footer') || 'OmniOrder – All rights reserved © 2026.';
   });
 
+  const [appFont, setAppFont] = useState<string>(() => {
+    return localStorage.getItem('omni_app_font') || 'Inter';
+  });
+
   // Preserve operational state in localStorage
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('omni_products');
@@ -100,6 +104,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('omni_brand_footer', brandFooter);
   }, [brandFooter]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_app_font', appFont);
+    document.documentElement.style.setProperty('--app-font', appFont);
+  }, [appFont]);
 
   useEffect(() => {
     localStorage.setItem('omni_products', JSON.stringify(products));
@@ -370,6 +379,7 @@ export default function App() {
       localStorage.removeItem('omni_brand_logo');
       localStorage.removeItem('omni_brand_profile');
       localStorage.removeItem('omni_brand_footer');
+      localStorage.removeItem('omni_app_font');
 
       setProducts(INITIAL_PRODUCTS);
       setStocks(INITIAL_STOCKS);
@@ -380,6 +390,7 @@ export default function App() {
       setBrandLogo('📦');
       setBrandProfile('Sistem Pengelola Transaksi Omnichannel');
       setBrandFooter('OmniOrder – All rights reserved © 2026.');
+      setAppFont('Inter');
       setActiveTab('dashboard');
       setIsMobileSidebarOpen(false);
     }
@@ -582,6 +593,8 @@ export default function App() {
               onAddChannel={handleAddChannel}
               onUpdateChannel={handleUpdateChannel}
               onDeleteChannel={handleDeleteChannel}
+              appFont={appFont}
+              onUpdateFont={setAppFont}
             />
           )}
         </div>

@@ -25,6 +25,10 @@ interface SettingsProps {
   onAddChannel: (newChannel: Channel) => void;
   onUpdateChannel: (updatedChannel: Channel) => void;
   onDeleteChannel: (channelId: string) => void;
+
+  // Font configurations
+  appFont: string;
+  onUpdateFont: (fontValue: string) => void;
 }
 
 export default function SettingsComponent({
@@ -36,7 +40,9 @@ export default function SettingsComponent({
   channels,
   onAddChannel,
   onUpdateChannel,
-  onDeleteChannel
+  onDeleteChannel,
+  appFont,
+  onUpdateFont
 }: SettingsProps) {
   // Brand identity edit states
   const [inputBrandName, setInputBrandName] = useState(brandName);
@@ -253,6 +259,39 @@ export default function SettingsComponent({
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none"
                 />
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">Teks ini akan dirender di bagian bawah sidebar menu secara terus menerus.</span>
+              </div>
+
+              {/* Dynamic Font Selector option */}
+              <div className="border-t border-slate-100/80 pt-4 mt-2">
+                <label className="block font-bold text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
+                  <span>🔤</span> Pilih Gaya Font (Tipografi):
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {[
+                    { name: 'Inter (Sleek/Clean)', value: 'Inter' },
+                    { name: 'Plus Jakarta Sans', value: 'Plus Jakarta Sans' },
+                    { name: 'Outfit (Geometric)', value: 'Outfit' },
+                    { name: 'JetBrains Mono', value: 'JetBrains Mono' },
+                    { name: 'Playfair Display (Elegant Serif)', value: 'Playfair Display' }
+                  ].map((fontItem) => (
+                    <button
+                      key={fontItem.value}
+                      type="button"
+                      onClick={() => onUpdateFont(fontItem.value)}
+                      className={`px-3 py-2 text-xs font-black rounded-xl border text-left transition-all cursor-pointer ${
+                        appFont === fontItem.value
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs'
+                          : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
+                      }`}
+                      style={{ fontFamily: fontItem.value }}
+                    >
+                      {fontItem.name}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-[10px] text-slate-400 block mt-2.5 leading-normal">
+                  Mengubah seluruh font tampilan Dashboard, detail, nominal angka, tombol input, dan halaman pesanan secara merata.
+                </span>
               </div>
 
               <button

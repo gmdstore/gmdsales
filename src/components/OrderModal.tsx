@@ -526,7 +526,11 @@ export default function OrderModal({
                 return (
                   <div 
                     key={idx} 
-                    className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl relative flex flex-col md:flex-row md:items-center gap-3 shadow-3xs hover:border-slate-350 transition-all"
+                    className={`p-3 rounded-2xl relative flex flex-col md:flex-row md:items-center gap-3 shadow-3xs transition-all border ${
+                      item.qty > 1 
+                        ? 'bg-amber-50/40 border-amber-350 hover:border-amber-400 ring-2 ring-amber-500/5' 
+                        : 'bg-slate-50 border-slate-200/80 hover:border-slate-350'
+                    }`}
                     style={{ zIndex: item.showDropdown ? 50 : (cart.length - idx) }}
                   >
                     
@@ -731,7 +735,7 @@ export default function OrderModal({
                 {/* Final Net Omset/Revenue */}
                 <div className="flex justify-between border-t border-slate-300 pt-3 text-xs text-emerald-800 font-black font-sans">
                   <span className="tracking-wide uppercase text-[10px] self-center">Estimasi Omset Bersih:</span>
-                  <span className="bg-emerald-100 border border-emerald-250 px-3 py-1.5 rounded-xl text-[14px] shadow-3xs">{formatRp(simulatedNetRevenue)}</span>
+                  <span className="bg-emerald-100 px-3 py-1.5 rounded-xl text-[14px] shadow-3xs">{formatRp(simulatedNetRevenue)}</span>
                 </div>
 
               </div>

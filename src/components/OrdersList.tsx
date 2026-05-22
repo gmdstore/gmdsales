@@ -149,8 +149,9 @@ export default function OrdersList({
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 font-extrabold text-slate-505 tracking-wide uppercase text-[10px]">
                   <th className="py-3 px-4 w-32">Kanal / ID Pesanan</th>
-                  <th className="py-3 px-4">Tanggal & Jam</th>
-                  <th className="py-3 px-4">Rincian Barang Belanja</th>
+                  <th className="py-3 px-4 w-36">Tanggal & Jam</th>
+                  <th className="py-3 px-4 min-w-[200px]">Rincian Barang Belanja</th>
+                  <th className="py-3 px-4 w-16 text-center">Qty</th>
                   <th className="py-3 px-4 text-right">Potongan Toko</th>
                   <th className="py-3 px-4 text-right">Potongan Biaya</th>
                   <th className="py-3 px-4 text-right">HPP Item</th>
@@ -172,7 +173,7 @@ export default function OrdersList({
                       
                       {/* Badge and order number */}
                       <td className="py-4 px-4 space-y-1">
-                        <span className={`inline-block px-2 py-0.5 text-[9px] font-black tracking-wide uppercase rounded-md border ${channel.color}`}>
+                        <span className={`inline-block px-2 py-0.5 text-[9px] font-black tracking-wide uppercase rounded-md ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                           {channel.name}
                         </span>
                         <div className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
@@ -186,28 +187,61 @@ export default function OrdersList({
                       </td>
 
                       {/* Created DateTime */}
-                      <td className="py-4 px-4 font-mono font-medium text-slate-500 whitespace-nowrap">
-                        {new Date(ord.dateTime).toLocaleString('id-ID', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                      <td className="py-4 px-4 font-mono text-slate-600 text-xs">
+                        <div className="font-black text-slate-900 leading-tight">
+                          {new Date(ord.dateTime).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-bold">
+                          <span>🕒</span>
+                          {new Date(ord.dateTime).toLocaleTimeString('id-ID', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })} WIB
+                        </div>
                       </td>
 
                       {/* Ordered items details */}
-                      <td className="py-4 px-4 space-y-1">
-                        {ord.products.map((p, pIdx) => {
-                          const matchedProduct = products.find(prod => prod.id === p.productId);
-                          const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
-                          return (
-                            <div key={pIdx} className="font-mono text-slate-700 font-semibold leading-normal">
-                              • <span className="font-bold text-slate-900">{resolvedName}</span> ({p.color} - {p.size}) 
-                              <span className="text-slate-950 font-black ml-1 bg-slate-100/80 border border-slate-200/50 px-1 py-0.1 rounded-md text-[10px]">x{p.qty}</span>
-                            </div>
-                          );
-                        })}
+                      <td className="py-3 px-4 min-w-[200px]">
+                        <div className="flex flex-col gap-1.5">
+                          {ord.products.map((p, pIdx) => {
+                            const matchedProduct = products.find(prod => prod.id === p.productId);
+                            const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className="text-[11px] font-mono h-[36px] flex flex-col justify-center text-slate-700"
+                              >
+                                <div className="truncate leading-normal font-semibold text-slate-900">{resolvedName}</div>
+                                <div className="text-slate-450 text-[9px] truncate leading-normal">{p.color} • {p.size}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      {/* Qty column with highlight */}
+                      <td className="py-3 px-4 w-16 text-center">
+                        <div className="flex flex-col gap-1.5">
+                          {ord.products.map((p, pIdx) => {
+                            const isQtyHighlight = p.qty > 1;
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className={`text-[11px] font-mono text-center h-[36px] flex items-center justify-center transition-all ${
+                                  isQtyHighlight 
+                                    ? 'bg-amber-100 text-amber-955 font-black rounded-lg p-0 m-0 shadow-2xs border border-amber-200' 
+                                    : 'font-semibold text-slate-500'
+                                }`}
+                              >
+                                x{p.qty}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </td>
 
                       {/* Total Discounts */}

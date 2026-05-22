@@ -451,7 +451,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                   <th className="py-3 px-1">Waktu</th>
                   <th className="py-3 px-3">No. Pesanan ID</th>
                   <th className="py-3 px-3">Saluran</th>
-                  <th className="py-3 px-3">Detail Varian & Kuantitas</th>
+                  <th className="py-3 px-3 min-w-[200px]">Detail Varian & Kuantitas</th>
+                  <th className="py-3 px-3 w-16 text-center">Qty</th>
                   <th className="py-3 px-3 text-right">Omset Kotor</th>
                   <th className="py-3 px-3 text-right">Diskon Toko</th>
                   <th className="py-3 px-3 text-right">Potongan Saluran</th>
@@ -476,20 +477,45 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                         {ord.orderNumber}
                       </td>
                       <td className="py-3.5 px-3">
-                        <span className={`inline-block px-2.5 py-1 text-[10px] font-extrabold rounded-lg border shadow-2xs ${channel?.color || 'bg-slate-100 text-slate-700'}`}>
+                        <span className={`inline-block px-2.5 py-1 text-[10px] font-extrabold rounded-lg shadow-2xs ${(channel?.color || 'bg-slate-100 text-slate-700').split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                           {channel?.name || ord.channelId}
                         </span>
                       </td>
-                      <td className="py-3.5 px-3 space-y-1">
-                        {ord.products.map((p, pIdx) => {
-                          const matchedProduct = products.find(prod => prod.id === p.productId);
-                          const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
-                          return (
-                            <div key={pIdx} className="font-mono text-slate-700 font-medium">
-                              • {resolvedName} ({p.color} - {p.size}) <span className="text-slate-900 font-bold">x{p.qty}</span>
-                            </div>
-                          );
-                        })}
+                      <td className="py-3.5 px-3 min-w-[200px]">
+                        <div className="flex flex-col gap-1.5">
+                          {ord.products.map((p, pIdx) => {
+                            const matchedProduct = products.find(prod => prod.id === p.productId);
+                            const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className="text-[11px] font-mono h-[36px] flex flex-col justify-center text-slate-700"
+                              >
+                                <div className="truncate leading-normal font-semibold text-slate-900">{resolvedName}</div>
+                                <div className="text-slate-450 text-[9px] truncate leading-normal">{p.color} • {p.size}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-3 w-16 text-center">
+                        <div className="flex flex-col gap-1.5">
+                          {ord.products.map((p, pIdx) => {
+                            const isQtyHighlight = p.qty > 1;
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className={`text-[11px] font-mono text-center h-[36px] flex items-center justify-center transition-all ${
+                                  isQtyHighlight 
+                                    ? 'bg-amber-100 text-amber-955 font-black rounded-lg p-0 m-0 shadow-2xs border border-amber-200' 
+                                    : 'font-semibold text-slate-500'
+                                }`}
+                              >
+                                x{p.qty}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono font-semibold text-slate-500">
                         {formatRp(ord.totalPrice)}
@@ -501,7 +527,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                         {ord.calculatedFees.totalFees > 0 ? `-${formatRp(ord.calculatedFees.totalFees)}` : '-'}
                       </td>
                       <td className="py-3.5 px-3 text-right">
-                        <span className="font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-150">
+                        <span className="font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
                           {formatRp(ord.netRevenue)}
                         </span>
                       </td>
