@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, StockItem, Channel, Order, SIZES } from '../types';
 import { calculateOrderMetrics } from '../data';
-import { AlertTriangle, Plus, Trash2, Calendar, Wand2, HelpCircle, AlertCircle, Check } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Calendar, Clipboard, HelpCircle, AlertCircle, Check } from 'lucide-react';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -254,8 +254,8 @@ export default function OrderModal({
 
   if (!isOpen) return null;
 
-  // Generate single button helper (and simulation fallback for iframe environments)
-  const handleGenerateOrderNumber = async () => {
+  // Paste single button helper (and simulation fallback for iframe environments)
+  const handlePasteOrderNumber = async () => {
     try {
       if (navigator.clipboard) {
         const text = await navigator.clipboard.readText();
@@ -264,7 +264,7 @@ export default function OrderModal({
         throw new Error('Not allowed');
       }
     } catch {
-      // Simulation generate triggers neat mockup code matching active channel prefix + unique random timestamp token
+      // Simulation paste triggers neat mockup code matching active channel prefix + unique random timestamp token
       const prefix = channelId === 'shopee' ? 'SP' : channelId === 'tokopedia' ? 'TK' : channelId === 'tiktok_shop' ? 'TT' : 'OMNI';
       const today = new Date();
       const year = today.getFullYear();
@@ -516,7 +516,7 @@ export default function OrderModal({
       />
 
       {/* Modal Surface Body Wrapper */}
-      <div className="bg-white rounded-3xl w-full max-w-4xl shadow-xl border border-gray-100 z-10 max-h-[88vh] overflow-y-auto flex flex-col scale-in relative">
+      <div className={`bg-white rounded-3xl w-full max-w-4xl shadow-xl border border-gray-100 z-10 transition-all duration-300 ${showSuccess ? 'max-h-fit overflow-hidden' : 'max-h-[88vh] overflow-y-auto'} flex flex-col scale-in relative`}>
         
         {/* Modal Header */}
         {!showSuccess && (
@@ -609,12 +609,12 @@ export default function OrderModal({
                 />
                 <button
                   type="button"
-                  onClick={handleGenerateOrderNumber}
+                  onClick={handlePasteOrderNumber}
                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-250 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
-                  title="Generate No Pesanan otomatis (atau paste dari clipboard)"
+                  title="Salin No Pesanan otomatis dari clipboard (atau klik untuk buat dummy id)"
                 >
-                  <Wand2 className="h-3.5 w-3.5 text-emerald-600" />
-                  GENERATE
+                  <Clipboard className="h-3.5 w-3.5 text-slate-500" />
+                  PASTE
                 </button>
               </div>
             </div>
