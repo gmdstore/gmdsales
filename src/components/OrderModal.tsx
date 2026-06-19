@@ -526,6 +526,27 @@ export default function OrderModal({
                   return nameMatch || skuMatch;
                 });
 
+                // Calculate remaining stock
+                let availableStockStr = '-';
+                if (isProductSelected && item.color) {
+                  const key = `${item.productId}_${item.color}`;
+                  const stockItem = stocks.find(s => s.id === key);
+                  let availableQty = stockItem?.stocks[item.size] ?? 0;
+
+                  // Add back old allocation if editing
+                  if (editingOrder) {
+                    const oldItem = editingOrder.products.find(op => 
+                      op.productId === item.productId &&
+                      op.color === item.color &&
+                      op.size === item.size
+                    );
+                    if (oldItem) {
+                      availableQty += oldItem.qty;
+                    }
+                  }
+                  availableStockStr = `${availableQty} pcs`;
+                }
+
                 return (
                   <div 
                     key={idx} 
@@ -628,8 +649,33 @@ export default function OrderModal({
                         min="1"
                         value={item.qty}
                         onChange={(e) => handleUpdateQty(idx, parseInt(e.target.value, 10) || 1)}
-                        className="w-full px-2 py-1 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40"
+                        onWheel={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.blur();
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="w-full px-2 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
+                    </div>
+
+                    {/* Column 4.5: Available Stock Info */}
+                    <div className="w-[85px] text-center">
+                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Sisa Stok</label>
+                      <span className={`inline-block w-full py-1.5 px-2 rounded-xl text-xs font-mono font-extrabold text-center border ${
+                        !isProductSelected 
+                          ? 'bg-slate-100 text-slate-400 border-slate-205'
+                          : availableStockStr === '0 pcs' 
+                            ? 'bg-rose-50 text-rose-600 border-rose-200' 
+                            : parseInt(availableStockStr) < 5 
+                              ? 'bg-amber-50 text-amber-600 border-amber-250 font-black' 
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                      }`}>
+                        {availableStockStr}
+                      </span>
                     </div>
 
                     {/* Column 5: Locked price and Subtotal value */}
