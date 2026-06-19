@@ -214,11 +214,11 @@ export default function OrderModal({
     setCart(next);
   };
 
-  // Search product change handler (Min 3 characters trigger)
+  // Search product change handler (Min 1 character trigger)
   const handleProductSearchTextChange = (index: number, val: string) => {
     const next = [...cart];
     next[index].searchQuery = val;
-    next[index].showDropdown = val.trim().length >= 3;
+    next[index].showDropdown = val.trim().length >= 1;
     setCart(next);
   };
 
@@ -518,10 +518,13 @@ export default function OrderModal({
                 const isProductSelected = !!item.productId;
                 const activeProduct = products.find(p => p.id === item.productId);
 
-                // Autocomplete product matched list based on 3 letters searchQuery
-                const filteredSearchProducts = products.filter(p => 
-                  p.name.toLowerCase().includes(item.searchQuery.toLowerCase())
-                );
+                // Autocomplete product matched list based on 1 letter searchQuery (includes Name and SKU check)
+                const filteredSearchProducts = products.filter(p => {
+                  const q = item.searchQuery.toLowerCase().trim();
+                  const nameMatch = p.name.toLowerCase().includes(q);
+                  const skuMatch = p.sku ? p.sku.toLowerCase().includes(q) : false;
+                  return nameMatch || skuMatch;
+                });
 
                 return (
                   <div 
@@ -552,10 +555,10 @@ export default function OrderModal({
 
                     {/* Column 1: Autocomplete Product name */}
                     <div className="flex-1 min-w-[210px] relative">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Nama Produk (Min. 3 Huruf)</label>
+                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Nama Produk / SKU (Min. 1 Huruf)</label>
                       <input
                         type="text"
-                        placeholder="Ketik 3+ huruf (Hoodie, Cargo...)"
+                        placeholder="Ketik nama produk atau kode SKU..."
                         value={item.searchQuery}
                         onChange={(e) => handleProductSearchTextChange(idx, e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -569,9 +572,16 @@ export default function OrderModal({
                               key={p.id}
                               type="button"
                               onClick={() => handleSelectProduct(idx, p)}
-                              className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer"
+                              className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
                             >
-                              <span className="font-emoji mr-1.5">{p.imageUrl}</span> {p.name}
+                              <span className="truncate">
+                                <span className="font-emoji mr-1.5">{p.imageUrl}</span> {p.name}
+                              </span>
+                              {p.sku && (
+                                <span className="text-[9px] font-mono font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
+                                  {p.sku}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>
