@@ -17,6 +17,7 @@ import StockMatrix from './components/StockMatrix';
 import OrderModal from './components/OrderModal';
 import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
+import Recapitulation from './components/Recapitulation';
 
 import { 
   Plus, 
@@ -27,12 +28,13 @@ import {
   Menu,
   X,
   Heart,
-  ClipboardList
+  ClipboardList,
+  Calendar
 } from 'lucide-react';
 
 export default function App() {
   // Navigation active tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings' | 'recapitulation'>('dashboard');
   
   // Mobile sidebar visibility toggle state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -535,6 +537,17 @@ export default function App() {
 
           <button
             onClick={() => {
+              setActiveTab('recapitulation');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'recapitulation' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <Calendar className="h-4 w-4" />
+            Rekapitulasi Penjualan
+          </button>
+
+          <button
+            onClick={() => {
               setActiveTab('settings');
               setIsMobileSidebarOpen(false);
             }}
@@ -642,6 +655,13 @@ export default function App() {
               onAddProduct={handleAddProduct}
               onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
+            />
+          )}
+
+          {activeTab === 'recapitulation' && (
+            <Recapitulation
+              orders={orders}
+              channels={channels}
             />
           )}
 

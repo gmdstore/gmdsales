@@ -147,6 +147,26 @@ export default function OrderModal({
     }
   }, [isOpen, editingOrder, products]);
 
+  const getDatetimeInputValue = (dtStr: string) => {
+    if (!dtStr) return '';
+    if (dtStr.length >= 16) {
+      return dtStr.slice(0, 16);
+    }
+    return dtStr;
+  };
+
+  const handleDateTimeChange = (val: string) => {
+    if (!val) {
+      setDateTime('');
+      return;
+    }
+    if (val.length === 16) {
+      setDateTime(`${val}:00.000`);
+    } else {
+      setDateTime(val);
+    }
+  };
+
   // Validate Order Number on change
   useEffect(() => {
     const trimmed = orderNumber.trim();
@@ -431,7 +451,7 @@ export default function OrderModal({
                 </>
               ) : (
                 <>
-                  <span>➕</span> Input Pencatatan Pesanan & Potong Stok Baru
+                  <span>➕</span> Input Pesanan
                 </>
               )}
             </h2>
@@ -463,15 +483,10 @@ export default function OrderModal({
                 Tanggal & Jam Entry
               </label>
               <input
-                type="text"
-                readOnly
-                value={dateTime ? (() => {
-                  const d = new Date(dateTime);
-                  if (isNaN(d.getTime())) return dateTime;
-                  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-                  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} pkl. ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
-                })() : ''}
-                className="w-full px-3 py-2 bg-slate-100/50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-500 cursor-not-allowed text-center"
+                type="datetime-local"
+                value={getDatetimeInputValue(dateTime)}
+                onChange={(e) => handleDateTimeChange(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
               />
             </div>
 
