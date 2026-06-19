@@ -6,6 +6,7 @@
 export interface Product {
   id: string;
   name: string;
+  sku?: string;
   hpp: number;
   price: number;
   imageUrl: string;
