@@ -478,7 +478,7 @@ export default function App() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'stocks' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Layers className="h-4 w-4" />
-            Matriks Stok Gudang
+            Produk & Stok
           </button>
 
           <button
