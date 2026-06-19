@@ -114,9 +114,13 @@ export default function OrderModal({
         setStockError(null);
         setOrderNumberError(null);
       } else {
-        // Set timestamp relative to 2026-05-22
-        const timePart = new Date().toTimeString().slice(0, 8); // e.g. "08:15:30"
-        setDateTime(`2026-05-22T${timePart}.000Z`);
+        // Set timestamp relative to today's local date without Z to avoid timezone conversion offsets
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const timePart = today.toTimeString().slice(0, 8); // e.g. "08:15:30"
+        setDateTime(`${year}-${month}-${day}T${timePart}.000`);
 
         // Reset values
         setOrderNumber('');
@@ -182,7 +186,11 @@ export default function OrderModal({
     } catch {
       // Simulation paste triggers neat mockup code matching active channel prefix + unique random timestamp token
       const prefix = channelId === 'shopee' ? 'SP' : channelId === 'tokopedia' ? 'TK' : channelId === 'tiktok_shop' ? 'TT' : 'OMNI';
-      const randomId = `${prefix}-20260522-P${Math.floor(1000 + Math.random() * 9000)}`;
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const randomId = `${prefix}-${year}${month}${day}-P${Math.floor(1000 + Math.random() * 9000)}`;
       setOrderNumber(randomId);
     }
   };
@@ -362,7 +370,14 @@ export default function OrderModal({
     const finalOrderObj: Order = {
       id: editingOrder ? editingOrder.id : `ord_${Date.now()}`,
       orderNumber: trimmedOrderNum,
-      dateTime: dateTime || new Date().toISOString(),
+      dateTime: dateTime || (() => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const timePart = today.toTimeString().slice(0, 8);
+        return `${year}-${month}-${day}T${timePart}.000`;
+      })(),
       channelId,
       isCod,
       products: orderItems,
@@ -443,7 +458,12 @@ export default function OrderModal({
               <input
                 type="text"
                 readOnly
-                value={new Date(dateTime || '').toLocaleString('id-ID')}
+                value={dateTime ? (() => {
+                  const d = new Date(dateTime);
+                  if (isNaN(d.getTime())) return dateTime;
+                  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} pkl. ${d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
+                })() : ''}
                 className="w-full px-3 py-2 bg-slate-100/50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-500 cursor-not-allowed text-center"
               />
             </div>
@@ -463,7 +483,13 @@ export default function OrderModal({
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: SP-20260522-XYZ"
+                  placeholder={`Contoh: SP-${(() => {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
+                    const day = String(today.getDate()).padStart(2, '0');
+                    return `${year}${month}${day}`;
+                  })()}-XYZ`}
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
                   className={`flex-1 px-3 py-2 bg-white border rounded-xl text-xs font-mono font-black focus:outline-none focus:ring-1 focus:ring-emerald-500 tracking-wider transition-all ${orderNumberError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800' : 'border-slate-200 text-slate-800'}`}

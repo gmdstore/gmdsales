@@ -25,6 +25,7 @@ export default function OrdersList({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('all');
   const [selectedCod, setSelectedCod] = useState<'all' | 'cod' | 'non-cod'>('all');
+  const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null);
 
   // Format currency helper
   const formatRp = (value: number) => {
@@ -44,10 +45,7 @@ export default function OrdersList({
   });
 
   const handleDeleteClick = (order: Order) => {
-    const confirmMsg = `Apakah Anda yakin ingin menghapus pesanan "${order.orderNumber}"?\nTindakan ini akan mengembalikan semua alokasi kuantitas item pesanan (${order.products.reduce((sum, p) => sum + p.qty, 0)} pcs) kembali ke matriks stok sediaan gudang.`;
-    if (confirm(confirmMsg)) {
-      onDeleteOrder(order.id);
-    }
+    setPendingDeleteOrder(order);
   };
 
   return (
@@ -306,6 +304,53 @@ export default function OrdersList({
         )}
 
       </div>
+
+      {/* Confirmation Modal for Delete Order */}
+      {pendingDeleteOrder && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Hapus Transaksi Pesanan</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus pesanan <strong className="text-slate-800">{pendingDeleteOrder.orderNumber}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 space-y-2 text-xs">
+              <div className="text-slate-500 text-[11px] leading-relaxed">
+                Tindakan ini akan mengembalikan semua alokasi kuantitas item pesanan (<span className="font-bold text-slate-950">{pendingDeleteOrder.products.reduce((sum, p) => sum + p.qty, 0)} pcs</span>) kembali menjadi sediaan di matriks stok gudang.
+              </div>
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteOrder(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteOrder(pendingDeleteOrder.id);
+                  setPendingDeleteOrder(null);
+                }}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-xl shadow-md shadow-rose-500/10 cursor-pointer select-none transition-all active:scale-95"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,14 +36,24 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
     return `Rp ${value}`;
   };
 
-  // Determine today's date context (2026-05-22 according to requirements)
-  const targetDateStr = '2026-05-22';
+  // Determine today's date dynamically based on local time
+  const today = new Date();
+  const year = today.getFullYear();
+  const monthStr = String(today.getMonth() + 1).padStart(2, '0');
+  const dayStr = String(today.getDate()).padStart(2, '0');
+  const targetDateStr = `${year}-${monthStr}-${dayStr}`;
+  const currentMonthPrefix = `${year}-${monthStr}`;
+
+  const getFormattedToday = () => {
+    const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    return `${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`;
+  };
   
   // Filter today's orders
   const todayOrders = orders.filter(o => o.dateTime.startsWith(targetDateStr));
   
-  // Filter this month's orders (May 2026)
-  const monthOrders = orders.filter(o => o.dateTime.startsWith('2026-05'));
+  // Filter this month's orders
+  const monthOrders = orders.filter(o => o.dateTime.startsWith(currentMonthPrefix));
 
   // Calculate stats for Period
   const getStats = (periodOrders: Order[]) => {
@@ -66,8 +76,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
   const todayStats = getStats(todayOrders);
   const monthStats = getStats(monthOrders);
 
-  // Running days in May up to 22nd
-  const runningDays = 22;
+  // Running days in current month up to today
+  const runningDays = today.getDate();
   const avgNetPerDay = monthStats.net / runningDays;
 
   // Channel Contribution Calculation
@@ -100,12 +110,18 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
     .sort((a, b) => b.netRevenue - a.netRevenue);
 
   // 7 Days Trend Calculation
-  // We go backwards from 2026-05-22
+  // We go backwards from dynamically calculated today's date
   const getLast7Days = () => {
     const list = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(2026, 4, 22 - i); // 4 is May
-      const dateString = date.toISOString().split('T')[0];
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      
+      const yr = date.getFullYear();
+      const mo = String(date.getMonth() + 1).padStart(2, '0');
+      const dy = String(date.getDate()).padStart(2, '0');
+      const dateString = `${yr}-${mo}-${dy}`;
+      
       const dayName = date.toLocaleDateString('id-ID', { weekday: 'short' });
       const dayNum = date.getDate();
       
@@ -153,7 +169,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             Dashboard Performa Finansial
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Data Terkonsolidasi Omnichannel per tanggal <span className="font-semibold text-slate-800">22 Mei 2026</span>
+            Data Terkonsolidasi Omnichannel per tanggal <span className="font-semibold text-slate-800">{getFormattedToday()}</span>
           </p>
         </div>
         
@@ -176,7 +192,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             <div className="flex items-center justify-between mb-4">
               <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full border border-amber-200/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-550 animate-pulse"></span>
-                Hari Ini (22 Mei)
+                Hari Ini ({today.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][today.getMonth()]})
               </span>
               <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
                 <Coins className="h-5 w-5" />
@@ -217,8 +233,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500 pointer-events-none" />
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-full border border-emerald-200/60">
-                Bulan Ini (Mei 21-22)
+              <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-full border border-emerald-200/60 font-medium">
+                Bulan Ini ({['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'][today.getMonth()]} {today.getFullYear()})
               </span>
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
                 <TrendingUp className="h-5 w-5" />
@@ -427,7 +443,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                 {todayOrders.length}
               </span>
             </h3>
-            <p className="text-xs text-slate-400">Catatan transaksi operasional real-time tanggal 22 Mei 2026</p>
+            <p className="text-xs text-slate-400">Catatan transaksi operasional real-time tanggal {getFormattedToday()}</p>
           </div>
         </div>
 

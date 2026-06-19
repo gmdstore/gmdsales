@@ -37,6 +37,16 @@ export default function App() {
   // Mobile sidebar visibility toggle state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
+  // Live ticking clock state
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Active editing order
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
@@ -81,7 +91,27 @@ export default function App() {
 
   const [orders, setOrders] = useState<Order[]>(() => {
     const saved = localStorage.getItem('omni_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+    const loadedOrders: Order[] = saved ? JSON.parse(saved) : INITIAL_ORDERS;
+
+    // Synchronize legacy mock data or saved May dates to today's active month & relative day
+    const today = new Date();
+    const currYear = today.getFullYear();
+    const currMonth = String(today.getMonth() + 1).padStart(2, '0');
+    const currDay = String(today.getDate()).padStart(2, '0');
+
+    return loadedOrders.map(o => {
+      if (o.dateTime && (o.dateTime.startsWith('2026-05') || o.dateTime.includes('2026-05-22'))) {
+        const timePart = o.dateTime.split('T')[1] || '12:00:00.000Z';
+        const orderDate = o.dateTime.split('T')[0];
+        const dayOffset = orderDate.endsWith('-22') ? currDay : orderDate.split('-')[2];
+        return {
+          ...o,
+          dateTime: `${currYear}-${currMonth}-${dayOffset}T${timePart}`,
+          orderNumber: o.orderNumber.replace(/20260522/, `${currYear}${currMonth}${currDay}`)
+        };
+      }
+      return o;
+    });
   });
 
   // Order modal triggers
@@ -524,8 +554,19 @@ export default function App() {
 
           <div className="px-2 text-[10px] text-slate-550 border-t border-slate-900/40 pt-3 flex flex-col gap-1 font-medium">
             <span className="leading-relaxed font-sans">{brandFooter}</span>
-            <div className="flex items-center gap-2 text-[9px] text-slate-600 mt-1 font-mono font-semibold">
-              <span>Local Time: 22 Mei 2026</span>
+            <div className="flex items-center gap-2 text-[9px] text-slate-500 mt-1 font-mono font-bold tracking-wide">
+              <span>Local Time: {(() => {
+                const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const dayName = days[currentTime.getDay()];
+                const timeStr = currentTime.toLocaleTimeString('id-ID', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                });
+                return `${dayName}, ${currentTime.getDate()} ${months[currentTime.getMonth()]} ${currentTime.getFullYear()} - ${timeStr} WIB`;
+              })()}</span>
             </div>
           </div>
         </div>
