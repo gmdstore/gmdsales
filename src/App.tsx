@@ -70,6 +70,20 @@ export default function App() {
     return localStorage.getItem('omni_app_font') || 'Inter';
   });
 
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(() => {
+    const saved = localStorage.getItem('omni_payment_methods');
+    return saved ? JSON.parse(saved) : ['Transfer', 'COD', 'E-Wallet', 'Lainnya'];
+  });
+
+  const updatePaymentMethods = (newMethods: string[]) => {
+    setPaymentMethods(newMethods);
+    // Remove deleted payment methods from channels
+    setChannels(prevChannels => prevChannels.map(chan => ({
+      ...chan,
+      paymentMethods: (chan.paymentMethods || []).filter(m => newMethods.includes(m))
+    })));
+  };
+
   // Preserve operational state in localStorage
   const [products, setProducts] = useState<Product[]>(() => {
     const saved = localStorage.getItem('omni_products');
@@ -141,6 +155,10 @@ export default function App() {
     localStorage.setItem('omni_app_font', appFont);
     document.documentElement.style.setProperty('--app-font', appFont);
   }, [appFont]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_payment_methods', JSON.stringify(paymentMethods));
+  }, [paymentMethods]);
 
   useEffect(() => {
     localStorage.setItem('omni_products', JSON.stringify(products));
@@ -678,6 +696,8 @@ export default function App() {
               onDeleteChannel={handleDeleteChannel}
               appFont={appFont}
               onUpdateFont={setAppFont}
+              paymentMethods={paymentMethods}
+              onUpdatePaymentMethods={updatePaymentMethods}
             />
           )}
         </div>
@@ -697,6 +717,7 @@ export default function App() {
         onSaveOrder={handleSaveOrder}
         editingOrder={editingOrder}
         onUpdateOrder={handleUpdateOrder}
+        paymentMethods={paymentMethods}
       />
 
     </div>

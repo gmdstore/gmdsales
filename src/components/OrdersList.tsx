@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Order, Channel, Product } from '../types';
-import { Search, Filter, Edit2, Trash2, Calendar, ShoppingBag, DollarSign, AlertCircle, RefreshCw } from 'lucide-react';
+import { Search, Filter, Edit2, Trash2, Calendar, ShoppingBag, DollarSign, AlertCircle, RefreshCw, Copy, Check } from 'lucide-react';
 
 interface OrdersListProps {
   orders: Order[];
@@ -24,8 +25,9 @@ export default function OrdersList({
 }: OrdersListProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('all');
-  const [selectedCod, setSelectedCod] = useState<'all' | 'cod' | 'non-cod'>('all');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'all' | 'Transfer' | 'COD' | 'E-Wallet' | 'Lainnya'>('all');
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Format currency helper
   const formatRp = (value: number) => {
@@ -36,12 +38,18 @@ export default function OrdersList({
     }).format(value);
   };
 
+  const copyToClipboard = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Filter orders
   const filteredOrders = orders.filter(ord => {
     const matchSearch = ord.orderNumber.toLowerCase().includes(searchTerm.toLowerCase().trim());
     const matchChannel = selectedChannelId === 'all' ? true : ord.channelId === selectedChannelId;
-    const matchCod = selectedCod === 'all' ? true : selectedCod === 'cod' ? ord.isCod : !ord.isCod;
-    return matchSearch && matchChannel && matchCod;
+    const matchPayment = selectedPaymentMethod === 'all' ? true : ord.paymentMethod === selectedPaymentMethod;
+    return matchSearch && matchChannel && matchPayment;
   });
 
   const handleDeleteClick = (order: Order) => {
@@ -110,19 +118,18 @@ export default function OrdersList({
               </select>
             </div>
 
-            {/* Filter COD Status */}
+            {/* Filter Payment Method */}
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-250 rounded-xl px-2.5 py-1.5">
               <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
-                ⭐ COD
+                💳 Metode
               </span>
               <select
-                value={selectedCod}
-                onChange={(e) => setSelectedCod(e.target.value as any)}
+                value={selectedPaymentMethod}
+                onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
                 className="bg-transparent border-none text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer pl-1.5"
               >
-                <option value="all">Semua Status</option>
-                <option value="cod">Hanya COD</option>
-                <option value="non-cod">Non-COD</option>
+                <option value="all">Semua Metode</option>
+                {['Transfer', 'COD', 'E-Wallet', 'Lainnya'].map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
           </div>
@@ -174,14 +181,26 @@ export default function OrdersList({
                         <span className={`inline-block px-2 py-0.5 text-[9px] font-black tracking-wide uppercase rounded-md ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                           {channel.name}
                         </span>
-                        <div className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
-                          {ord.orderNumber}
+                        <div className="flex items-center gap-1">
+                          <div className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
+                            {ord.orderNumber}
+                          </div>
+                          <button 
+                            onClick={() => copyToClipboard(ord.orderNumber, ord.id)} 
+                            className="text-slate-400 hover:text-emerald-600 transition-colors relative"
+                            title={copiedId === ord.id ? "Berhasil disalin!" : "Salin No. Pesanan"}
+                          >
+                             {copiedId === ord.id ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3" />}
+                             {copiedId === ord.id && (
+                                <span className="absolute -top-7 left-1/2 -ml-9 bg-slate-900 text-white text-[9px] px-2 py-1 rounded-md whitespace-nowrap shadow-lg z-10 animate-fade-in">
+                                  Disalin!
+                                </span>
+                             )}
+                          </button>
                         </div>
-                        {ord.isCod && (
-                          <span className="inline-block text-[9px] font-extrabold uppercase bg-rose-50 border border-rose-100/80 text-rose-600 px-1.5 py-0.2 rounded mt-1.5 flex-auto">
-                            🤝 COD
-                          </span>
-                        )}
+                        <span className="inline-block text-[9px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded mt-1.5 flex-auto">
+                          {ord.paymentMethod}
+                        </span>
                       </td>
 
                       {/* Created DateTime */}
@@ -306,8 +325,8 @@ export default function OrdersList({
       </div>
 
       {/* Confirmation Modal for Delete Order */}
-      {pendingDeleteOrder && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_modal">
+      {pendingDeleteOrder && createPortal(
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_modal">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
@@ -349,7 +368,8 @@ export default function OrdersList({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

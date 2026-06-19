@@ -18,7 +18,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('all');
-  const [selectedCod, setSelectedCod] = useState<'all' | 'cod' | 'non-cod'>('all');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'all' | 'Transfer' | 'COD' | 'E-Wallet' | 'Lainnya'>('all');
 
   // Helper formatting currency
   const formatRp = (value: number) => {
@@ -59,8 +59,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
   const filteredTodayOrders = todayOrders.filter(ord => {
     const matchSearch = ord.orderNumber.toLowerCase().includes(searchTerm.toLowerCase().trim());
     const matchChannel = selectedChannelId === 'all' ? true : ord.channelId === selectedChannelId;
-    const matchCod = selectedCod === 'all' ? true : selectedCod === 'cod' ? ord.isCod : !ord.isCod;
-    return matchSearch && matchChannel && matchCod;
+    const matchPayment = selectedPaymentMethod === 'all' ? true : ord.paymentMethod === selectedPaymentMethod;
+    return matchSearch && matchChannel && matchPayment;
   });
   
   // Filter this month's orders
@@ -505,19 +505,18 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                 </select>
               </div>
 
-              {/* Filter COD Status */}
+              {/* Filter Payment Method */}
               <div className="flex items-center gap-1 bg-white border border-slate-250 rounded-xl px-2.5 py-1.5">
                 <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
-                  ⭐ COD
+                  💳 Metode
                 </span>
                 <select
-                  value={selectedCod}
-                  onChange={(e) => setSelectedCod(e.target.value as any)}
+                  value={selectedPaymentMethod}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value as any)}
                   className="bg-transparent border-none text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer pl-1.5"
                 >
-                  <option value="all">Semua Status</option>
-                  <option value="cod">Hanya COD</option>
-                  <option value="non-cod">Non-COD</option>
+                  <option value="all">Semua Metode</option>
+                  {['Transfer', 'COD', 'E-Wallet', 'Lainnya'].map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
             </div>
@@ -569,11 +568,9 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                         <div className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
                           {ord.orderNumber}
                         </div>
-                        {ord.isCod && (
-                          <span className="inline-block text-[9px] font-extrabold uppercase bg-rose-50 border border-rose-100/80 text-rose-600 px-1.5 py-0.2 rounded mt-1.5 flex-auto">
-                            🤝 COD
-                          </span>
-                        )}
+                        <span className="inline-block text-[9px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded mt-1.5 flex-auto">
+                          {ord.paymentMethod}
+                        </span>
                       </td>
 
                       {/* Created DateTime */}

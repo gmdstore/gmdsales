@@ -15,7 +15,8 @@ export const INITIAL_CHANNELS: Channel[] = [
     flatProcessingFee: 1000,
     freeShippingSubsidyPercent: 4.0,
     freeShippingMaxCap: 10000,
-    color: 'bg-orange-100 text-orange-850 border-orange-250'
+    color: 'bg-orange-100 text-orange-850 border-orange-250',
+    paymentMethods: ['Transfer', 'COD', 'E-Wallet']
   },
   {
     id: 'tokopedia',
@@ -25,7 +26,8 @@ export const INITIAL_CHANNELS: Channel[] = [
     flatProcessingFee: 1000,
     freeShippingSubsidyPercent: 3.0,
     freeShippingMaxCap: 8000,
-    color: 'bg-emerald-100 text-emerald-850 border-emerald-250'
+    color: 'bg-emerald-100 text-emerald-850 border-emerald-250',
+    paymentMethods: ['Transfer', 'E-Wallet']
   },
   {
     id: 'whatsapp',
@@ -35,7 +37,8 @@ export const INITIAL_CHANNELS: Channel[] = [
     flatProcessingFee: 0,
     freeShippingSubsidyPercent: 0.0,
     freeShippingMaxCap: 0,
-    color: 'bg-teal-100 text-teal-850 border-teal-250'
+    color: 'bg-teal-100 text-teal-850 border-teal-250',
+    paymentMethods: ['Transfer', 'COD']
   }
 ];
 
@@ -60,10 +63,9 @@ export function calculateOrderMetrics(params: {
   hpp: number;
   qty: number;
   discounts: number;
-  isCod: boolean;
   channel: Channel;
 }) {
-  const { price, hpp, qty, discounts, isCod, channel } = params;
+  const { price, hpp, qty, discounts, channel } = params;
   const totalPrice = price * qty;
   const totalHpp = hpp * qty;
 

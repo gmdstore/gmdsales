@@ -23,6 +23,8 @@ export interface StockItem {
   stocks: { [size: string]: number }; // Size (S, M, L, XL, 2XL, 3XL, 4XL) to available stock quantity
 }
 
+export type PaymentMethodType = string;
+
 export interface Channel {
   id: string; // e.g., 'shopee', 'tokopedia', 'tiktok', 'whatsapp', 'expo', 'toko_fisik'
   name: string;
@@ -32,6 +34,7 @@ export interface Channel {
   freeShippingSubsidyPercent: number; // in % (e.g. 4.0)
   freeShippingMaxCap: number; // in Rp (e.g. 10000)
   color: string; // theme color class for badges like 'bg-orange-100 text-orange-800'
+  paymentMethods: PaymentMethodType[]; // Methods available for this channel
 }
 
 export interface OrderProduct {
@@ -48,7 +51,7 @@ export interface Order {
   orderNumber: string; // Input validation: must not contain spaces and must be unique
   dateTime: string; // ISO date string or standard datetime
   channelId: string;
-  isCod: boolean;
+  paymentMethod: PaymentMethodType;
   products: OrderProduct[];
   totalPrice: number; // Omset Kotor: sum(price * qty)
   totalHpp: number; // sum(hpp * qty)

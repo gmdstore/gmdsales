@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, StockItem, Channel, Order, SIZES } from '../types';
 import { calculateOrderMetrics } from '../data';
-import { AlertTriangle, Plus, Trash2, Calendar, Clipboard, HelpCircle, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Calendar, Wand2, HelpCircle, AlertCircle, Check } from 'lucide-react';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ interface OrderModalProps {
   onSaveOrder: (newOrder: Order) => void;
   editingOrder?: Order | null;
   onUpdateOrder?: (updatedOrder: Order, oldOrder: Order) => void;
+  paymentMethods: string[];
 }
 
 interface CartItem {
@@ -42,13 +43,15 @@ export default function OrderModal({
   orders,
   onSaveOrder,
   editingOrder = null,
-  onUpdateOrder
+  onUpdateOrder,
+  paymentMethods
 }: OrderModalProps) {
   // Basic properties
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [channelId, setChannelId] = useState<string>('shopee');
-  const [isCod, setIsCod] = useState<boolean>(false);
+  const [paymentMethod, setPaymentMethod] = useState<string>(paymentMethods[0] || '');
   const [discounts, setDiscounts] = useState<number>(0);
+  const [showDiscountCalculator, setShowDiscountCalculator] = useState<boolean>(false);
   const [dateTime, setDateTime] = useState<string>('');
 
   // Shopping list cart state (start with 1 empty row)
@@ -70,6 +73,56 @@ export default function OrderModal({
   // Validation messages
   const [orderNumberError, setOrderNumberError] = useState<string | null>(null);
   const [stockError, setStockError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState<boolean>(false);
+
+  // Validate Stock in real-time
+  useEffect(() => {
+    let stockErrorFound = false;
+    for (let i = 0; i < cart.length; i++) {
+        const item = cart[i];
+        if (!item.productId) continue;
+        
+        // StockItem is generated as productid_color
+        const key = `${item.productId}_${item.color}`;
+        const stockItem = stocks.find(s => s.id === key);
+        let available = stockItem?.stocks[item.size] ?? 0;
+
+        // Add back the previous order allocation quantity for correct delta calculation
+        if (editingOrder) {
+          const oldItem = editingOrder.products.find(op => 
+            op.productId === item.productId &&
+            op.color === item.color &&
+            op.size === item.size
+          );
+          if (oldItem) {
+            available += oldItem.qty;
+          }
+        }
+
+        // Add subtraction for this product in other rows in the cart
+        const allocatedInOtherCartRows = cart.filter((_, idx) => idx !== i).reduce((sum, cartItem) => {
+          if (
+            cartItem.productId === item.productId &&
+            cartItem.color === item.color &&
+            cartItem.size === item.size
+          ) {
+            return sum + cartItem.qty;
+          }
+          return sum;
+        }, 0);
+        available -= allocatedInOtherCartRows;
+
+        if (item.qty > available) {
+          setStockError(`Stok produk "${item.productName}" (${item.color} - ${item.size}) tidak mencukupi! Tersedia di gudang (setelah dikurangi pesanan ini): ${available} pcs.`);
+          stockErrorFound = true;
+          break;
+        }
+    }
+
+    if (!stockErrorFound) {
+        setStockError(null);
+    }
+  }, [cart, stocks, editingOrder]);
 
   // Initialize Default dates-relative details on open
   useEffect(() => {
@@ -77,7 +130,7 @@ export default function OrderModal({
       if (editingOrder) {
         setOrderNumber(editingOrder.orderNumber);
         setChannelId(editingOrder.channelId);
-        setIsCod(editingOrder.isCod);
+        setPaymentMethod(editingOrder.paymentMethod);
         setDiscounts(editingOrder.discounts);
         setDateTime(editingOrder.dateTime);
         
@@ -125,7 +178,6 @@ export default function OrderModal({
         // Reset values
         setOrderNumber('');
         setChannelId('shopee');
-        setIsCod(false);
         setDiscounts(0);
         setStockError(null);
         setOrderNumberError(null);
@@ -189,13 +241,21 @@ export default function OrderModal({
     setOrderNumberError(null);
   }, [orderNumber, orders, editingOrder]);
 
-  if (!isOpen) return null;
-
   // Selected channel rates
   const selectedChannel = channels.find(c => c.id === channelId) || channels[0];
+  const availablePaymentMethods = selectedChannel.paymentMethods || [];
 
-  // Paste single button helper (and simulation fallback for iframe environments)
-  const handlePasteOrderNumber = async () => {
+  // Sync payment method when channel changes
+  useEffect(() => {
+    if (availablePaymentMethods.length > 0 && !availablePaymentMethods.includes(paymentMethod)) {
+      setPaymentMethod(availablePaymentMethods[0]);
+    }
+  }, [channelId, availablePaymentMethods, paymentMethod]);
+
+  if (!isOpen) return null;
+
+  // Generate single button helper (and simulation fallback for iframe environments)
+  const handleGenerateOrderNumber = async () => {
     try {
       if (navigator.clipboard) {
         const text = await navigator.clipboard.readText();
@@ -204,7 +264,7 @@ export default function OrderModal({
         throw new Error('Not allowed');
       }
     } catch {
-      // Simulation paste triggers neat mockup code matching active channel prefix + unique random timestamp token
+      // Simulation generate triggers neat mockup code matching active channel prefix + unique random timestamp token
       const prefix = channelId === 'shopee' ? 'SP' : channelId === 'tokopedia' ? 'TK' : channelId === 'tiktok_shop' ? 'TT' : 'OMNI';
       const today = new Date();
       const year = today.getFullYear();
@@ -370,8 +430,21 @@ export default function OrderModal({
         }
       }
 
+      // Add subtraction for this product in other rows in the cart
+      const allocatedInOtherCartRows = cart.filter((_, idx) => idx !== i).reduce((sum, cartItem) => {
+        if (
+          cartItem.productId === item.productId &&
+          cartItem.color === item.color &&
+          cartItem.size === item.size
+        ) {
+          return sum + cartItem.qty;
+        }
+        return sum;
+      }, 0);
+      available -= allocatedInOtherCartRows;
+
       if (item.qty > available) {
-        setStockError(`Stok produk "${item.productName}" (${item.color} - ${item.size}) tidak mencukupi! Tersedia di gudang saat ini (termasuk alokasi pesanan ini): ${available} pcs.`);
+        setStockError(`Stok produk "${item.productName}" (${item.color} - ${item.size}) tidak mencukupi! Tersedia di gudang (setelah dikurangi pesanan ini): ${available} pcs.`);
         stockErrorFound = true;
         break;
       }
@@ -383,6 +456,7 @@ export default function OrderModal({
 
     // Reset stock warning error if valid
     setStockError(null);
+    setShowSuccess(true);
 
     // Map into finalized Order structure
     const orderItems = cart.map(item => ({
@@ -406,7 +480,7 @@ export default function OrderModal({
         return `${year}-${month}-${day}T${timePart}.000`;
       })(),
       channelId,
-      isCod,
+      paymentMethod,
       products: orderItems,
       totalPrice: grossTotalPrice,
       totalHpp,
@@ -427,7 +501,10 @@ export default function OrderModal({
     } else {
       onSaveOrder(finalOrderObj);
     }
-    onClose();
+    setTimeout(() => {
+      setShowSuccess(false);
+      onClose();
+    }, 1500);
   };
 
   return (
@@ -442,6 +519,7 @@ export default function OrderModal({
       <div className="bg-white rounded-3xl w-full max-w-4xl shadow-xl border border-gray-100 z-10 max-h-[88vh] overflow-y-auto flex flex-col scale-in relative">
         
         {/* Modal Header */}
+        {!showSuccess && (
         <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-20 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-extrabold text-gray-950 flex items-center gap-2">
@@ -469,9 +547,22 @@ export default function OrderModal({
             ✕ Close
           </button>
         </div>
+        )}
+
+        {/* Success Popup */}
+        {showSuccess && (
+          <div className="flex flex-col items-center justify-center p-20 animate-fade-in flex-1">
+              <div className="bg-emerald-600/10 text-emerald-700 w-24 h-24 rounded-full flex items-center justify-center mb-6">
+                <Check className="h-10 w-10" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-900 mb-2">Berhasil Disimpan</h3>
+              <p className="text-slate-500">Formulir pesanan telah berhasil diproses.</p>
+          </div>
+        )}
 
         {/* Input Form Body */}
-        <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-xs">
+        {!showSuccess && (
+          <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-xs">
           
           {/* Section 1: Transaction Coordinates info */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-4 gap-4 items-start shadow-3xs">
@@ -518,12 +609,12 @@ export default function OrderModal({
                 />
                 <button
                   type="button"
-                  onClick={handlePasteOrderNumber}
+                  onClick={handleGenerateOrderNumber}
                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-250 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
-                  title="Salin No Pesanan otomatis dari clipboard (atau klik untuk buat dummy id)"
+                  title="Generate No Pesanan otomatis (atau paste dari clipboard)"
                 >
-                  <Clipboard className="h-3.5 w-3.5 text-slate-500" />
-                  PASTE
+                  <Wand2 className="h-3.5 w-3.5 text-emerald-600" />
+                  GENERATE
                 </button>
               </div>
             </div>
@@ -592,6 +683,20 @@ export default function OrderModal({
                       availableQty += oldItem.qty;
                     }
                   }
+
+                  // Subtract already allocated in other cart rows
+                  const allocatedInOtherCartRows = cart.filter((_, i) => i !== idx).reduce((sum, cartItem) => {
+                    if (
+                      cartItem.productId === item.productId &&
+                      cartItem.color === item.color &&
+                      cartItem.size === item.size
+                    ) {
+                      return sum + cartItem.qty;
+                    }
+                    return sum;
+                  }, 0);
+                  
+                  availableQty -= allocatedInOtherCartRows;
                   availableStockStr = `${availableQty} pcs`;
                 }
 
@@ -770,90 +875,70 @@ export default function OrderModal({
                 />
               </div>
 
-              {/* COD Checklist option */}
-              <div className="bg-rose-50/50 border border-rose-100 p-4.5 rounded-2xl">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={isCod}
-                    onChange={(e) => setIsCod(e.target.checked)}
-                    className="h-5 w-5 rounded-lg text-rose-600 focus:ring-rose-500 border-rose-300 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-rose-950 block text-xs">Pesanan Menggunakan Metode COD</span>
-                    <span className="text-[10px] text-rose-500 font-medium block mt-0.5">Tandai jika transaksi merupakan pembayaran di tempat saat paket sampai</span>
-                  </div>
-                </label>
+              {/* Payment Method selector */}
+              <div className="space-y-1.5">
+                <label className="font-bold text-slate-700 block text-xs">Metode Pembayaran:</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                >
+                  {availablePaymentMethods.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
             {/* F-04 Automatic Fees Calculator Recap ledger */}
-            <div className="bg-slate-50 border border-slate-250 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <h4 className="font-extrabold text-slate-800 text-xs">Kalkulator Potongan Otomatis Saluran</h4>
-                <span className="text-[9px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name} rules</span>
+            <div className={`bg-slate-50 border border-slate-250 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
+                <h4 className="font-extrabold text-slate-800 text-xs">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
+                <span className="text-[9px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
               </div>
 
-              <div className="space-y-2.5 text-slate-600 font-bold font-mono text-[11px] leading-relaxed">
-                
-                {/* Gross omset */}
-                <div className="flex justify-between">
-                  <span>Omset Kotor (Subtotal):</span>
-                  <span className="text-slate-900 font-extrabold">{formatRp(grossTotalPrice)}</span>
-                </div>
-
-                {/* extra discount */}
-                {discounts > 0 && (
-                  <div className="flex justify-between text-rose-600 font-extrabold">
-                    <span>Diskon Toko:</span>
-                    <span>-{formatRp(discounts)}</span>
+              {showDiscountCalculator && (
+                <div className="space-y-2.5 text-slate-600 font-bold font-mono text-[11px] leading-relaxed">
+                  {/* Gross omset */}
+                  <div className="flex justify-between">
+                    <span>Omset Kotor (Subtotal):</span>
+                    <span className="text-slate-900 font-extrabold">{formatRp(grossTotalPrice)}</span>
                   </div>
-                )}
-
-                {/* komisi */}
-                <div className="flex justify-between">
-                  <span>Komisi Platform ({selectedChannel.commissionPercent}%):</span>
-                  <span>{commission > 0 ? `-${formatRp(commission)}` : '-'}</span>
+                  {discounts > 0 && (
+                    <div className="flex justify-between text-rose-600 font-extrabold">
+                      <span>Diskon Toko:</span>
+                      <span>-{formatRp(discounts)}</span>
+                    </div>
+                  )}
+                  {/* Fees */}
+                  <div className="flex justify-between">
+                    <span>Komisi ({selectedChannel.commissionPercent}%):</span>
+                    <span>{commission > 0 ? `-${formatRp(commission)}` : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Beban Pembayaran ({selectedChannel.paymentFeePercent}%):</span>
+                    <span>{paymentFee > 0 ? `-${formatRp(paymentFee)}` : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Biaya Proses:</span>
+                    <span>{processingFee > 0 ? `-${formatRp(processingFee)}` : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Subsidi Ongkir:</span>
+                    <span>{freeShippingSubsidy > 0 ? `-${formatRp(freeShippingSubsidy)}` : '-'}</span>
+                  </div>
+                  {/* Total Deductions */}
+                  <div className="flex justify-between border-t border-slate-200 pt-2.5 text-slate-750 font-sans font-bold">
+                    <span>Total Pemotongan:</span>
+                    <span className="font-extrabold text-rose-600">-{formatRp(totalDeductions)}</span>
+                  </div>
                 </div>
-
-                {/* payment fee */}
-                <div className="flex justify-between">
-                  <span>Biaya Pembayaran ({selectedChannel.paymentFeePercent}%):</span>
-                  <span>{paymentFee > 0 ? `-${formatRp(paymentFee)}` : '-'}</span>
-                </div>
-
-                {/* process fee flat */}
-                <div className="flex justify-between">
-                  <span>Biaya Proses Flat:</span>
-                  <span>{processingFee > 0 ? `-${formatRp(processingFee)}` : '-'}</span>
-                </div>
-
-                {/* shipping subsidy with CAP warning indicator */}
-                <div className="flex justify-between items-center">
-                  <span className="flex items-center gap-1 font-sans">
-                    Subsidi Ongkir ({selectedChannel.freeShippingSubsidyPercent}%):
-                    {selectedChannel.freeShippingMaxCap > 0 && (
-                      <span className="text-[9px] text-amber-700 bg-amber-50 px-1.5 py-0.5 border border-amber-200 rounded font-bold" title={`Potongan gratis ongkir dibatasi maksimal ${formatRp(selectedChannel.freeShippingMaxCap)}`}>
-                        Capped
-                      </span>
-                    )}
-                  </span>
-                  <span>{freeShippingSubsidy > 0 ? `-${formatRp(freeShippingSubsidy)}` : '-'}</span>
-                </div>
-
-                {/* Total Deductions/Fees */}
-                <div className="flex justify-between border-t border-slate-200 pt-2.5 text-slate-750 font-sans font-bold">
-                  <span>Total Pemotongan Bersih:</span>
-                  <span className="font-extrabold text-rose-600">-{formatRp(totalDeductions)}</span>
-                </div>
-
-                {/* Final Net Omset/Revenue */}
+              )}
+              
                 <div className="flex justify-between border-t border-slate-300 pt-3 text-xs text-emerald-800 font-black font-sans">
-                  <span className="tracking-wide uppercase text-[10px] self-center">Estimasi Omset Bersih:</span>
-                  <span className="bg-emerald-100 px-3 py-1.5 rounded-xl text-[14px] shadow-3xs">{formatRp(simulatedNetRevenue)}</span>
+                  <span>Omset Bersih:</span>
+                  <span>{formatRp(Math.max(0, grossTotalPrice - discounts - totalDeductions))}</span>
                 </div>
-
-              </div>
             </div>
 
           </div>
@@ -896,6 +981,7 @@ export default function OrderModal({
           </div>
 
         </form>
+        )}
       </div>
 
     </div>

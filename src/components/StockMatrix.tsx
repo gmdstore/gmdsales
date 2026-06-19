@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Product, StockItem, SIZES, SizeType } from '../types';
 import { Eye, EyeOff, ShieldCheck, ShieldAlert, Plus, Trash2, Edit2, Check, X, Sliders, Search } from 'lucide-react';
 
@@ -890,8 +891,8 @@ export default function StockMatrix({
       </div>
 
       {/* Confirmation Modal for Stock Updates */}
-      {pendingStockSave && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-fade-in" id="confirm_stock_modal">
+      {pendingStockSave && createPortal(
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-fade-in" id="confirm_stock_modal">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-105 shadow-2xl relative overflow-hidden animate-scale-up">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500" />
             
@@ -952,12 +953,13 @@ export default function StockMatrix({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Warning Modal for Minimum Categories */}
-      {groupWarningMsg && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="group_warning_modal">
+      {groupWarningMsg && createPortal(
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="group_warning_modal">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             
@@ -983,12 +985,13 @@ export default function StockMatrix({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Confirmation Modal for Group Deletion */}
-      {pendingDeleteGroup && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_group_modal">
+      {pendingDeleteGroup && createPortal(
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_group_modal">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
@@ -1030,12 +1033,13 @@ export default function StockMatrix({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Confirmation Modal for Product Deletion */}
-      {pendingDeleteProduct && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_product_modal">
+      {pendingDeleteProduct && createPortal(
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_product_modal">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
@@ -1052,7 +1056,7 @@ export default function StockMatrix({
             </div>
 
             <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
-              Tindakan ini akan menghapus semua sediaan stok ukuran (<span className="font-mono font-bold">S, M, L, XL, XXL, 3XL, 4XL</span>) dari diagram matriks secara permanen.
+               Tindakan ini akan menghapus semua sediaan stok ukuran (<span className="font-mono font-bold">S, M, L, XL, XXL, 3XL, 4XL</span>) dari diagram matriks secara permanen.
             </div>
 
             <div className="flex gap-2.5">
@@ -1075,7 +1079,8 @@ export default function StockMatrix({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
