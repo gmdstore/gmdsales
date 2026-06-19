@@ -62,6 +62,8 @@ export default function SettingsComponent({
   const [chanColor, setChanColor] = useState('bg-slate-100 text-slate-850 border-slate-250');
 
   const [channelSuccessMsg, setChannelSuccessMsg] = useState<string | null>(null);
+  const [pendingDeleteChannel, setPendingDeleteChannel] = useState<Channel | null>(null);
+  const [channelWarningMsg, setChannelWarningMsg] = useState<string | null>(null);
 
   // Colors preset options in Tailwind css
   const colorPresets = [
@@ -151,16 +153,12 @@ export default function SettingsComponent({
     setTimeout(() => setChannelSuccessMsg(null), 3000);
   };
 
-  const handleDeleteChannelClick = (id: string, name: string) => {
+  const handleDeleteChannelClick = (chan: Channel) => {
     if (channels.length <= 1) {
-      alert('Minimal harus tersisa 1 saluran penjualan untuk operasional toko.');
+      setChannelWarningMsg('Minimal harus tersisa 1 saluran penjualan untuk operasional toko.');
       return;
     }
-    if (confirm(`Apakah Anda yakin ingin menghapus saluran penjualan "${name}"? Data perhitungan transaksi sebelumnya yang terkait saluran ini mungkin menggunakan fallback.`)) {
-      onDeleteChannel(id);
-      setChannelSuccessMsg(`Mengeluarkan saluran "${name}" dari sistem`);
-      setTimeout(() => setChannelSuccessMsg(null), 3000);
-    }
+    setPendingDeleteChannel(chan);
   };
 
   const formatRp = (value: number) => {
@@ -375,7 +373,7 @@ export default function SettingsComponent({
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteChannelClick(chan.id, chan.name)}
+                          onClick={() => handleDeleteChannelClick(chan)}
                           className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
                           title="Hapus saluran ini dari sistem"
                         >
@@ -531,6 +529,83 @@ export default function SettingsComponent({
 
       </div>
 
+      {/* Warning Modal for Sales Channels Limit */}
+      {channelWarningMsg && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="channel_warning_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Aksi Dibatalkan</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {channelWarningMsg}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 mt-5">
+              <button
+                type="button"
+                onClick={() => setChannelWarningMsg(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-slate-900 hover:bg-slate-850 rounded-xl cursor-pointer select-none transition-all active:scale-95 text-center"
+              >
+                Dipahami
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Delete Sales Channel */}
+      {pendingDeleteChannel && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_channel_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Hapus Saluran Penjualan</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus saluran <strong className="text-slate-800">{pendingDeleteChannel.name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+              Data perhitungan transaksi sebelumnya yang terkait saluran ini mungkin menggunakan skema fallback/bawaan.
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteChannel(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteChannel(pendingDeleteChannel.id);
+                  setChannelSuccessMsg(`Mengeluarkan saluran "${pendingDeleteChannel.name}" dari sistem`);
+                  setPendingDeleteChannel(null);
+                  setTimeout(() => setChannelSuccessMsg(null), 3000);
+                }}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-xl shadow-md shadow-rose-500/10 cursor-pointer select-none transition-all active:scale-95"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

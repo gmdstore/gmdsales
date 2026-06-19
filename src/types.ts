@@ -12,6 +12,7 @@ export interface Product {
   imageUrl: string;
   group: string; // Dynamic product category group (e.g. "Best Seller", "Cashcow", "Slow", "New", "Discontinue")
   colors: string[];
+  sizes?: string[]; // Allowed sizes for this product
 }
 
 export interface StockItem {
@@ -64,5 +65,5 @@ export interface Order {
   netProfit: number; // Laba Bersih = netRevenue - totalHpp
 }
 
-export const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'] as const;
+export const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'All Size'] as const;
 export type SizeType = typeof SIZES[number];

@@ -242,6 +242,13 @@ export default function OrderModal({
     next[index].showDropdown = false;
     // Set first color of product as the default selected color
     next[index].color = product.colors[0] || '';
+    
+    // Choose the first available size for this product
+    const productSizes = product.sizes && product.sizes.length > 0 
+      ? product.sizes 
+      : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+    next[index].size = productSizes[0] || 'M';
+    
     setCart(next);
   };
 
@@ -584,22 +591,6 @@ export default function OrderModal({
                     style={{ zIndex: item.showDropdown ? 50 : (cart.length - idx) }}
                   >
                     
-                    {/* Floating Delete button */}
-                    {cart.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCartRow(idx)}
-                        className="absolute top-2 right-2 md:relative md:top-auto md:right-auto p-1.5 text-slate-400 hover:text-red-500 rounded-xl bg-white border border-slate-200 hover:border-red-200 cursor-pointer transition-colors shadow-3xs"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    {/* Left: Thumbnail Icon if chosen */}
-                    <div className="h-8 w-8 rounded-lg bg-white border border-slate-250/70 flex items-center justify-center font-emoji text-base select-none shadow-3xs">
-                      {item.imageUrl || '🛍️'}
-                    </div>
-
                     {/* Column 1: Autocomplete Product name */}
                     <div className="flex-1 min-w-[210px] relative">
                       <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Nama Produk / SKU (Min. 1 Huruf)</label>
@@ -622,7 +613,7 @@ export default function OrderModal({
                               className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
                             >
                               <span className="truncate">
-                                <span className="font-emoji mr-1.5">{p.imageUrl}</span> {p.name}
+                                {p.name}
                               </span>
                               {p.sku && (
                                 <span className="text-[9px] font-mono font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
@@ -660,7 +651,17 @@ export default function OrderModal({
                         onChange={(e) => handleUpdateSize(idx, e.target.value)}
                         className="w-full px-2 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40"
                       >
-                        {SIZES.map(sz => (
+                        {SIZES.filter(sz => {
+                          if (!activeProduct) return true;
+                          const stockItem = stocks.find(s => s.productId === activeProduct.id && s.color === item.color);
+                          if (stockItem) {
+                            return stockItem.stocks[sz] !== undefined;
+                          }
+                          if (activeProduct.sizes) {
+                            return activeProduct.sizes.includes(sz);
+                          }
+                          return sz !== 'All Size';
+                        }).map(sz => (
                           <option key={sz} value={sz}>{sz}</option>
                         ))}
                       </select>
@@ -711,6 +712,23 @@ export default function OrderModal({
                         {isProductSelected ? formatRp(item.price * item.qty) : '-'}
                       </span>
                     </div>
+
+                    {/* Column 6: Delete action at the far right */}
+                    {cart.length > 1 ? (
+                      <div className="absolute top-2 right-2 md:relative md:top-auto md:right-auto flex flex-col items-center">
+                        <label className="hidden md:block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-1.5 opacity-0 select-none pointer-events-none">Hapus</label>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveCartRow(idx)}
+                          className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-rose-50 rounded-xl bg-white border border-slate-200 hover:border-rose-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
+                          title="Hapus baris item"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="hidden md:block w-[32px]" />
+                    )}
 
                   </div>
                 );

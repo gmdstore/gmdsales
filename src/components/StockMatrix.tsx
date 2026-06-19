@@ -49,7 +49,7 @@ export default function StockMatrix({
   const [prodColorsText, setProdColorsText] = useState<string>('');
 
   // Column Visibility state
-  const [showPhoto, setShowPhoto] = useState<boolean>(true);
+  const [showPhoto, setShowPhoto] = useState<boolean>(false);
   const [showColor, setShowColor] = useState<boolean>(true);
   const [showHpp, setShowHpp] = useState<boolean>(true);
   const [showConfig, setShowConfig] = useState<boolean>(false);
@@ -71,8 +71,16 @@ export default function StockMatrix({
   // Search Query State
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Pending deletes states
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<string | null>(null);
+  const [pendingDeleteProduct, setPendingDeleteProduct] = useState<Product | null>(null);
+  const [groupWarningMsg, setGroupWarningMsg] = useState<string | null>(null);
+
   // Product Recategorization helper State
   const [editingProductGroup, setEditingProductGroup] = useState<string | null>(null);
+
+  // Selected sizes checkbox state for Add/Edit Form (default: S, M, L, XL, 2XL)
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(['S', 'M', 'L', 'XL', '2XL']);
 
   // Filter products by active categorized tab
   const filteredProducts = activeGroup === 'Semua Grup' ? products : products.filter(p => p.group === activeGroup);
@@ -159,13 +167,10 @@ export default function StockMatrix({
 
   const handleDeleteGroupClick = (gName: string) => {
     if (groups.length <= 1) {
-      alert("Harus ada minimal 1 grup produk.");
+      setGroupWarningMsg("Harus ada minimal 1 grup produk.");
       return;
     }
-    if (confirm(`Apakah Anda yakin ingin menghapus grup "${gName}"? Semua produk di grup ini akan dipindahkan ke "${groups.find(g => g !== gName)}"`)) {
-      onDeleteGroup(gName);
-      setActiveGroup(groups.find(g => g !== gName) || '');
-    }
+    setPendingDeleteGroup(gName);
   };
 
   const handleStartEditProduct = (p: Product) => {
@@ -177,6 +182,7 @@ export default function StockMatrix({
     setProdPrice(p.price);
     setProdImageUrl(p.imageUrl);
     setProdColorsText(p.colors.join(', '));
+    setSelectedSizes(p.sizes && p.sizes.length > 0 ? p.sizes : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']);
   };
 
   const handleCancelEditProduct = () => {
@@ -188,6 +194,7 @@ export default function StockMatrix({
     setProdPrice(250000);
     setProdImageUrl('👕');
     setProdColorsText('');
+    setSelectedSizes(['S', 'M', 'L', 'XL', '2XL']);
   };
 
   const handleSubmitProductForm = () => {
@@ -215,7 +222,8 @@ export default function StockMatrix({
         hpp: prodHpp,
         price: prodPrice,
         imageUrl: prodImageUrl,
-        colors: colors
+        colors: colors,
+        sizes: selectedSizes
       };
       onUpdateProduct(updatedProduct);
     } else {
@@ -227,7 +235,8 @@ export default function StockMatrix({
         hpp: prodHpp,
         price: prodPrice,
         imageUrl: prodImageUrl,
-        colors: colors
+        colors: colors,
+        sizes: selectedSizes
       };
       onAddProduct(newProduct);
     }
@@ -320,16 +329,6 @@ export default function StockMatrix({
 
         {showConfig && (
           <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-6 text-xs text-slate-700 animate-fade-in pl-2">
-            <label className="flex items-center gap-2.5 cursor-pointer font-bold select-none group">
-              <input
-                type="checkbox"
-                checked={showPhoto}
-                onChange={(e) => setShowPhoto(e.target.checked)}
-                className="h-5 w-5 rounded-lg text-emerald-600 focus:ring-emerald-500 border-slate-300 transition-colors"
-              />
-              <span className="group-hover:text-slate-900">Tampilkan Foto/Ikon</span>
-            </label>
-
             <label className="flex items-center gap-2.5 cursor-pointer font-bold select-none group">
               <input
                 type="checkbox"
@@ -506,9 +505,6 @@ export default function StockMatrix({
                 {products.map(p => (
                   <div key={p.id} className="py-3.5 flex items-center justify-between gap-4 group">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="h-9 w-9 rounded-xl border border-slate-100 shadow-3xs flex items-center justify-center font-emoji text-lg bg-slate-50 select-none">
-                        {p.imageUrl}
-                      </span>
                       <div className="min-w-0">
                         <div className="font-bold text-slate-900 truncate flex items-center gap-1.5 flex-wrap">
                           {p.sku && (
@@ -546,7 +542,7 @@ export default function StockMatrix({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onDeleteProduct(p.id)}
+                        onClick={() => setPendingDeleteProduct(p)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
                         title="Hapus Produk ini"
                       >
@@ -603,7 +599,7 @@ export default function StockMatrix({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div>
                   {/* Kategori / Group */}
                   <div>
                     <label className="block font-bold text-slate-700 mb-1">Grup/Kategori:</label>
@@ -617,34 +613,6 @@ export default function StockMatrix({
                       ))}
                     </select>
                   </div>
-
-                  {/* Icon Emoji Selection */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Ikon Emoji: <span className="font-emoji font-bold text-sm ml-1">{prodImageUrl}</span></label>
-                    <input
-                      type="text"
-                      maxLength={4}
-                      placeholder="👕"
-                      value={prodImageUrl}
-                      onChange={(e) => setProdImageUrl(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-center text-slate-800 focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Popular Emojis selector row */}
-                <div className="p-2 border border-dashed border-slate-200 rounded-xl flex flex-wrap gap-2 items-center justify-center bg-slate-50/55">
-                  <span className="text-[10px] font-bold text-slate-400 mr-1 shrink-0">Ikon:</span>
-                  {['👕', '👖', '🎽', '🧥', '👟', '🎒', '🧢', '🕶️', '👗', '👚', '🧣', '👜'].map(em => (
-                    <button
-                      key={em}
-                      type="button"
-                      onClick={() => setProdImageUrl(em)}
-                      className={`text-sm cursor-pointer hover:scale-125 transition-all p-1 rounded-lg ${prodImageUrl === em ? 'bg-emerald-100 border border-emerald-350 scale-110 shadow-3xs' : 'hover:bg-slate-200 border border-transparent'}`}
-                    >
-                      {em}
-                    </button>
-                  ))}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -701,10 +669,45 @@ export default function StockMatrix({
                   </span>
                 </div>
 
+                {/* Variasi Ukuran (checkboxes) */}
+                <div>
+                  <label className="block font-semibold text-slate-705 mb-1 text-[11px]">Variasi Ukuran (Pilih yang Aktif):</label>
+                  <div className="grid grid-cols-4 gap-1.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                    {['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'All Size'].map(sz => {
+                      const isChecked = selectedSizes.includes(sz);
+                      return (
+                        <label 
+                          key={sz} 
+                          className={`flex items-center gap-1 p-1 max-w-full rounded-lg border text-[10px] font-extrabold cursor-pointer select-none transition-all ${isChecked ? 'bg-emerald-50 border-emerald-300 text-emerald-800' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50 font-medium'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedSizes([...selectedSizes, sz]);
+                              } else {
+                                setSelectedSizes(selectedSizes.filter(s => s !== sz));
+                              }
+                            }}
+                            className="h-3 w-3 text-emerald-600 focus:ring-emerald-500 border-slate-300 rounded"
+                          />
+                          <span className="truncate">{sz}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {selectedSizes.length === 0 && (
+                    <span className="text-[9px] text-rose-600 font-bold block mt-1">
+                      ⚠️ Pilih minimal satu variasi ukuran produk
+                    </span>
+                  )}
+                </div>
+
                 {/* Submit button */}
                 <button
                   type="button"
-                  disabled={!prodName.trim() || !prodColorsText.trim()}
+                  disabled={!prodName.trim() || !prodColorsText.trim() || selectedSizes.length === 0}
                   onClick={handleSubmitProductForm}
                   className="w-full mt-2 py-2.5 bg-slate-900 border border-slate-950 hover:bg-slate-850 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs animate-pulse"
                 >
@@ -745,7 +748,6 @@ export default function StockMatrix({
             <table className="w-full text-left col-auto border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
-                  {showPhoto && <th className="py-3 px-4 w-12 text-center">Ikon</th>}
                   <th className="py-3 px-4 w-32">Kode SKU</th>
                   <th className="py-3 px-4">Nama Produk Master</th>
                   {showColor && <th className="py-3 px-4">Warna</th>}
@@ -758,6 +760,8 @@ export default function StockMatrix({
                       {size}
                     </th>
                   ))}
+                  <th className="py-3 px-4 text-center w-20 bg-slate-100/80 font-black text-slate-700 border-l border-slate-200">Total Qty</th>
+                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100/40 font-black text-rose-800 border-l border-slate-200">Total HPP</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-750">
@@ -765,15 +769,11 @@ export default function StockMatrix({
                   const product = products.find(p => p.id === stockItem.productId);
                   if (!product) return null;
 
+                  const totalQty = Object.values(stockItem.stocks).reduce((sum, qty) => sum + (qty ?? 0), 0);
+                  const totalHpp = totalQty * product.hpp;
+
                   return (
                     <tr key={stockItem.id} className="hover:bg-slate-50/50 transition-colors">
-                      {/* Optional Photo element */}
-                      {showPhoto && (
-                        <td className="py-3.5 px-4 text-center font-emoji text-lg select-none">
-                          {product.imageUrl}
-                        </td>
-                      )}
-
                       {/* Kode SKU Column */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-800/90 whitespace-nowrap">
                         {product.sku ? (
@@ -818,14 +818,28 @@ export default function StockMatrix({
 
                       {/* Matriks Size levels */}
                       {SIZES.map(size => {
-                        const cellQty = stockItem.stocks[size] ?? 0;
+                        const cellQty = stockItem.stocks[size];
+                        const isApplicable = cellQty !== undefined;
+                        const qtyVal = cellQty ?? 0;
                         const isEditing = editingCell?.stockItemId === stockItem.id && editingCell?.size === size;
+
+                        if (!isApplicable) {
+                          return (
+                            <td 
+                              key={size}
+                              className="py-3 px-1 text-center font-mono select-none border-l border-r border-slate-100/40 bg-slate-50/10"
+                              title="Ukuran tidak aktif untuk produk ini"
+                            >
+                              
+                            </td>
+                          );
+                        }
 
                         return (
                           <td 
                             key={size} 
-                            onClick={() => !isEditing && handleStartEditStock(stockItem.id, size, cellQty)}
-                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-r border-slate-100/40 select-none ${isEditing ? 'bg-amber-100/50 font-black text-amber-950 scale-102 border-amber-300' : cellQty === 0 ? 'bg-rose-50 text-rose-600 font-extrabold hover:bg-rose-100/80' : cellQty < 5 ? 'bg-amber-50 hover:bg-amber-100/80 font-bold text-amber-600' : 'hover:bg-slate-100/60 font-semibold text-slate-800'}`}
+                            onClick={() => !isEditing && handleStartEditStock(stockItem.id, size, qtyVal)}
+                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-r border-slate-100/40 select-none ${isEditing ? 'bg-amber-100/50 font-black text-amber-950 scale-102 border-amber-300' : qtyVal === 0 ? 'bg-rose-50/40 text-rose-600/70 hover:bg-rose-100/80' : qtyVal < 5 ? 'bg-amber-50 hover:bg-amber-100/80 font-bold text-amber-600' : 'hover:bg-slate-100/60 font-semibold text-slate-800'}`}
                           >
                             {isEditing ? (
                               <input
@@ -849,11 +863,23 @@ export default function StockMatrix({
                                 className="w-12 text-center text-xs font-bold font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-slate-300 rounded-md px-1 py-0.5 bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             ) : (
-                              <span>{cellQty}</span>
+                              <span>{qtyVal === 0 ? "" : qtyVal}</span>
                             )}
                           </td>
                         );
                       })}
+
+                      {/* Total Qty column */}
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 bg-slate-100/20 text-center select-none border-l border-slate-200">
+                        {totalQty === 0 ? "" : totalQty}
+                      </td>
+
+                      {/* Total HPP column */}
+                      {showHpp && (
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-700 bg-rose-50/30 select-none border-l border-slate-200">
+                          {totalQty === 0 ? "" : formatRp(totalHpp)}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -923,6 +949,129 @@ export default function StockMatrix({
                 className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 rounded-xl shadow-md shadow-emerald-500/10 cursor-pointer select-none transition-all active:scale-95"
               >
                 Ya, Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Warning Modal for Minimum Categories */}
+      {groupWarningMsg && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="group_warning_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Gagal Menghapus Grup</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  {groupWarningMsg}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 mt-5">
+              <button
+                type="button"
+                onClick={() => setGroupWarningMsg(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-slate-900 hover:bg-slate-850 rounded-xl cursor-pointer select-none transition-all active:scale-95 text-center"
+              >
+                Dipahami
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Group Deletion */}
+      {pendingDeleteGroup && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_group_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Hapus Grup Klasifikasi</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus grup <strong className="text-slate-800">"{pendingDeleteGroup}"</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+              Semua produk di dalam grup ini akan secara otomatis direlokasi/dipindahkan ke grup alternatif: <strong className="text-slate-800 font-bold">"{groups.find(g => g !== pendingDeleteGroup)}"</strong>.
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteGroup(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-755 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetFallback = groups.find(g => g !== pendingDeleteGroup) || '';
+                  onDeleteGroup(pendingDeleteGroup);
+                  setActiveGroup(targetFallback);
+                  setPendingDeleteGroup(null);
+                }}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-xl shadow-md shadow-rose-500/10 cursor-pointer select-none transition-all active:scale-95"
+              >
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Product Deletion */}
+      {pendingDeleteProduct && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="confirm_delete_product_modal">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+            
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl shrink-0 text-xl font-bold flex items-center justify-center h-10 w-10">
+                ⚠️
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm">Hapus Produk Master</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus produk <strong className="text-slate-800">{pendingDeleteProduct.name}</strong>?
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+              Tindakan ini akan menghapus semua sediaan stok ukuran (<span className="font-mono font-bold">S, M, L, XL, XXL, 3XL, 4XL</span>) dari diagram matriks secara permanen.
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPendingDeleteProduct(null)}
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-755 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteProduct(pendingDeleteProduct.id);
+                  setPendingDeleteProduct(null);
+                }}
+                className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-xl shadow-md shadow-rose-500/10 cursor-pointer select-none transition-all active:scale-95"
+              >
+                Ya, Hapus
               </button>
             </div>
           </div>

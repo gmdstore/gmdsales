@@ -326,13 +326,24 @@ export default function App() {
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [...prev, newProduct]);
 
-    const newStockObjects: StockItem[] = newProduct.colors.map(color => ({
-      id: `${newProduct.id}_${color}`,
-      productId: newProduct.id,
-      productName: newProduct.name,
-      color: color,
-      stocks: { S: 0, M: 0, L: 0, XL: 0, '2XL': 0, '3XL': 0, '4XL': 0 }
-    }));
+    const newStockObjects: StockItem[] = newProduct.colors.map(color => {
+      const initialStocks: { [size: string]: number } = {};
+      const activeSizes = newProduct.sizes && newProduct.sizes.length > 0 
+        ? newProduct.sizes 
+        : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+
+      activeSizes.forEach(sz => {
+        initialStocks[sz] = 0;
+      });
+
+      return {
+        id: `${newProduct.id}_${color}`,
+        productId: newProduct.id,
+        productName: newProduct.name,
+        color: color,
+        stocks: initialStocks
+      };
+    });
     setStocks(prev => [...prev, ...newStockObjects]);
   };
 
@@ -345,10 +356,21 @@ export default function App() {
 
       const alignedStocks: StockItem[] = updatedProduct.colors.map(color => {
         const existing = currentProductStocks.find(s => s.color === color);
+        
+        const activeSizes = updatedProduct.sizes && updatedProduct.sizes.length > 0
+          ? updatedProduct.sizes
+          : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+
+        const alignedSizeStocks: { [size: string]: number } = {};
+        activeSizes.forEach(sz => {
+          alignedSizeStocks[sz] = existing?.stocks?.[sz] ?? 0;
+        });
+
         if (existing) {
           return {
             ...existing,
-            productName: updatedProduct.name
+            productName: updatedProduct.name,
+            stocks: alignedSizeStocks
           };
         } else {
           return {
@@ -356,7 +378,7 @@ export default function App() {
             productId: updatedProduct.id,
             productName: updatedProduct.name,
             color: color,
-            stocks: { S: 0, M: 0, L: 0, XL: 0, '2XL': 0, '3XL': 0, '4XL': 0 }
+            stocks: alignedSizeStocks
           };
         }
       });
