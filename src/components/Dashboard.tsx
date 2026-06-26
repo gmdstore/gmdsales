@@ -176,10 +176,10 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans">
-            Dashboard Performa Finansial
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
+            <span>📈</span> Dashboard Performa Finansial
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1.5">
             Data Terkonsolidasi Omnichannel per tanggal <span className="font-semibold text-slate-800">{getFormattedToday()}</span>
           </p>
         </div>
@@ -475,7 +475,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                 placeholder="Cari berdasarkan No. Pesanan ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-250 rounded-xl focus:ring-1 focus:ring-emerald-500 font-bold focus:outline-none transition-all text-xs"
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-1 focus:ring-emerald-500 font-bold focus:outline-none transition-all text-xs"
               />
               {searchTerm && (
                 <button
@@ -489,7 +489,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
             <div className="flex flex-wrap items-center gap-3">
               {/* Filter Channel */}
-              <div className="flex items-center gap-1 bg-white border border-slate-250 rounded-xl px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-emerald-500">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-emerald-500">
                 <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
                   <Filter className="h-3.5 w-3.5" /> Saluran
                 </span>
@@ -506,7 +506,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
               </div>
 
               {/* Filter Payment Method */}
-              <div className="flex items-center gap-1 bg-white border border-slate-250 rounded-xl px-2.5 py-1.5">
+              <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5">
                 <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
                   💳 Metode
                 </span>
@@ -537,16 +537,16 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           <div className="overflow-x-auto border border-slate-100 rounded-2xl shadow-3xs">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 font-extrabold text-slate-505 tracking-wide uppercase text-[10px]">
-                  <th className="py-3 px-4 w-32">Kanal / ID Pesanan</th>
-                  <th className="py-3 px-4 w-36">Tanggal & Jam</th>
-                  <th className="py-3 px-4 min-w-[200px]">Rincian Barang Belanja</th>
-                  <th className="py-3 px-4 w-16 text-center">Qty</th>
-                  <th className="py-3 px-4 text-right">Potongan Toko</th>
-                  <th className="py-3 px-4 text-right">Potongan Biaya</th>
-                  <th className="py-3 px-4 text-right">HPP Item</th>
-                  <th className="py-3 px-4 text-right text-emerald-800 bg-emerald-50/10 font-black">Omset Bersih</th>
-                  <th className="py-3 px-4 text-right text-emerald-900 bg-emerald-100/5 font-black">Laba Bersih</th>
+                <tr className="bg-slate-50 border-b border-slate-100 font-extrabold text-slate-500 tracking-wide uppercase text-[10px]">
+                  <th className="py-2 px-3 w-48">Kanal / ID Pesanan</th>
+                  <th className="py-2 px-3 w-32">Tanggal & Jam</th>
+                  <th className="py-2 px-3 min-w-[180px]">Rincian Barang Belanja</th>
+                  <th className="py-2 px-3 w-16 text-center">Qty</th>
+                  <th className="py-2 px-3 text-right">Potongan Toko</th>
+                  <th className="py-2 px-3 text-right">Potongan Biaya</th>
+                  <th className="py-2 px-3 text-right">HPP Item</th>
+                  <th className="py-2 px-3 text-right text-emerald-800 bg-emerald-50/30">Omset</th>
+                  <th className="py-2 px-3 text-right text-emerald-950 bg-emerald-100/10">Laba</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -561,49 +561,53 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                     <tr key={ord.id} className="hover:bg-slate-50/50 transition-colors">
                       
                       {/* Badge and order number */}
-                      <td className="py-4 px-4 space-y-1">
-                        <span className={`inline-block px-2 py-0.5 text-[9px] font-black tracking-wide uppercase rounded-md ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
-                          {channel.name}
-                        </span>
-                        <div className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
-                          {ord.orderNumber}
+                      <td className="py-2 px-3 space-y-1">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black tracking-wide uppercase rounded ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
+                            {channel.name}
+                          </span>
+                          <span className="inline-block text-[9.5px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1 py-0.2 rounded">
+                            {ord.paymentMethod}
+                          </span>
                         </div>
-                        <span className="inline-block text-[9px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.2 rounded mt-1.5 flex-auto">
-                          {ord.paymentMethod}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="font-mono text-xs font-black text-slate-900 tracking-wide break-all" title={ord.orderNumber}>
+                            {ord.orderNumber}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Created DateTime */}
-                      <td className="py-4 px-4 font-mono text-slate-600 text-xs">
-                        <div className="font-black text-slate-900 leading-tight">
+                      <td className="py-2 px-3 font-mono text-slate-600 text-xs">
+                        <div className="font-bold text-slate-900 leading-tight">
                           {new Date(ord.dateTime).toLocaleDateString('id-ID', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric'
                           })}
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 font-bold">
+                        <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-semibold">
                           <span>🕒</span>
                           {new Date(ord.dateTime).toLocaleTimeString('id-ID', {
                             hour: '2-digit',
                             minute: '2-digit'
-                          })} WIB
+                          })}
                         </div>
                       </td>
 
                       {/* Ordered items details */}
-                      <td className="py-3 px-4 min-w-[200px]">
-                        <div className="flex flex-col gap-1.5">
+                      <td className="py-1.5 px-3 min-w-[180px]">
+                        <div className="flex flex-col gap-1">
                           {ord.products.map((p, pIdx) => {
                             const matchedProduct = products.find(prod => prod.id === p.productId);
                             const resolvedName = matchedProduct ? matchedProduct.name : 'Produk Master';
                             return (
                               <div 
                                 key={pIdx} 
-                                className="text-[11px] font-mono h-[36px] flex flex-col justify-center text-slate-700"
+                                className="text-[12px] font-mono h-[32px] flex flex-col justify-center text-slate-700"
                               >
-                                <div className="truncate leading-normal font-semibold text-slate-900">{resolvedName}</div>
-                                <div className="text-slate-450 text-[9px] truncate leading-normal">{p.color} • {p.size}</div>
+                                <div className="truncate leading-tight font-bold text-slate-950">{resolvedName}</div>
+                                <div className="text-slate-500 text-[10px] truncate leading-none mt-0.5">{p.color} • {p.size}</div>
                               </div>
                             );
                           })}
@@ -611,17 +615,17 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                       </td>
 
                       {/* Qty column with highlight */}
-                      <td className="py-3 px-4 w-16 text-center">
-                        <div className="flex flex-col gap-1.5">
+                      <td className="py-1.5 px-3 w-16 text-center">
+                        <div className="flex flex-col gap-1">
                           {ord.products.map((p, pIdx) => {
                             const isQtyHighlight = p.qty > 1;
                             return (
                               <div 
                                 key={pIdx} 
-                                className={`text-[11px] font-mono text-center h-[36px] flex items-center justify-center transition-all ${
+                                className={`text-[11px] font-mono text-center h-[32px] flex items-center justify-center transition-all ${
                                   isQtyHighlight 
-                                    ? 'bg-amber-100 text-amber-955 font-black rounded-lg p-0 m-0 shadow-2xs border border-amber-200' 
-                                    : 'font-semibold text-slate-500'
+                                    ? 'bg-emerald-50 text-emerald-800 font-extrabold rounded px-1.5 py-0.5 border border-emerald-200 shadow-3xs max-w-fit mx-auto' 
+                                    : 'font-semibold text-slate-550'
                                 }`}
                               >
                                 x{p.qty}
@@ -632,32 +636,32 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                       </td>
 
                       {/* Total Discounts */}
-                      <td className="py-4 px-4 text-right font-mono font-bold text-rose-600">
+                      <td className="py-2 px-3 text-right font-mono font-bold text-rose-600 text-xs">
                         {ord.discounts > 0 ? `-${formatRp(ord.discounts)}` : '-'}
                       </td>
 
                       {/* Calculated Commission & Fees */}
-                      <td className="py-4 px-4 text-right space-y-0.5" title="Klik detail biaya">
+                      <td className="py-2 px-3 text-right space-y-0.5 text-xs" title="Klik detail biaya">
                         <div className="font-mono text-rose-700 font-bold">
                           -{formatRp(ord.calculatedFees.totalFees)}
                         </div>
-                        <div className="text-[9px] text-slate-400 font-semibold font-sans">
+                        <div className="text-[9.5px] text-slate-400 font-semibold font-sans">
                           K: {ord.calculatedFees.commission > 0 ? `${formatRp(ord.calculatedFees.commission)}` : '0'} | P: {ord.calculatedFees.paymentFee > 0 ? `${formatRp(ord.calculatedFees.paymentFee)}` : '0'}
                         </div>
                       </td>
 
                       {/* Locked HPP cost */}
-                      <td className="py-4 px-4 text-right font-mono text-slate-500 font-medium">
+                      <td className="py-2 px-3 text-right font-mono text-slate-500 font-medium text-xs">
                         {formatRp(ord.totalHpp)}
                       </td>
 
                       {/* Estimation Net revenue color badge */}
-                      <td className="py-4 px-4 text-right font-mono font-black text-slate-800 bg-emerald-50/20 whitespace-nowrap">
+                      <td className="py-2 px-3 text-right font-mono font-black text-slate-800 bg-emerald-50/20 whitespace-nowrap text-xs">
                         {formatRp(ord.netRevenue)}
                       </td>
 
                       {/* Estimation profitable margin color badge */}
-                      <td className={`py-4 px-4 text-right font-mono font-black bg-emerald-100/5 whitespace-nowrap ${ord.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      <td className={`py-2 px-3 text-right font-mono font-black bg-emerald-100/5 whitespace-nowrap text-xs ${ord.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {formatRp(ord.netProfit)}
                       </td>
                     </tr>

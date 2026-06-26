@@ -248,65 +248,59 @@ export default function StockMatrix({
   return (
     <div id="stock_matrix_section" className="space-y-6 animate-fade-in text-slate-705">
       
-      {/* Menu Utama Pengelolaan */}
-      <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-lg relative overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-10 -bottom-10 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="max-w-xl">
-            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold uppercase px-2.5 py-1 rounded-md tracking-wider">
-              MENU UTAMA
-            </span>
-            <h2 className="text-xl font-black text-white mt-2 tracking-tight">Katalog Produk & Stok Sediaan</h2>
-            <p className="text-xs text-slate-300/80 mt-1 leading-relaxed">
-              Pusat komando pengelolaan produk dan stok. Gunakan tombol status di sebelah kanan untuk membuka manajemen produk secara instan, mengedit variasi warna, mengatur harga pokok (HPP), atau menyusun grup klasifikasi.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
-            {/* Kelola Produk */}
-            <button
-              onClick={() => {
-                setIsManagingProducts(!isManagingProducts);
-                setIsManagingGroups(false);
-              }}
-              className={`px-5 py-3.5 rounded-2xl flex items-center gap-3.5 cursor-pointer select-none transition-all duration-200 shadow-md ${
-                isManagingProducts 
-                  ? 'bg-emerald-500 text-white font-black shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 scale-[1.02]' 
-                  : 'bg-slate-800 hover:bg-slate-750 text-white font-bold hover:shadow-lg hover:scale-[1.01]'
-              }`}
-            >
-              <span className="text-xl">📦</span>
-              <div className="text-left">
-                <div className="text-xs font-black tracking-wide">Kelola Produk</div>
-                <div className="text-[9px] text-slate-400 font-medium">
-                  {isManagingProducts ? 'Sedang Terbuka (Klik Tutup)' : 'Daftar & Edit Produk'}
-                </div>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
+            <span>📦</span> Katalog Produk & Stok Sediaan
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5">
+            Pusat komando pengelolaan produk, sediaan, harga pokok (HPP), variasi warna, dan klasifikasi grup.
+          </p>
+        </div>
+        
+        <div className="flex flex-col sm:flex-row gap-2.5 self-start sm:self-auto shrink-0">
+          {/* Kelola Produk */}
+          <button
+            onClick={() => {
+              setIsManagingProducts(!isManagingProducts);
+              setIsManagingGroups(false);
+            }}
+            className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 cursor-pointer select-none transition-all duration-200 border text-xs font-bold shadow-3xs ${
+              isManagingProducts 
+                ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600 scale-[1.01]' 
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-205 hover:border-slate-300'
+            }`}
+          >
+            <span>👕</span>
+            <div className="text-left leading-tight">
+              <div className="font-extrabold text-[11px]">Kelola Produk</div>
+              <div className={`text-[9px] ${isManagingProducts ? 'text-emerald-100' : 'text-slate-400'} font-semibold mt-0.5`}>
+                {isManagingProducts ? 'Tutup form' : 'Daftar & Edit'}
               </div>
-            </button>
+            </div>
+          </button>
 
-            {/* Kelola Grup */}
-            <button
-              onClick={() => {
-                setIsManagingGroups(!isManagingGroups);
-                setIsManagingProducts(false);
-              }}
-              className={`px-5 py-3.5 rounded-2xl flex items-center gap-3.5 cursor-pointer select-none transition-all duration-200 shadow-md ${
-                isManagingGroups 
-                  ? 'bg-rose-500 text-white font-black shadow-lg shadow-rose-500/20 hover:bg-rose-600 scale-[1.02]' 
-                  : 'bg-slate-800 hover:bg-slate-750 text-white font-bold hover:shadow-lg hover:scale-[1.01]'
-              }`}
-            >
-              <span className="text-xl">⚙️</span>
-              <div className="text-left">
-                <div className="text-xs font-black tracking-wide">Kelola Grup</div>
-                <div className="text-[9px] text-slate-400 font-medium">
-                  {isManagingGroups ? 'Sedang Terbuka (Klik Tutup)' : 'Atur & Pindah Kategori'}
-                </div>
+          {/* Kelola Grup */}
+          <button
+            onClick={() => {
+              setIsManagingGroups(!isManagingGroups);
+              setIsManagingProducts(false);
+            }}
+            className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 cursor-pointer select-none transition-all duration-200 border text-xs font-bold shadow-3xs ${
+              isManagingGroups 
+                ? 'bg-rose-500 text-white border-rose-500 hover:bg-rose-600 scale-[1.01]' 
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-205 hover:border-slate-300'
+            }`}
+          >
+            <span>⚙️</span>
+            <div className="text-left leading-tight">
+              <div className="font-extrabold text-[11px]">Kelola Grup</div>
+              <div className={`text-[9px] ${isManagingGroups ? 'text-rose-100' : 'text-slate-400'} font-semibold mt-0.5`}>
+                {isManagingGroups ? 'Tutup form' : 'Atur kategori'}
               </div>
-            </button>
-          </div>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -425,7 +419,7 @@ export default function StockMatrix({
                   placeholder="Misal: Clearance, FlashSale, dll."
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500/80 outline-none"
+                  className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500/80 outline-none"
                 />
                 <button
                   type="submit"
@@ -583,7 +577,7 @@ export default function StockMatrix({
                       placeholder="Contoh: Premium Cotton Tee..."
                       value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
 
@@ -595,7 +589,7 @@ export default function StockMatrix({
                       placeholder="Contoh: TS-COT"
                       value={prodSku}
                       onChange={(e) => setProdSku(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold uppercase text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -607,7 +601,7 @@ export default function StockMatrix({
                     <select
                       value={prodGroup}
                       onChange={(e) => setProdGroup(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-extrabold text-slate-850"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-850"
                     >
                       {groups.map(g => (
                         <option key={g} value={g}>{g}</option>
@@ -628,7 +622,7 @@ export default function StockMatrix({
                       placeholder="100000"
                       value={prodHpp}
                       onChange={(e) => setProdHpp(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
                     />
                   </div>
 
@@ -643,7 +637,7 @@ export default function StockMatrix({
                       placeholder="200000"
                       value={prodPrice}
                       onChange={(e) => setProdPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -663,7 +657,7 @@ export default function StockMatrix({
                     placeholder="Misal: Hitam, Biru Navy, Putih"
                     value={prodColorsText}
                     onChange={(e) => setProdColorsText(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-850 focus:outline-none"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none"
                   />
                   <span className="text-[9px] text-slate-400 block mt-1 leading-normal">
                     Pemisah koma. Menghasilkan sedia baris entri stok tersendiri.

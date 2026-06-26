@@ -150,21 +150,21 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
   return (
     <div className="space-y-6 animate-fade-in" id="recapitulation_active_page">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-100 shadow-3xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
-            📊 Rekapitulasi Penjualan Harian
-          </h2>
-          <p className="text-xs text-slate-450 mt-1">
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
+            <span>📊</span> Rekapitulasi Penjualan Harian
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5">
             Ringkasan harian distribusi jumlah pesanan item (pcs) dan pendapatan bersih (omset terpotong beban) berdasarkan opsi saluran.
           </p>
         </div>
 
         {/* Month Selection Input */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:ring-1 focus-within:ring-emerald-500 transition-all">
-            <span className="text-slate-450 font-bold text-xs flex items-center gap-1">
-              <Calendar className="h-4 w-4" /> Periode
+        <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2 hover:border-slate-300 focus-within:ring-1 focus-within:ring-emerald-500 transition-all shadow-3xs">
+            <span className="text-slate-400 font-bold text-xs flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-emerald-500" /> Periode
             </span>
             <select
               value={selectedMonth}

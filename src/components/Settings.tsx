@@ -183,14 +183,16 @@ export default function SettingsComponent({
   return (
     <div id="settings_section" className="space-y-8 animate-fade-in text-xs text-slate-700">
       
-      {/* Tab Header Banner */}
-      <div className="border-b border-slate-200 pb-5">
-        <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2 font-sans tracking-tight">
-          <span>⚙️</span> Pengaturan Brand & Saluran Omnichannel
-        </h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Kustomisasi visual toko, identitas brand, deskripsi profil operasional, footer, serta skema potongan komisi finansial per kanal penjualan.
-        </p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
+            <span>⚙️</span> Pengaturan Brand & Saluran Omnichannel
+          </h1>
+          <p className="text-sm text-slate-500 mt-1.5">
+            Kustomisasi visual toko, identitas brand, deskripsi profil operasional, footer, serta skema potongan komisi finansial per kanal penjualan.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
@@ -225,7 +227,7 @@ export default function SettingsComponent({
                     placeholder="👕"
                     value={inputBrandLogo}
                     onChange={(e) => setInputBrandLogo(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-center font-emoji text-lg focus:ring-1 focus:ring-emerald-500 outline-none font-bold"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-emoji text-lg focus:ring-1 focus:ring-emerald-500 outline-none font-bold"
                   />
                 </div>
                 
@@ -237,7 +239,7 @@ export default function SettingsComponent({
                     placeholder="OmniOrder Store"
                     value={inputBrandName}
                     onChange={(e) => setInputBrandName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-extrabold text-slate-900 focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-900 focus:ring-1 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -252,7 +254,7 @@ export default function SettingsComponent({
                   placeholder="Ketik profil singkat toko, misal: Grosir Pakaian Anak & Remaja Online-Offline Jakarta Barat"
                   value={inputBrandProfile}
                   onChange={(e) => setInputBrandProfile(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none resize-none leading-relaxed"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none resize-none leading-relaxed"
                 />
               </div>
 
@@ -265,7 +267,7 @@ export default function SettingsComponent({
                   placeholder="© 2026 PT. Busana Sejahtera Mandiri - Hak Cipta Dilindungi"
                   value={inputBrandFooter}
                   onChange={(e) => setInputBrandFooter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none"
                 />
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">Teks ini akan dirender di bagian bawah sidebar menu secara terus menerus.</span>
               </div>
@@ -294,7 +296,7 @@ export default function SettingsComponent({
                     type="text"
                     id="new_method_input"
                     placeholder="Contoh: Bank BCA"
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-250 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -462,7 +464,7 @@ export default function SettingsComponent({
                       placeholder="Contoh: Shopee Premium, TikTok Mall, Ekspor"
                       value={chanName}
                       onChange={(e) => setChanName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
 
@@ -478,7 +480,7 @@ export default function SettingsComponent({
                         placeholder="5"
                         value={chanCommission}
                         onChange={(e) => setChanCommission(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
                       />
                     </div>
 
@@ -493,7 +495,7 @@ export default function SettingsComponent({
                         placeholder="2"
                         value={chanPayment}
                         onChange={(e) => setChanPayment(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
                       />
                     </div>
                   </div>
@@ -509,7 +511,7 @@ export default function SettingsComponent({
                         placeholder="1000"
                         value={chanFlat}
                         onChange={(e) => setChanFlat(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
                       />
                     </div>
 
@@ -523,7 +525,7 @@ export default function SettingsComponent({
                         placeholder="4"
                         value={chanShipping}
                         onChange={(e) => setChanShipping(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
                       />
                     </div>
                   </div>
@@ -538,7 +540,7 @@ export default function SettingsComponent({
                       placeholder="10000"
                       value={chanShippingMax}
                       onChange={(e) => setChanShippingMax(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
                     />
                   </div>
 

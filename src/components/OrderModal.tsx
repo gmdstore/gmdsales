@@ -577,7 +577,7 @@ export default function OrderModal({
                 type="datetime-local"
                 value={getDatetimeInputValue(dateTime)}
                 onChange={(e) => handleDateTimeChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
               />
             </div>
 
@@ -610,7 +610,7 @@ export default function OrderModal({
                 <button
                   type="button"
                   onClick={handlePasteOrderNumber}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-250 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
                   title="Salin No Pesanan otomatis dari clipboard (atau klik untuk buat dummy id)"
                 >
                   <Clipboard className="h-3.5 w-3.5 text-slate-500" />
@@ -719,7 +719,7 @@ export default function OrderModal({
                         placeholder="Ketik nama produk atau kode SKU..."
                         value={item.searchQuery}
                         onChange={(e) => handleProductSearchTextChange(idx, e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
 
                       {/* Floating Autocomplete Dropdown List */}
@@ -753,7 +753,7 @@ export default function OrderModal({
                         disabled={!isProductSelected}
                         value={item.color}
                         onChange={(e) => handleUpdateColor(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
                         {!isProductSelected && <option value="">Pilih Produk</option>}
                         {activeProduct?.colors.map(col => (
@@ -769,7 +769,7 @@ export default function OrderModal({
                         disabled={!isProductSelected}
                         value={item.size}
                         onChange={(e) => handleUpdateSize(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40"
                       >
                         {SIZES.filter(sz => {
                           if (!activeProduct) return true;
@@ -805,7 +805,7 @@ export default function OrderModal({
                             e.preventDefault();
                           }
                         }}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
 
@@ -871,7 +871,7 @@ export default function OrderModal({
                   step="1000"
                   value={discounts}
                   onChange={(e) => setDiscounts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
                 />
               </div>
 
@@ -881,7 +881,7 @@ export default function OrderModal({
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-250 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                 >
                   {availablePaymentMethods.map(m => (
                     <option key={m} value={m}>{m}</option>
@@ -891,7 +891,7 @@ export default function OrderModal({
             </div>
 
             {/* F-04 Automatic Fees Calculator Recap ledger */}
-            <div className={`bg-slate-50 border border-slate-250 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
+            <div className={`bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
                 <h4 className="font-extrabold text-slate-800 text-xs">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
                 <span className="text-[9px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
