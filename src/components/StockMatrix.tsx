@@ -843,6 +843,8 @@ export default function StockMatrix({
                                 pattern="[0-9]*"
                                 autoFocus
                                 value={editValue}
+                                onFocus={(e) => e.target.select()}
+                                onClick={(e) => (e.target as HTMLInputElement).select()}
                                 onChange={(e) => setEditValue(e.target.value.replace(/\D/g, ''))}
                                 onBlur={() => handleRequestSaveStock(stockItem.id, size)}
                                 onWheel={(e) => {

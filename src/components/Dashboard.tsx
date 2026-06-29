@@ -547,6 +547,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                   <th className="py-2 px-3 text-right">HPP Item</th>
                   <th className="py-2 px-3 text-right text-emerald-800 bg-emerald-50/30">Omset</th>
                   <th className="py-2 px-3 text-right text-emerald-950 bg-emerald-100/10">Laba</th>
+                  <th className="py-2 px-3 text-center w-36">Bayar & PIC</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -565,9 +566,6 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                         <div className="flex flex-wrap items-center gap-1">
                           <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black tracking-wide uppercase rounded ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                             {channel.name}
-                          </span>
-                          <span className="inline-block text-[9.5px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1 py-0.2 rounded">
-                            {ord.paymentMethod}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -663,6 +661,22 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                       {/* Estimation profitable margin color badge */}
                       <td className={`py-2 px-3 text-right font-mono font-black bg-emerald-100/5 whitespace-nowrap text-xs ${ord.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {formatRp(ord.netProfit)}
+                      </td>
+
+                      {/* Payment Method & Recorder PIC Column */}
+                      <td className="py-2 px-3 text-center">
+                        <div className="flex flex-col items-center gap-1 justify-center">
+                          <span className="inline-block text-[9.5px] font-black uppercase bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded-md shadow-3xs">
+                            {ord.paymentMethod}
+                          </span>
+                          {ord.pencatat ? (
+                            <span className="inline-block text-[9.5px] font-extrabold uppercase bg-sky-50 border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-md shadow-3xs" title="Nama Pencatat">
+                              👤 {ord.pencatat}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-350 italic font-medium">-</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

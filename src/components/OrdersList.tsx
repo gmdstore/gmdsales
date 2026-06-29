@@ -157,11 +157,13 @@ export default function OrdersList({
                   <th className="py-2 px-3 w-32">Tanggal & Jam</th>
                   <th className="py-2 px-3 min-w-[180px]">Rincian Barang Belanja</th>
                   <th className="py-2 px-3 w-16 text-center">Qty</th>
-                  <th className="py-2 px-3 text-right">Potongan Toko</th>
+                  <th className="py-2 px-3 w-28 text-right text-slate-800">Harga Jual</th>
+                  <th className="py-2 px-3 w-44 text-right text-rose-700">Diskon & Potongan</th>
                   <th className="py-2 px-3 text-right">Potongan Biaya</th>
                   <th className="py-2 px-3 text-right">HPP Item</th>
                   <th className="py-2 px-3 text-right text-emerald-800 bg-emerald-50/30">Omset</th>
                   <th className="py-2 px-3 text-right text-emerald-950 bg-emerald-100/10">Laba</th>
+                  <th className="py-2 px-3 text-center w-36">Bayar & PIC</th>
                   <th className="py-2 px-3 text-center w-24">Aksi</th>
                 </tr>
               </thead>
@@ -181,9 +183,6 @@ export default function OrdersList({
                         <div className="flex flex-wrap items-center gap-1">
                           <span className={`inline-block px-1.5 py-0.5 text-[9px] font-black tracking-wide uppercase rounded ${channel.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                             {channel.name}
-                          </span>
-                          <span className="inline-block text-[9.5px] font-extrabold uppercase bg-slate-100 border border-slate-200 text-slate-600 px-1 py-0.2 rounded">
-                            {ord.paymentMethod}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-0.5">
@@ -263,18 +262,86 @@ export default function OrdersList({
                         </div>
                       </td>
 
-                      {/* Total Discounts */}
-                      <td className="py-2 px-3 text-right font-mono font-bold text-rose-600 text-xs">
-                        {ord.discounts > 0 ? `-${formatRp(ord.discounts)}` : '-'}
+                      {/* Harga Jual column */}
+                      <td className="py-1.5 px-3 w-28 text-right font-mono text-slate-900 text-xs font-extrabold">
+                        <div className="flex flex-col gap-1">
+                          {ord.products.map((p, pIdx) => {
+                            const discAmt = p.discountAmount ?? 0;
+                            const hasDisc = discAmt > 0;
+                            const originalVal = p.originalPrice || (p.price + discAmt);
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className="h-[32px] flex flex-col justify-center items-end"
+                              >
+                                {hasDisc ? (
+                                  <>
+                                    <span className="text-[10px] text-slate-400 line-through font-normal leading-none mb-0.5">
+                                      {formatRp(originalVal)}
+                                    </span>
+                                    <span className="text-slate-950 font-black leading-none">
+                                      {formatRp(p.price)}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-slate-900 font-extrabold leading-none">
+                                    {formatRp(p.price)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </td>
 
-                      {/* Calculated Commission & Fees */}
-                      <td className="py-2 px-3 text-right space-y-0.5 text-xs" title="Klik detail biaya">
-                        <div className="font-mono text-rose-700 font-bold">
-                          -{formatRp(ord.calculatedFees.totalFees)}
+                      {/* Diskon & Voucher column */}
+                      <td className="py-1.5 px-3 w-44 text-right font-mono text-[11px] text-rose-600">
+                        <div className="flex flex-col gap-1">
+                          {ord.products.map((p, pIdx) => {
+                            const discAmt = p.discountAmount ?? 0;
+                            const hasDisc = discAmt > 0;
+                            return (
+                              <div 
+                                key={pIdx} 
+                                className="h-[32px] flex flex-col justify-center items-end"
+                              >
+                                {hasDisc ? (
+                                  <>
+                                    <span className="font-extrabold leading-none">-{formatRp(discAmt)}</span>
+                                    {p.discountName && (
+                                      <span className="text-[9px] text-slate-400 truncate max-w-[115px] leading-none mt-0.5" title={p.discountName}>
+                                        {p.discountName}
+                                      </span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 leading-none">-</span>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div className="text-[9.5px] text-slate-400 font-semibold font-sans">
-                          K: {ord.calculatedFees.commission > 0 ? `${formatRp(ord.calculatedFees.commission)}` : '0'} | P: {ord.calculatedFees.paymentFee > 0 ? `${formatRp(ord.calculatedFees.paymentFee)}` : '0'}
+                        
+                        {/* Order-level Voucher Discount */}
+                        {ord.discounts > 0 && (
+                          <div className="mt-2 pt-1.5 border-t border-dashed border-slate-200 flex flex-col justify-center items-end">
+                            <span className="font-extrabold text-rose-600 text-[11px] leading-none font-mono">
+                              -{formatRp(ord.discounts)}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mt-1">
+                              Voucher
+                            </span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Calculated Commission & Fees (Potongan Biaya) */}
+                      <td className="py-1.5 px-3 text-right font-mono text-[11px] text-rose-600" title="Klik detail biaya">
+                        <div className="flex flex-col justify-center items-end">
+                          <span className="font-extrabold leading-none">-{formatRp(ord.calculatedFees.totalFees)}</span>
+                          <span className="text-[9px] text-slate-400 font-medium leading-none mt-1 font-sans">
+                            K: {ord.calculatedFees.commission > 0 ? formatRp(ord.calculatedFees.commission) : '0'} | P: {ord.calculatedFees.paymentFee > 0 ? formatRp(ord.calculatedFees.paymentFee) : '0'}
+                          </span>
                         </div>
                       </td>
 
@@ -291,6 +358,22 @@ export default function OrdersList({
                       {/* Estimation profitable margin color badge */}
                       <td className={`py-2 px-3 text-right font-mono font-black bg-emerald-100/5 whitespace-nowrap text-xs ${ord.netProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {formatRp(ord.netProfit)}
+                      </td>
+
+                      {/* Payment Method & Recorder PIC Column */}
+                      <td className="py-2 px-3 text-center">
+                        <div className="flex flex-col items-center gap-1 justify-center">
+                          <span className="inline-block text-[9.5px] font-black uppercase bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded-md shadow-3xs">
+                            {ord.paymentMethod}
+                          </span>
+                          {ord.pencatat ? (
+                            <span className="inline-block text-[9.5px] font-extrabold uppercase bg-sky-50 border border-sky-200 text-sky-700 px-1.5 py-0.5 rounded-md shadow-3xs" title="Nama Pencatat">
+                              👤 {ord.pencatat}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-350 italic font-medium">-</span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Control buttons */}

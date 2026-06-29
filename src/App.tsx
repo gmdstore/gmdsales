@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Product, StockItem, Channel, Order } from './types';
+import { Product, StockItem, Channel, Order, AutoDiscount } from './types';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_STOCKS, 
@@ -73,6 +73,35 @@ export default function App() {
   const [paymentMethods, setPaymentMethods] = useState<string[]>(() => {
     const saved = localStorage.getItem('omni_payment_methods');
     return saved ? JSON.parse(saved) : ['Transfer', 'COD', 'E-Wallet', 'Lainnya'];
+  });
+
+  const [pencatatList, setPencatatList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('omni_pencatat_list');
+    return saved ? JSON.parse(saved) : ['Admin 1', 'Admin 2', 'Owner'];
+  });
+
+  const [autoDiscounts, setAutoDiscounts] = useState<AutoDiscount[]>(() => {
+    const saved = localStorage.getItem('omni_auto_discounts');
+    return saved ? JSON.parse(saved) : [
+      {
+        id: 'disc_default_1',
+        name: 'Diskon Gajian 10%',
+        type: 'percent',
+        value: 10,
+        channelIds: ['shopee', 'tokopedia'],
+        productIds: ['all'],
+        isActive: true
+      },
+      {
+        id: 'disc_default_2',
+        name: 'Potongan Flat Rp 5rb',
+        type: 'nominal',
+        value: 5000,
+        channelIds: ['all'],
+        productIds: ['all'],
+        isActive: true
+      }
+    ];
   });
 
   const updatePaymentMethods = (newMethods: string[]) => {
@@ -159,6 +188,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('omni_payment_methods', JSON.stringify(paymentMethods));
   }, [paymentMethods]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_pencatat_list', JSON.stringify(pencatatList));
+  }, [pencatatList]);
+
+  useEffect(() => {
+    localStorage.setItem('omni_auto_discounts', JSON.stringify(autoDiscounts));
+  }, [autoDiscounts]);
 
   useEffect(() => {
     localStorage.setItem('omni_products', JSON.stringify(products));
@@ -452,6 +489,7 @@ export default function App() {
       localStorage.removeItem('omni_brand_profile');
       localStorage.removeItem('omni_brand_footer');
       localStorage.removeItem('omni_app_font');
+      localStorage.removeItem('omni_pencatat_list');
 
       setProducts(INITIAL_PRODUCTS);
       setStocks(INITIAL_STOCKS);
@@ -463,6 +501,7 @@ export default function App() {
       setBrandProfile('Sistem Pengelola Transaksi Omnichannel');
       setBrandFooter('OmniOrder – All rights reserved © 2026.');
       setAppFont('Inter');
+      setPencatatList(['Admin 1', 'Admin 2', 'Owner']);
       setActiveTab('dashboard');
       setIsMobileSidebarOpen(false);
     }
@@ -698,6 +737,11 @@ export default function App() {
               onUpdateFont={setAppFont}
               paymentMethods={paymentMethods}
               onUpdatePaymentMethods={updatePaymentMethods}
+              pencatatList={pencatatList}
+              onUpdatePencatatList={setPencatatList}
+              autoDiscounts={autoDiscounts}
+              onUpdateAutoDiscounts={setAutoDiscounts}
+              products={products}
             />
           )}
         </div>
@@ -718,6 +762,8 @@ export default function App() {
         editingOrder={editingOrder}
         onUpdateOrder={handleUpdateOrder}
         paymentMethods={paymentMethods}
+        pencatatList={pencatatList}
+        autoDiscounts={autoDiscounts}
       />
 
     </div>

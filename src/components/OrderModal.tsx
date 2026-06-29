@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Product, StockItem, Channel, Order, SIZES } from '../types';
+import { Product, StockItem, Channel, Order, SIZES, AutoDiscount } from '../types';
 import { calculateOrderMetrics } from '../data';
 import { AlertTriangle, Plus, Trash2, Calendar, Clipboard, HelpCircle, AlertCircle, Check } from 'lucide-react';
 
@@ -19,6 +19,8 @@ interface OrderModalProps {
   editingOrder?: Order | null;
   onUpdateOrder?: (updatedOrder: Order, oldOrder: Order) => void;
   paymentMethods: string[];
+  pencatatList: string[];
+  autoDiscounts?: AutoDiscount[];
 }
 
 interface CartItem {
@@ -32,6 +34,9 @@ interface CartItem {
   imageUrl: string;
   searchQuery: string;
   showDropdown: boolean;
+  originalPrice?: number;
+  discountAmount?: number;
+  discountName?: string;
 }
 
 export default function OrderModal({
@@ -44,7 +49,9 @@ export default function OrderModal({
   onSaveOrder,
   editingOrder = null,
   onUpdateOrder,
-  paymentMethods
+  paymentMethods,
+  pencatatList,
+  autoDiscounts = []
 }: OrderModalProps) {
   // Basic properties
   const [orderNumber, setOrderNumber] = useState<string>('');
@@ -53,6 +60,7 @@ export default function OrderModal({
   const [discounts, setDiscounts] = useState<number>(0);
   const [showDiscountCalculator, setShowDiscountCalculator] = useState<boolean>(false);
   const [dateTime, setDateTime] = useState<string>('');
+  const [pencatat, setPencatat] = useState<string>('');
 
   // Shopping list cart state (start with 1 empty row)
   const [cart, setCart] = useState<CartItem[]>([
@@ -133,6 +141,7 @@ export default function OrderModal({
         setPaymentMethod(editingOrder.paymentMethod);
         setDiscounts(editingOrder.discounts);
         setDateTime(editingOrder.dateTime);
+        setPencatat(editingOrder.pencatat ?? '');
         
         const mappedCart = editingOrder.products.map(p => {
           const matchedProduct = products.find(prod => prod.id === p.productId);
@@ -178,7 +187,9 @@ export default function OrderModal({
         // Reset values
         setOrderNumber('');
         setChannelId('shopee');
+        setPaymentMethod(paymentMethods[0] || '');
         setDiscounts(0);
+        setPencatat(pencatatList[0] || '');
         setStockError(null);
         setOrderNumberError(null);
         setCart([
@@ -197,7 +208,7 @@ export default function OrderModal({
         ]);
       }
     }
-  }, [isOpen, editingOrder, products]);
+  }, [isOpen, editingOrder, products, paymentMethods, pencatatList]);
 
   const getDatetimeInputValue = (dtStr: string) => {
     if (!dtStr) return '';
@@ -329,7 +340,7 @@ export default function OrderModal({
       : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
     next[index].size = productSizes[0] || 'M';
     
-    setCart(next);
+    setCart(applyAutoDiscountsToCart(next, channelId));
   };
 
   const handleUpdateColor = (index: number, color: string) => {
@@ -376,6 +387,48 @@ export default function OrderModal({
       currency: 'IDR',
       minimumFractionDigits: 0
     }).format(value);
+  };
+
+  // Helper to dynamically calculate and apply matching automatic discounts
+  const applyAutoDiscountsToCart = (currentCart: CartItem[], chanId: string): CartItem[] => {
+    return currentCart.map(item => {
+      if (!item.productId) return item;
+      
+      const matchedProduct = products.find(p => p.id === item.productId);
+      if (!matchedProduct) return item;
+
+      // Find first matching active automatic discount rule
+      const discount = autoDiscounts.find(d => 
+        d.isActive &&
+        (d.channelIds.includes('all') || d.channelIds.includes(chanId)) &&
+        (d.productIds.includes('all') || d.productIds.includes(item.productId))
+      );
+
+      const basePrice = matchedProduct.price; // original product master price
+      let finalPrice = basePrice;
+      let discountAmount = 0;
+      let discountName = '';
+
+      if (discount) {
+        if (discount.type === 'percent') {
+          discountAmount = Math.round((basePrice * discount.value) / 100);
+        } else {
+          discountAmount = discount.value;
+        }
+        // Ensure discount doesn't make price negative
+        discountAmount = Math.min(discountAmount, basePrice);
+        finalPrice = basePrice - discountAmount;
+        discountName = discount.name;
+      }
+
+      return {
+        ...item,
+        price: finalPrice,
+        originalPrice: basePrice,
+        discountAmount: discountAmount,
+        discountName: discountName
+      };
+    });
   };
 
   // Validation before submission
@@ -465,7 +518,10 @@ export default function OrderModal({
       size: item.size,
       qty: item.qty,
       price: item.price,
-      hpp: item.hpp
+      hpp: item.hpp,
+      originalPrice: item.originalPrice,
+      discountAmount: item.discountAmount,
+      discountName: item.discountName
     }));
 
     const finalOrderObj: Order = {
@@ -493,7 +549,8 @@ export default function OrderModal({
         totalFees: totalDeductions
       },
       netRevenue: simulatedNetRevenue,
-      netProfit: simulatedNetProfit
+      netProfit: simulatedNetProfit,
+      pencatat: pencatat || undefined
     };
 
     if (editingOrder && onUpdateOrder) {
@@ -565,7 +622,7 @@ export default function OrderModal({
           <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-xs">
           
           {/* Section 1: Transaction Coordinates info */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-4 gap-4 items-start shadow-3xs">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-start shadow-3xs">
             
             {/* Datetime Field Defaults Automatic */}
             <div className="space-y-1.5 col-span-1">
@@ -624,11 +681,30 @@ export default function OrderModal({
               <label className="font-bold text-slate-700 block">Saluran Penjualan</label>
               <select
                 value={channelId}
-                onChange={(e) => setChannelId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 shadow-3xs"
+                onChange={(e) => {
+                  const nextChan = e.target.value;
+                  setChannelId(nextChan);
+                  setCart(prev => applyAutoDiscountsToCart(prev, nextChan));
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 shadow-3xs cursor-pointer"
               >
                 {channels.map(chan => (
                   <option key={chan.id} value={chan.id}>{chan.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Pencatat / PIC Choice */}
+            <div className="space-y-1.5 col-span-1">
+              <label className="font-bold text-slate-700 block">Pencatat / PIC</label>
+              <select
+                value={pencatat}
+                onChange={(e) => setPencatat(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 shadow-3xs cursor-pointer"
+              >
+                <option value="">-- Pilih PIC --</option>
+                {pencatatList.map(p => (
+                  <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>
@@ -826,11 +902,27 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 5: Locked price and Subtotal value */}
-                    <div className="w-[125px] text-right font-mono pr-1">
-                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide">LOCKED SUB</span>
-                      <span className="text-xs font-bold text-slate-800 block mt-0.5">
-                        {isProductSelected ? formatRp(item.price * item.qty) : '-'}
-                      </span>
+                    <div className="w-[145px] text-right font-mono pr-1 flex flex-col justify-center">
+                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-none">SUBTOTAL</span>
+                      {isProductSelected ? (
+                        <>
+                          <span className="text-xs font-black text-slate-950 block mt-1">
+                            {formatRp(item.price * item.qty)}
+                          </span>
+                          {item.discountAmount && item.discountAmount > 0 ? (
+                            <div className="mt-1 flex flex-col items-end gap-0.5 leading-none">
+                              <span className="text-[8px] text-rose-600 font-extrabold tracking-wide uppercase bg-rose-50 border border-rose-100 px-1 py-0.5 rounded max-w-[130px] truncate" title={item.discountName}>
+                                {item.discountName} (-{formatRp(item.discountAmount)})
+                              </span>
+                              <span className="text-[9px] text-slate-400 line-through">
+                                {formatRp((item.originalPrice || item.price + item.discountAmount) * item.qty)}
+                              </span>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-350 mt-1 block">-</span>
+                      )}
                     </div>
 
                     {/* Column 6: Delete action at the far right */}

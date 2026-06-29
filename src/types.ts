@@ -42,8 +42,21 @@ export interface OrderProduct {
   color: string;
   size: string;
   qty: number;
-  price: number; // locked price at time of order
+  price: number; // locked price at time of order (final price after auto discount)
   hpp: number; // locked HPP at time of order
+  discountName?: string; // name of the automatic discount applied
+  discountAmount?: number; // the automatic discount amount applied per unit
+  originalPrice?: number; // original price before automatic discount
+}
+
+export interface AutoDiscount {
+  id: string;
+  name: string;
+  type: 'percent' | 'nominal';
+  value: number; // e.g., 10 for 10% or 5000 for Rp 5.000
+  channelIds: string[]; // channels this discount applies to, or ['all'] for all channels
+  productIds: string[]; // products this discount applies to, or ['all'] for all products
+  isActive: boolean;
 }
 
 export interface Order {
@@ -66,6 +79,7 @@ export interface Order {
   };
   netRevenue: number; // Omset Bersih = totalPrice - discounts - totalFees
   netProfit: number; // Laba Bersih = netRevenue - totalHpp
+  pencatat?: string; // Name/variable of the person recording the order
 }
 
 export const SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', 'All Size'] as const;
