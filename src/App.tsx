@@ -712,6 +712,7 @@ export default function App() {
               onAddProduct={handleAddProduct}
               onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
+              onReorderProducts={setProducts}
             />
           )}
 

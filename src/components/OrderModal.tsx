@@ -88,7 +88,7 @@ export default function OrderModal({
     let stockErrorFound = false;
     for (let i = 0; i < cart.length; i++) {
         const item = cart[i];
-        if (!item.productId) continue;
+        if (!item.productId || !item.color || !item.size) continue;
         
         // StockItem is generated as productid_color
         const key = `${item.productId}_${item.color}`;
@@ -155,7 +155,10 @@ export default function OrderModal({
             hpp: p.hpp,
             imageUrl: matchedProduct ? matchedProduct.imageUrl : '',
             searchQuery: matchedProduct ? matchedProduct.name : '',
-            showDropdown: false
+            showDropdown: false,
+            originalPrice: p.originalPrice,
+            discountAmount: p.discountAmount,
+            discountName: p.discountName
           };
         });
         
@@ -331,14 +334,26 @@ export default function OrderModal({
     next[index].imageUrl = product.imageUrl;
     next[index].searchQuery = product.name;
     next[index].showDropdown = false;
-    // Set first color of product as the default selected color
-    next[index].color = product.colors[0] || '';
     
     // Choose the first available size for this product
     const productSizes = product.sizes && product.sizes.length > 0 
       ? product.sizes 
       : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
-    next[index].size = productSizes[0] || 'M';
+    const productColors = product.colors || [];
+
+    // Auto-fill color if exactly one color variant is available
+    if (productColors.length === 1) {
+      next[index].color = productColors[0];
+    } else {
+      next[index].color = '';
+    }
+
+    // Auto-fill size if exactly one size variant is available
+    if (productSizes.length === 1) {
+      next[index].size = productSizes[0];
+    } else {
+      next[index].size = '';
+    }
     
     setCart(applyAutoDiscountsToCart(next, channelId));
   };
@@ -365,12 +380,15 @@ export default function OrderModal({
   const grossTotalPrice = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const totalHpp = cart.reduce((sum, item) => sum + (item.hpp * item.qty), 0);
 
-  // Calculated Channel Fees using the helper
-  const commission = Number(((grossTotalPrice * selectedChannel.commissionPercent) / 100).toFixed(2));
-  const paymentFee = Number(((grossTotalPrice * selectedChannel.paymentFeePercent) / 100).toFixed(2));
+  // Buyer Paid Price: harga jual - diskon auto - diskon toko/voucher
+  const buyerPaidPrice = Math.max(0, grossTotalPrice - discounts);
+
+  // Calculated Channel Fees using the helper (scaled by buyer paid price, except flat process fee)
+  const commission = Number(((buyerPaidPrice * selectedChannel.commissionPercent) / 100).toFixed(2));
+  const paymentFee = Number(((buyerPaidPrice * selectedChannel.paymentFeePercent) / 100).toFixed(2));
   const processingFee = selectedChannel.flatProcessingFee;
 
-  let freeShippingSubsidy = (grossTotalPrice * selectedChannel.freeShippingSubsidyPercent) / 100;
+  let freeShippingSubsidy = (buyerPaidPrice * selectedChannel.freeShippingSubsidyPercent) / 100;
   if (selectedChannel.freeShippingMaxCap > 0 && freeShippingSubsidy > selectedChannel.freeShippingMaxCap) {
     freeShippingSubsidy = selectedChannel.freeShippingMaxCap;
   }
@@ -455,6 +473,10 @@ export default function OrderModal({
       }
       if (!item.color) {
         alert(`Baris #${i + 1} belum memilih variasi warna.`);
+        return;
+      }
+      if (!item.size) {
+        alert(`Baris #${i + 1} belum memilih variasi ukuran.`);
         return;
       }
     }
@@ -711,24 +733,9 @@ export default function OrderModal({
           </div>
 
           {/* Section 2: Interactive Shopping Cart List */}
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between border-b border-slate-150 pb-2.5">
-              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-                🛒 Keranjang Belanja Item
-                <span className="text-[10px] text-slate-400 font-mono font-bold">({cart.length} Baris Produk)</span>
-              </h3>
-              
-              <button
-                type="button"
-                onClick={handleAddCartRow}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-emerald-700 bg-emerald-50 text-[11px] font-black hover:bg-emerald-100 rounded-xl border border-emerald-200 cursor-pointer transition-all shadow-3xs"
-              >
-                <Plus className="h-3.5 w-3.5" /> TAMBAH BARIS
-              </button>
-            </div>
-
+          <div className="space-y-2">
             {/* Shopping ledger items lines */}
-            <div className="space-y-3 overflow-visible pr-1 pb-4">
+            <div className="space-y-2 overflow-visible pr-1 pb-2">
               {cart.map((item, idx) => {
                 const isProductSelected = !!item.productId;
                 const activeProduct = products.find(p => p.id === item.productId);
@@ -743,7 +750,7 @@ export default function OrderModal({
 
                 // Calculate remaining stock
                 let availableStockStr = '-';
-                if (isProductSelected && item.color) {
+                if (isProductSelected && item.color && item.size) {
                   const key = `${item.productId}_${item.color}`;
                   const stockItem = stocks.find(s => s.id === key);
                   let availableQty = stockItem?.stocks[item.size] ?? 0;
@@ -779,20 +786,22 @@ export default function OrderModal({
                 return (
                   <div 
                     key={idx} 
-                    className={`p-3 rounded-2xl relative flex flex-col md:flex-row md:items-center gap-3 shadow-3xs transition-all border ${
+                    className={`p-3.5 rounded-2xl relative flex flex-col md:flex-row md:items-end gap-3 shadow-sm transition-all border ${
                       item.qty > 1 
-                        ? 'bg-amber-50/40 border-amber-350 hover:border-amber-400 ring-2 ring-amber-500/5' 
-                        : 'bg-slate-50 border-slate-200/80 hover:border-slate-350'
+                        ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400 ring-1 ring-amber-400/20' 
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
                     }`}
                     style={{ zIndex: item.showDropdown ? 50 : (cart.length - idx) }}
                   >
                     
                     {/* Column 1: Autocomplete Product name */}
                     <div className="flex-1 min-w-[210px] relative">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Nama Produk / SKU (Min. 1 Huruf)</label>
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Nama Produk</label>
+                      )}
                       <input
                         type="text"
-                        placeholder="Ketik nama produk atau kode SKU..."
+                        placeholder="Ketik nama produk..."
                         value={item.searchQuery}
                         onChange={(e) => handleProductSearchTextChange(idx, e.target.value)}
                         className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -800,7 +809,7 @@ export default function OrderModal({
 
                       {/* Floating Autocomplete Dropdown List */}
                       {item.showDropdown && filteredSearchProducts.length > 0 && (
-                        <div className="absolute left-0 right-0 top-12 bg-white rounded-xl shadow-lg border border-slate-200 z-30 max-h-36 overflow-y-auto py-1 text-left animate-fade-in">
+                        <div className={`absolute left-0 right-0 ${idx === 0 ? 'top-12' : 'top-9'} bg-white rounded-xl shadow-lg border border-slate-200 z-30 max-h-36 overflow-y-auto py-1 text-left animate-fade-in`}>
                           {filteredSearchProducts.map(p => (
                             <button
                               key={p.id}
@@ -823,15 +832,18 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 2: Color selection */}
-                    <div className="w-[140px]">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Warna</label>
+                    <div className="w-[110px]">
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Warna</label>
+                      )}
                       <select
                         disabled={!isProductSelected}
                         value={item.color}
                         onChange={(e) => handleUpdateColor(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {!isProductSelected && <option value="">Pilih Produk</option>}
+                        {isProductSelected && !item.color && <option value="">Pilih Warna</option>}
                         {activeProduct?.colors.map(col => (
                           <option key={col} value={col}>{col}</option>
                         ))}
@@ -839,14 +851,18 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 3: Sizes dropdown */}
-                    <div className="w-[85px]">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Ukuran</label>
+                    <div className="w-[75px]">
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Ukuran</label>
+                      )}
                       <select
                         disabled={!isProductSelected}
                         value={item.size}
                         onChange={(e) => handleUpdateSize(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 cursor-pointer"
                       >
+                        {!isProductSelected && <option value="">-</option>}
+                        {isProductSelected && !item.size && <option value="">Pilih</option>}
                         {SIZES.filter(sz => {
                           if (!activeProduct) return true;
                           const stockItem = stocks.find(s => s.productId === activeProduct.id && s.color === item.color);
@@ -864,8 +880,10 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 4: Qty Input */}
-                    <div className="w-[75px]">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Kuantitas</label>
+                    <div className="w-[65px]">
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Qty</label>
+                      )}
                       <input
                         type="number"
                         disabled={!isProductSelected}
@@ -886,11 +904,13 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 4.5: Available Stock Info */}
-                    <div className="w-[85px] text-center">
-                      <label className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-0.5">Sisa Stok</label>
+                    <div className="w-[80px] text-center">
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Sisa Stok</label>
+                      )}
                       <span className={`inline-block w-full py-1.5 px-2 rounded-xl text-xs font-mono font-extrabold text-center border ${
                         !isProductSelected 
-                          ? 'bg-slate-100 text-slate-400 border-slate-205'
+                          ? 'bg-slate-100 text-slate-500 border-slate-205'
                           : availableStockStr === '0 pcs' 
                             ? 'bg-rose-50 text-rose-600 border-rose-200' 
                             : parseInt(availableStockStr) < 5 
@@ -901,46 +921,73 @@ export default function OrderModal({
                       </span>
                     </div>
 
-                    {/* Column 5: Locked price and Subtotal value */}
-                    <div className="w-[145px] text-right font-mono pr-1 flex flex-col justify-center">
-                      <span className="block text-[9px] text-slate-400 font-bold uppercase tracking-wide leading-none">SUBTOTAL</span>
-                      {isProductSelected ? (
-                        <>
-                          <span className="text-xs font-black text-slate-950 block mt-1">
-                            {formatRp(item.price * item.qty)}
+                    {/* Column 4.6: Automatic Discount Column */}
+                    <div className="w-[125px] text-center flex flex-col justify-center items-center">
+                      {idx === 0 && (
+                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2 leading-none text-center">Diskon Auto</label>
+                      )}
+                      {isProductSelected && item.discountAmount && item.discountAmount > 0 ? (
+                        <div className="flex flex-col items-center justify-center leading-none">
+                          <span className="text-[8.5px] text-rose-600 bg-rose-50 border border-rose-100 font-black px-1.5 py-1 rounded-md max-w-[120px] truncate block" title={item.discountName}>
+                            🏷️ -{formatRp(item.discountAmount * item.qty)}
                           </span>
-                          {item.discountAmount && item.discountAmount > 0 ? (
-                            <div className="mt-1 flex flex-col items-end gap-0.5 leading-none">
-                              <span className="text-[8px] text-rose-600 font-extrabold tracking-wide uppercase bg-rose-50 border border-rose-100 px-1 py-0.5 rounded max-w-[130px] truncate" title={item.discountName}>
-                                {item.discountName} (-{formatRp(item.discountAmount)})
-                              </span>
-                              <span className="text-[9px] text-slate-400 line-through">
-                                {formatRp((item.originalPrice || item.price + item.discountAmount) * item.qty)}
-                              </span>
-                            </div>
-                          ) : null}
-                        </>
+                          <span className="text-[8px] text-slate-500 font-bold truncate max-w-[120px] mt-1 block text-center" title={item.discountName}>
+                            {item.discountName}
+                          </span>
+                        </div>
                       ) : (
-                        <span className="text-xs font-bold text-slate-350 mt-1 block">-</span>
+                        <span className={`text-xs font-bold text-slate-400 block text-center ${idx === 0 ? 'mt-2.5' : ''}`}>-</span>
                       )}
                     </div>
 
-                    {/* Column 6: Delete action at the far right */}
-                    {cart.length > 1 ? (
-                      <div className="absolute top-2 right-2 md:relative md:top-auto md:right-auto flex flex-col items-center">
-                        <label className="hidden md:block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-1.5 opacity-0 select-none pointer-events-none">Hapus</label>
+                    {/* Column 5: Locked price and Subtotal value */}
+                    <div className="w-[135px] text-right font-mono pr-1 flex flex-col justify-center gap-0.5">
+                      {idx === 0 && (
+                        <span className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide leading-none mb-2">SUBTOTAL</span>
+                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {isProductSelected ? (
+                          <div className="flex flex-col items-end leading-none">
+                            {item.discountAmount && item.discountAmount > 0 ? (
+                              <span className="text-[10px] text-slate-500 line-through font-normal mb-1">
+                                {formatRp((item.originalPrice || item.price + item.discountAmount) * item.qty)}
+                              </span>
+                            ) : null}
+                            <span className="text-xs font-black text-slate-950 leading-none">
+                              {formatRp(item.price * item.qty)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className={`text-xs font-bold text-slate-400 block ${idx === 0 ? 'mt-2' : ''}`}>-</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Column 6: Action button at the far right */}
+                    <div className="absolute top-2 right-2 md:relative md:top-auto md:right-auto flex flex-col items-center">
+                      {idx === 0 ? (
+                        <>
+                          <label className="hidden md:block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-2 opacity-0 select-none pointer-events-none">Aksi</label>
+                          <button
+                            type="button"
+                            onClick={handleAddCartRow}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full bg-white border border-slate-200 hover:border-emerald-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
+                            title="Tambah baris item baru"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      ) : (
                         <button
                           type="button"
                           onClick={() => handleRemoveCartRow(idx)}
-                          className="p-1.5 text-slate-450 hover:text-rose-600 hover:bg-rose-50 rounded-xl bg-white border border-slate-200 hover:border-rose-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
+                          className="p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-full bg-white border border-slate-200 hover:border-rose-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
                           title="Hapus baris item"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      </div>
-                    ) : (
-                      <div className="hidden md:block w-[32px]" />
-                    )}
+                      )}
+                    </div>
 
                   </div>
                 );
@@ -955,30 +1002,32 @@ export default function OrderModal({
             <div className="space-y-4">
               <h4 className="font-extrabold text-slate-900 border-b border-slate-100 pb-1.5 text-xs uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
               
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block text-xs">Potongan Diskon Tambahan Toko (Rp):</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={discounts}
-                  onChange={(e) => setDiscounts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                />
-              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block text-xs">Potongan Toko (Rp):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={discounts}
+                    onChange={(e) => setDiscounts(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                  />
+                </div>
 
-              {/* Payment Method selector */}
-              <div className="space-y-1.5">
-                <label className="font-bold text-slate-700 block text-xs">Metode Pembayaran:</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {availablePaymentMethods.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+                {/* Payment Method selector */}
+                <div className="space-y-1.5">
+                  <label className="font-bold text-slate-700 block text-xs">Metode Pembayaran:</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                  >
+                    {availablePaymentMethods.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -991,31 +1040,58 @@ export default function OrderModal({
 
               {showDiscountCalculator && (
                 <div className="space-y-2.5 text-slate-600 font-bold font-mono text-[11px] leading-relaxed">
-                  {/* Gross omset */}
-                  <div className="flex justify-between">
-                    <span>Omset Kotor (Subtotal):</span>
-                    <span className="text-slate-900 font-extrabold">{formatRp(grossTotalPrice)}</span>
+                  {/* Harga Produk Awal */}
+                  <div className="flex justify-between text-slate-500">
+                    <span>Harga Produk (Awal):</span>
+                    <span className="font-semibold line-through">{formatRp(cart.reduce((sum, item) => sum + ((item.originalPrice ?? item.price) * item.qty), 0))}</span>
                   </div>
+
+                  {/* Detail Diskon Otomatis */}
+                  {cart.reduce((sum, item) => sum + ((item.discountAmount ?? 0) * item.qty), 0) > 0 && (
+                    <div className="bg-rose-50/50 rounded-xl p-2.5 border border-rose-100/40">
+                      <div className="flex justify-between text-rose-600 font-extrabold">
+                        <span>Diskon Otomatis:</span>
+                        <span>-{formatRp(cart.reduce((sum, item) => sum + ((item.discountAmount ?? 0) * item.qty), 0))}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-sans mt-1.5 space-y-1 pl-2">
+                        {cart.filter(item => (item.discountAmount ?? 0) > 0).map((item, idx) => (
+                          <div key={idx} className="flex justify-between font-medium">
+                            <span>• {item.discountName} ({item.qty}x)</span>
+                            <span>-{formatRp((item.discountAmount ?? 0) * item.qty)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Voucher / Diskon Toko */}
                   {discounts > 0 && (
                     <div className="flex justify-between text-rose-600 font-extrabold">
-                      <span>Diskon Toko:</span>
+                      <span>Voucher / Diskon Toko:</span>
                       <span>-{formatRp(discounts)}</span>
                     </div>
                   )}
+
+                  {/* Harga Jual (Bayar Pembeli) */}
+                  <div className="flex justify-between text-slate-900 font-extrabold border-t border-slate-150 pt-1.5">
+                    <span>Harga Jual (Bayar Pembeli):</span>
+                    <span className="text-emerald-700 font-black">{formatRp(buyerPaidPrice)}</span>
+                  </div>
+
                   {/* Fees */}
-                  <div className="flex justify-between">
+                  <div className="flex justify-between border-t border-slate-150 pt-2 text-slate-500 font-medium">
                     <span>Komisi ({selectedChannel.commissionPercent}%):</span>
                     <span>{commission > 0 ? `-${formatRp(commission)}` : '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-slate-500 font-medium">
                     <span>Beban Pembayaran ({selectedChannel.paymentFeePercent}%):</span>
                     <span>{paymentFee > 0 ? `-${formatRp(paymentFee)}` : '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-slate-500 font-medium">
                     <span>Biaya Proses:</span>
                     <span>{processingFee > 0 ? `-${formatRp(processingFee)}` : '-'}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-slate-500 font-medium">
                     <span>Subsidi Ongkir:</span>
                     <span>{freeShippingSubsidy > 0 ? `-${formatRp(freeShippingSubsidy)}` : '-'}</span>
                   </div>

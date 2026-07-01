@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Order, Channel, Product } from '../types';
-import { Search, Filter, Edit2, Trash2, Calendar, ShoppingBag, DollarSign, AlertCircle, RefreshCw, Copy, Check } from 'lucide-react';
+import { Search, Filter, Edit2, Trash2, Calendar, ShoppingBag, DollarSign, AlertCircle, RefreshCw, Copy, Check, Info } from 'lucide-react';
 
 interface OrdersListProps {
   orders: Order[];
@@ -26,6 +26,9 @@ export default function OrdersList({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedChannelId, setSelectedChannelId] = useState('all');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<'all' | 'Transfer' | 'COD' | 'E-Wallet' | 'Lainnya'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'custom'>('all');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -49,8 +52,113 @@ export default function OrdersList({
     const matchSearch = ord.orderNumber.toLowerCase().includes(searchTerm.toLowerCase().trim());
     const matchChannel = selectedChannelId === 'all' ? true : ord.channelId === selectedChannelId;
     const matchPayment = selectedPaymentMethod === 'all' ? true : ord.paymentMethod === selectedPaymentMethod;
-    return matchSearch && matchChannel && matchPayment;
+    
+    // Check Date Range Filter
+    const matchDate = () => {
+      if (dateFilter === 'all') return true;
+
+      const orderDate = new Date(ord.dateTime);
+      if (isNaN(orderDate.getTime())) return true; // fallback for invalid dates
+
+      const now = new Date();
+      
+      // Today (local midnight to local end of day)
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      // Yesterday
+      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const yesterdayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59, 999);
+
+      // This Week (Monday to Sunday)
+      const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday...
+      const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const startOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate() + 6, 23, 59, 59, 999);
+
+      // This Month
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+      switch (dateFilter) {
+        case 'today':
+          return orderDate >= todayStart && orderDate <= todayEnd;
+        case 'yesterday':
+          return orderDate >= yesterdayStart && orderDate <= yesterdayEnd;
+        case 'this_week':
+          return orderDate >= startOfWeek && orderDate <= endOfWeek;
+        case 'this_month':
+          return orderDate >= startOfMonth && orderDate <= endOfMonth;
+        case 'custom': {
+          if (!customStartDate && !customEndDate) return true;
+          let match = true;
+          if (customStartDate) {
+            const start = new Date(customStartDate);
+            start.setHours(0, 0, 0, 0);
+            match = match && orderDate >= start;
+          }
+          if (customEndDate) {
+            const end = new Date(customEndDate);
+            end.setHours(23, 59, 59, 999);
+            match = match && orderDate <= end;
+          }
+          return match;
+        }
+        default:
+          return true;
+      }
+    };
+
+    return matchSearch && matchChannel && matchPayment && matchDate();
   });
+
+  // Calculate summary metrics for filtered orders
+  const metrics = useMemo(() => {
+    let totalHargaJual = 0;
+    let totalDiskonVoucher = 0;
+    let totalKomisi = 0;
+    let totalOmset = 0;
+    let totalHpp = 0;
+    let totalLaba = 0;
+
+    filteredOrders.forEach((order) => {
+      // 1. Total Harga Jual (harga jual yang sudah dikurangi diskon & voucher, matches the 'Harga Jual' column total sum)
+      const totalGross = order.products.reduce((sum, pr) => sum + (pr.price * pr.qty), 0);
+      order.products.forEach((p) => {
+        const allocatedVoucherPerUnit = totalGross > 0 ? (p.price / totalGross) * order.discounts : 0;
+        const finalPrice = Math.max(0, p.price - allocatedVoucherPerUnit);
+        totalHargaJual += finalPrice * p.qty;
+
+        // Item-level automatic discounts (track for diskon card)
+        totalDiskonVoucher += (p.discountAmount ?? 0) * p.qty;
+      });
+
+      // 2. Extra Store discounts (manual discounts / vouchers entered)
+      totalDiskonVoucher += order.discounts;
+
+      // 3. Total Komisi (sum of commission, paymentFee, processingFee, and freeShippingSubsidy)
+      totalKomisi += order.calculatedFees.totalFees;
+
+      // 4. Total Omset (ambil dari data kolom omset, which is order.netRevenue)
+      totalOmset += order.netRevenue;
+
+      // 5. Total HPP
+      totalHpp += order.totalHpp;
+
+      // 6. Total Laba Bersih
+      totalLaba += order.netProfit;
+    });
+
+    return {
+      totalHargaJual,
+      totalDiskonVoucher,
+      totalKomisi,
+      totalOmset,
+      totalHpp,
+      totalLaba,
+    };
+  }, [filteredOrders]);
 
   const handleDeleteClick = (order: Order) => {
     setPendingDeleteOrder(order);
@@ -101,10 +209,50 @@ export default function OrdersList({
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {/* Filter Tanggal */}
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-emerald-500">
+              <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0" title="Tanggal">
+                <Calendar className="h-3.5 w-3.5" />
+              </span>
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value as any)}
+                className="bg-transparent border-none text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer pl-1.5"
+              >
+                <option value="all">Semua Tanggal</option>
+                <option value="today">Hari Ini</option>
+                <option value="yesterday">Kemarin</option>
+                <option value="this_week">Minggu Ini</option>
+                <option value="this_month">Bulan Ini</option>
+                <option value="custom">📅 Rentang Kustom</option>
+              </select>
+            </div>
+
+            {/* Custom Range Picker */}
+            {dateFilter === 'custom' && (
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 animate-fade-in">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-transparent border-none text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-[115px]"
+                  title="Tanggal Mulai"
+                />
+                <span className="text-slate-400 font-extrabold">s/d</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-transparent border-none text-xs font-bold text-slate-800 focus:outline-none cursor-pointer w-[115px]"
+                  title="Tanggal Selesai"
+                />
+              </div>
+            )}
+
             {/* Filter Channel */}
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-emerald-500">
-              <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
-                <Filter className="h-3.5 w-3.5" /> Saluran
+              <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0" title="Saluran">
+                <Filter className="h-3.5 w-3.5" />
               </span>
               <select
                 value={selectedChannelId}
@@ -120,8 +268,8 @@ export default function OrdersList({
 
             {/* Filter Payment Method */}
             <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
-              <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0">
-                💳 Metode
+              <span className="text-slate-405 font-bold flex items-center pr-1.5 border-r border-slate-200 gap-1 shrink-0" title="Metode Pembayaran">
+                💳
               </span>
               <select
                 value={selectedPaymentMethod}
@@ -137,6 +285,59 @@ export default function OrdersList({
         </div>
       </div>
 
+      {/* Statistics Cards Block */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 animate-fade-in">
+        
+        {/* Total Harga Jual Card */}
+        <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-3xs">
+          <span className="text-slate-400 text-[10px] uppercase font-extrabold tracking-wider block">Total Harga Jual</span>
+          <span className="text-slate-900 font-extrabold text-sm sm:text-base block mt-1.5 font-mono">
+            {formatRp(metrics.totalHargaJual)}
+          </span>
+        </div>
+
+        {/* Total Diskon & Voucher Card */}
+        <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-3xs">
+          <span className="text-slate-400 text-[10px] uppercase font-extrabold tracking-wider block">Total Diskon</span>
+          <span className="text-rose-600 font-extrabold text-sm sm:text-base block mt-1.5 font-mono">
+            {formatRp(metrics.totalDiskonVoucher)}
+          </span>
+        </div>
+
+        {/* Total Komisi Card */}
+        <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-3xs">
+          <span className="text-slate-400 text-[10px] uppercase font-extrabold tracking-wider block">Total Komisi</span>
+          <span className="text-amber-600 font-extrabold text-sm sm:text-base block mt-1.5 font-mono">
+            {formatRp(metrics.totalKomisi)}
+          </span>
+        </div>
+
+        {/* Total Omset Card */}
+        <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-3xs ring-1 ring-emerald-500/5">
+          <span className="text-slate-400 text-[10px] uppercase font-extrabold tracking-wider block">Total Omset</span>
+          <span className="text-emerald-700 font-black text-sm sm:text-base block mt-1.5 font-mono">
+            {formatRp(metrics.totalOmset)}
+          </span>
+        </div>
+
+        {/* Total HPP Card */}
+        <div className="bg-white border border-slate-200/85 rounded-2xl p-4 shadow-3xs">
+          <span className="text-slate-400 text-[10px] uppercase font-extrabold tracking-wider block">Total HPP</span>
+          <span className="text-slate-700 font-extrabold text-sm sm:text-base block mt-1.5 font-mono">
+            {formatRp(metrics.totalHpp)}
+          </span>
+        </div>
+
+        {/* Total Laba Card */}
+        <div className="bg-emerald-50/40 border border-emerald-150 rounded-2xl p-4 shadow-3xs ring-1 ring-emerald-500/15">
+          <span className="text-emerald-805 text-[10px] uppercase font-black tracking-wider block">Total Laba Bersih</span>
+          <span className={`font-black text-sm sm:text-base block mt-1.5 font-mono ${metrics.totalLaba >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+            {formatRp(metrics.totalLaba)}
+          </span>
+        </div>
+
+      </div>
+
       {/* Main Table Panel representation */}
       <div className="bg-white border border-slate-200/80 rounded-3xl shadow-sm overflow-hidden">
         
@@ -149,7 +350,7 @@ export default function OrdersList({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto min-h-[320px] pb-24">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100 font-extrabold text-slate-500 tracking-wide uppercase text-[10px]">
@@ -158,10 +359,10 @@ export default function OrdersList({
                   <th className="py-2 px-3 min-w-[180px]">Rincian Barang Belanja</th>
                   <th className="py-2 px-3 w-16 text-center">Qty</th>
                   <th className="py-2 px-3 w-28 text-right text-slate-800">Harga Jual</th>
-                  <th className="py-2 px-3 w-44 text-right text-rose-700">Diskon & Potongan</th>
-                  <th className="py-2 px-3 text-right">Potongan Biaya</th>
-                  <th className="py-2 px-3 text-right">HPP Item</th>
+                  <th className="py-2 px-3 w-40 text-right text-rose-700">Diskon & Voucher</th>
+                  <th className="py-2 px-3 w-32 text-right text-rose-700">Total Komisi</th>
                   <th className="py-2 px-3 text-right text-emerald-800 bg-emerald-50/30">Omset</th>
+                  <th className="py-2 px-3 text-right">HPP Item</th>
                   <th className="py-2 px-3 text-right text-emerald-950 bg-emerald-100/10">Laba</th>
                   <th className="py-2 px-3 text-center w-36">Bayar & PIC</th>
                   <th className="py-2 px-3 text-center w-24">Aksi</th>
@@ -175,8 +376,11 @@ export default function OrdersList({
                     color: 'bg-slate-100 text-slate-700 border-slate-200'
                   };
 
+                  const totalAutoDiscount = ord.products.reduce((sum, p) => sum + ((p.discountAmount ?? 0) * p.qty), 0);
+                  const totalDiscount = totalAutoDiscount + ord.discounts;
+
                   return (
-                    <tr key={ord.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={ord.id} className="relative hover:z-30 hover:bg-slate-50/50 transition-colors">
                       
                       {/* Badge and order number */}
                       <td className="py-2 px-3 space-y-1">
@@ -265,94 +469,143 @@ export default function OrdersList({
                       {/* Harga Jual column */}
                       <td className="py-1.5 px-3 w-28 text-right font-mono text-slate-900 text-xs font-extrabold">
                         <div className="flex flex-col gap-1">
-                          {ord.products.map((p, pIdx) => {
-                            const discAmt = p.discountAmount ?? 0;
-                            const hasDisc = discAmt > 0;
-                            const originalVal = p.originalPrice || (p.price + discAmt);
-                            return (
-                              <div 
-                                key={pIdx} 
-                                className="h-[32px] flex flex-col justify-center items-end"
-                              >
-                                {hasDisc ? (
-                                  <>
-                                    <span className="text-[10px] text-slate-400 line-through font-normal leading-none mb-0.5">
-                                      {formatRp(originalVal)}
+                          {(() => {
+                            const totalGross = ord.products.reduce((sum, pr) => sum + (pr.price * pr.qty), 0);
+                            return ord.products.map((p, pIdx) => {
+                              const discAmt = p.discountAmount ?? 0;
+                              const hasAutoDisc = discAmt > 0;
+                              const hasVoucherDisc = ord.discounts > 0;
+                              const hasAnyDisc = hasAutoDisc || hasVoucherDisc;
+                              
+                              const originalVal = p.originalPrice || (p.price + discAmt);
+                              const priceBeforeVoucher = hasAutoDisc ? originalVal : p.price;
+                              
+                              const allocatedVoucherPerUnit = totalGross > 0 ? (p.price / totalGross) * ord.discounts : 0;
+                              const finalPrice = Math.max(0, p.price - allocatedVoucherPerUnit);
+                              
+                              const totalOriginalVal = priceBeforeVoucher * p.qty;
+                              const totalFinalPrice = finalPrice * p.qty;
+                              const totalNormalPrice = p.price * p.qty;
+                              
+                              return (
+                                <div 
+                                  key={pIdx} 
+                                  className="h-[32px] flex flex-col justify-center items-end"
+                                >
+                                  {hasAnyDisc ? (
+                                    <>
+                                      <span className="text-[10px] text-slate-400 line-through font-normal leading-none mb-0.5" title={hasAutoDisc && hasVoucherDisc ? "Sebelum Diskon & Voucher" : hasAutoDisc ? "Sebelum Diskon" : "Sebelum Voucher"}>
+                                        {formatRp(totalOriginalVal)}
+                                      </span>
+                                      <span className="text-slate-950 font-black leading-none">
+                                        {formatRp(totalFinalPrice)}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="text-slate-900 font-extrabold leading-none">
+                                      {formatRp(totalNormalPrice)}
                                     </span>
-                                    <span className="text-slate-950 font-black leading-none">
-                                      {formatRp(p.price)}
-                                    </span>
-                                  </>
-                                ) : (
-                                  <span className="text-slate-900 font-extrabold leading-none">
-                                    {formatRp(p.price)}
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
+                                  )}
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </td>
 
                       {/* Diskon & Voucher column */}
-                      <td className="py-1.5 px-3 w-44 text-right font-mono text-[11px] text-rose-600">
-                        <div className="flex flex-col gap-1">
-                          {ord.products.map((p, pIdx) => {
-                            const discAmt = p.discountAmount ?? 0;
-                            const hasDisc = discAmt > 0;
-                            return (
-                              <div 
-                                key={pIdx} 
-                                className="h-[32px] flex flex-col justify-center items-end"
-                              >
-                                {hasDisc ? (
-                                  <>
-                                    <span className="font-extrabold leading-none">-{formatRp(discAmt)}</span>
-                                    {p.discountName && (
-                                      <span className="text-[9px] text-slate-400 truncate max-w-[115px] leading-none mt-0.5" title={p.discountName}>
-                                        {p.discountName}
-                                      </span>
-                                    )}
-                                  </>
-                                ) : (
-                                  <span className="text-slate-300 leading-none">-</span>
+                      <td className="py-1.5 px-3 w-40 text-right font-mono text-xs text-rose-600">
+                        {totalDiscount > 0 ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className="font-medium leading-none">
+                              -{formatRp(totalDiscount)}
+                            </span>
+                            <div className="relative group inline-block shrink-0">
+                              <Info className="w-3.5 h-3.5 text-rose-400 hover:text-rose-600 cursor-help transition-colors" />
+                              
+                              {/* Custom CSS Hover Tooltip for Combined Discount */}
+                              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2.5 hidden group-hover:flex flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans pointer-events-none transition-all duration-200 animate-fade-in">
+                                {ord.products.filter(p => (p.discountAmount ?? 0) > 0).map((p, pIdx) => (
+                                  <div key={pIdx} className="flex justify-between gap-4">
+                                    <span className="text-slate-400 truncate max-w-[100px]">{p.discountName || 'Diskon Otomatis'}</span>
+                                    <span className="font-mono text-rose-300 font-bold">-{formatRp((p.discountAmount ?? 0) * p.qty)}</span>
+                                  </div>
+                                ))}
+                                {ord.discounts > 0 && (
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-slate-400">Voucher</span>
+                                    <span className="font-mono text-rose-300 font-bold">-{formatRp(ord.discounts)}</span>
+                                  </div>
                                 )}
+                                <div className="flex justify-between gap-4 border-t border-slate-800 pt-1 mt-0.5 font-extrabold text-rose-400">
+                                  <span>Total Diskon:</span>
+                                  <span className="font-mono">-{formatRp(totalDiscount)}</span>
+                                </div>
+                                {/* Triangle indicator */}
+                                <div className="absolute left-full top-1/2 -translate-y-1/2 -ml-1 w-2 h-2 bg-slate-950 border-t border-r border-slate-800 rotate-45"></div>
                               </div>
-                            );
-                          })}
-                        </div>
-                        
-                        {/* Order-level Voucher Discount */}
-                        {ord.discounts > 0 && (
-                          <div className="mt-2 pt-1.5 border-t border-dashed border-slate-200 flex flex-col justify-center items-end">
-                            <span className="font-extrabold text-rose-600 text-[11px] leading-none font-mono">
-                              -{formatRp(ord.discounts)}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-bold block uppercase leading-none mt-1">
-                              Voucher
-                            </span>
+                            </div>
                           </div>
+                        ) : (
+                          <span className="text-slate-300 font-medium">-</span>
                         )}
                       </td>
 
-                      {/* Calculated Commission & Fees (Potongan Biaya) */}
-                      <td className="py-1.5 px-3 text-right font-mono text-[11px] text-rose-600" title="Klik detail biaya">
-                        <div className="flex flex-col justify-center items-end">
-                          <span className="font-extrabold leading-none">-{formatRp(ord.calculatedFees.totalFees)}</span>
-                          <span className="text-[9px] text-slate-400 font-medium leading-none mt-1 font-sans">
-                            K: {ord.calculatedFees.commission > 0 ? formatRp(ord.calculatedFees.commission) : '0'} | P: {ord.calculatedFees.paymentFee > 0 ? formatRp(ord.calculatedFees.paymentFee) : '0'}
+                      {/* Calculated Commission & Fees (Total Komisi) */}
+                      <td className="py-1.5 px-3 w-32 text-right font-mono text-xs text-rose-600">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <span className="font-medium leading-none">
+                            -{formatRp(ord.calculatedFees.totalFees)}
                           </span>
+                          <div className="relative group inline-block shrink-0">
+                            <Info className="w-3.5 h-3.5 text-rose-400 hover:text-rose-600 cursor-help transition-colors" />
+                            
+                            {/* Custom CSS Hover Tooltip */}
+                            <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2.5 hidden group-hover:flex flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans pointer-events-none transition-all duration-200 animate-fade-in">
+                              <div className="flex justify-between gap-4">
+                                <span className="text-slate-400">Komisi:</span>
+                                <span className="font-mono text-rose-300 font-bold">-{formatRp(ord.calculatedFees.commission)}</span>
+                              </div>
+                              
+                              <div className="flex justify-between gap-4">
+                                <span className="text-slate-400">Layanan:</span>
+                                <span className="font-mono text-rose-300 font-bold">-{formatRp(ord.calculatedFees.paymentFee)}</span>
+                              </div>
+                              
+                              {ord.calculatedFees.processingFee > 0 && (
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-400">Proses:</span>
+                                  <span className="font-mono text-rose-300 font-bold">-{formatRp(ord.calculatedFees.processingFee)}</span>
+                                </div>
+                              )}
+                              
+                              {ord.calculatedFees.freeShippingSubsidy > 0 && (
+                                <div className="flex justify-between gap-4">
+                                  <span className="text-slate-400">Subsidi Ongkir:</span>
+                                  <span className="font-mono text-rose-300 font-bold">-{formatRp(ord.calculatedFees.freeShippingSubsidy)}</span>
+                                </div>
+                              )}
+                              
+                              <div className="flex justify-between gap-4 border-t border-slate-800 pt-1 mt-0.5 font-extrabold text-rose-400">
+                                <span>Total Komisi:</span>
+                                <span className="font-mono">-{formatRp(ord.calculatedFees.totalFees)}</span>
+                              </div>
+                              
+                              {/* Triangle indicator */}
+                              <div className="absolute left-full top-1/2 -translate-y-1/2 -ml-1 w-2 h-2 bg-slate-950 border-t border-r border-slate-800 rotate-45"></div>
+                            </div>
+                          </div>
                         </div>
-                      </td>
-
-                      {/* Locked HPP cost */}
-                      <td className="py-2 px-3 text-right font-mono text-slate-500 font-medium text-xs">
-                        {formatRp(ord.totalHpp)}
                       </td>
 
                       {/* Estimation Net revenue color badge */}
                       <td className="py-2 px-3 text-right font-mono font-black text-slate-800 bg-emerald-50/20 whitespace-nowrap text-xs">
                         {formatRp(ord.netRevenue)}
+                      </td>
+
+                      {/* Locked HPP cost */}
+                      <td className="py-2 px-3 text-right font-mono text-slate-500 font-medium text-xs">
+                        {formatRp(ord.totalHpp)}
                       </td>
 
                       {/* Estimation profitable margin color badge */}
@@ -381,20 +634,20 @@ export default function OrdersList({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             type="button"
-                            onClick={() => onEditOrder(ord)}
-                            className="p-1 px-1.5 bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold border border-slate-250 cursor-pointer flex items-center gap-0.5 transition-all text-[10.5px]"
-                            title="Ubah detail barang/diskon entri"
-                          >
-                            <Edit2 className="h-3 w-3" /> Edit
-                          </button>
-                          
-                          <button
-                            type="button"
                             onClick={() => handleDeleteClick(ord)}
                             className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50/55 rounded border border-slate-200 cursor-pointer transition-colors"
                             title="Hapus permanen dan kembalikan stok"
                           >
                             <Trash2 className="h-3 w-3" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onEditOrder(ord)}
+                            className="p-1 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded border border-slate-200 cursor-pointer transition-colors"
+                            title="Ubah detail barang/diskon entri"
+                          >
+                            <Edit2 className="h-3 w-3" />
                           </button>
                         </div>
                       </td>

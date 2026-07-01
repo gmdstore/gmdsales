@@ -69,13 +69,15 @@ export function calculateOrderMetrics(params: {
   const totalPrice = price * qty;
   const totalHpp = hpp * qty;
 
+  const buyerPaidPrice = Math.max(0, totalPrice - discounts);
+
   // Let's compute fees based on active channel parameters
-  const commission = Number(((totalPrice * channel.commissionPercent) / 100).toFixed(2));
-  const paymentFee = Number(((totalPrice * channel.paymentFeePercent) / 100).toFixed(2));
+  const commission = Number(((buyerPaidPrice * channel.commissionPercent) / 100).toFixed(2));
+  const paymentFee = Number(((buyerPaidPrice * channel.paymentFeePercent) / 100).toFixed(2));
   const processingFee = channel.flatProcessingFee;
 
-  // Shipping subsidy based on % of totalPrice with Max Cap
-  let freeShippingSubsidy = (totalPrice * channel.freeShippingSubsidyPercent) / 100;
+  // Shipping subsidy based on % of buyerPaidPrice with Max Cap
+  let freeShippingSubsidy = (buyerPaidPrice * channel.freeShippingSubsidyPercent) / 100;
   if (channel.freeShippingMaxCap > 0 && freeShippingSubsidy > channel.freeShippingMaxCap) {
     freeShippingSubsidy = channel.freeShippingMaxCap;
   }

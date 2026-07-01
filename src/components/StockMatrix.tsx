@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Product, StockItem, SIZES, SizeType } from '../types';
-import { Eye, EyeOff, ShieldCheck, ShieldAlert, Plus, Trash2, Edit2, Check, X, Sliders, Search } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck, ShieldAlert, Plus, Trash2, Edit2, Check, X, Sliders, Search, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface StockMatrixProps {
   products: Product[];
@@ -19,6 +19,7 @@ interface StockMatrixProps {
   onAddProduct: (newProduct: Product) => void;
   onUpdateProduct: (updatedProduct: Product) => void;
   onDeleteProduct: (productId: string) => void;
+  onReorderProducts?: (updatedProducts: Product[]) => void;
 }
 
 export default function StockMatrix({
@@ -31,7 +32,8 @@ export default function StockMatrix({
   onUpdateProductGroup,
   onAddProduct,
   onUpdateProduct,
-  onDeleteProduct
+  onDeleteProduct,
+  onReorderProducts
 }: StockMatrixProps) {
   // Tabs & Grouping Selection
   const [activeGroup, setActiveGroup] = useState<string>('Semua Grup');
@@ -72,6 +74,10 @@ export default function StockMatrix({
   // Search Query State
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Sorting State
+  const [sortBy, setSortBy] = useState<string>('default');
+  const [isManualReordering, setIsManualReordering] = useState<boolean>(false);
+
   // Pending deletes states
   const [pendingDeleteGroup, setPendingDeleteGroup] = useState<string | null>(null);
   const [pendingDeleteProduct, setPendingDeleteProduct] = useState<Product | null>(null);
@@ -106,6 +112,105 @@ export default function StockMatrix({
 
     return product.group === activeGroup;
   });
+
+  // Sort filtered stock items based on sorting selection
+  const sortedMatchingStocks = useMemo(() => {
+    const list = [...matchingStocks];
+    if (sortBy === 'default') {
+      return list.sort((a, b) => {
+        const indexA = products.findIndex(p => p.id === a.productId);
+        const indexB = products.findIndex(p => p.id === b.productId);
+        return indexA - indexB;
+      });
+    }
+
+    return list.sort((a, b) => {
+      const prodA = products.find(p => p.id === a.productId);
+      const prodB = products.find(p => p.id === b.productId);
+      if (!prodA || !prodB) return 0;
+
+      switch (sortBy) {
+        case 'name_asc':
+          return prodA.name.localeCompare(prodB.name);
+        case 'name_desc':
+          return prodB.name.localeCompare(prodA.name);
+        case 'sku_asc': {
+          const skuA = prodA.sku || '';
+          const skuB = prodB.sku || '';
+          return skuA.localeCompare(skuB);
+        }
+        case 'sku_desc': {
+          const skuA = prodA.sku || '';
+          const skuB = prodB.sku || '';
+          return skuB.localeCompare(skuA);
+        }
+        case 'price_asc':
+          return prodA.price - prodB.price;
+        case 'price_desc':
+          return prodB.price - prodA.price;
+        case 'qty_asc': {
+          const qtyA = Object.values(a.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          const qtyB = Object.values(b.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          return qtyA - qtyB;
+        }
+        case 'qty_desc': {
+          const qtyA = Object.values(a.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          const qtyB = Object.values(b.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          return qtyB - qtyA;
+        }
+        case 'hpp_asc': {
+          const qtyA = Object.values(a.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          const qtyB = Object.values(b.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          return (qtyA * prodA.hpp) - (qtyB * prodB.hpp);
+        }
+        case 'hpp_desc': {
+          const qtyA = Object.values(a.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          const qtyB = Object.values(b.stocks).reduce((sum: number, q: any) => sum + (Number(q) || 0), 0);
+          return (qtyB * prodB.hpp) - (qtyA * prodA.hpp);
+        }
+        default:
+          return 0;
+      }
+    });
+  }, [matchingStocks, sortBy, products]);
+
+  // List of unique products currently visible in the table
+  const visibleProductsInTable = useMemo(() => {
+    const uniqueProds: Product[] = [];
+    sortedMatchingStocks.forEach(s => {
+      const prod = products.find(p => p.id === s.productId);
+      if (prod && !uniqueProds.some(p => p.id === prod.id)) {
+        uniqueProds.push(prod);
+      }
+    });
+    return uniqueProds;
+  }, [sortedMatchingStocks, products]);
+
+  // Move a product up or down manually in the master list based on its visible position
+  const handleMoveProduct = (productId: string, direction: 'up' | 'down') => {
+    if (!onReorderProducts) return;
+    
+    const visIndex = visibleProductsInTable.findIndex(p => p.id === productId);
+    if (visIndex === -1) return;
+
+    const targetVisIndex = direction === 'up' ? visIndex - 1 : visIndex + 1;
+    if (targetVisIndex < 0 || targetVisIndex >= visibleProductsInTable.length) return;
+
+    const currentProd = visibleProductsInTable[visIndex];
+    const targetProd = visibleProductsInTable[targetVisIndex];
+
+    const masterIndexCurr = products.findIndex(p => p.id === currentProd.id);
+    const masterIndexTarget = products.findIndex(p => p.id === targetProd.id);
+
+    if (masterIndexCurr === -1 || masterIndexTarget === -1) return;
+
+    const reordered = [...products];
+    // Swap the products in master list
+    reordered[masterIndexCurr] = targetProd;
+    reordered[masterIndexTarget] = currentProd;
+
+    onReorderProducts(reordered);
+  };
 
   // Currency Formatter
   const formatRp = (value: number) => {
@@ -376,28 +481,88 @@ export default function StockMatrix({
           ))}
         </div>
 
-        {/* Real-time Search Input - Placed directly below the button tabs row */}
-        <div className="relative w-full md:w-96">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-            <Search className="h-4 w-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="Cari nama produk, SKU, warna..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 placeholder-slate-405 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none shadow-3xs"
-          />
-          {searchQuery && (
+        {/* Search & Sort Container */}
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          {/* Real-time Search Input */}
+          <div className="relative w-full sm:max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <Search className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="Cari nama produk, SKU, warna..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 placeholder-slate-405 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 focus:outline-none shadow-3xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 cursor-pointer font-black text-xs"
+                title="Bersihkan Pencarian"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Sorting Control Selection */}
+          <div className="flex flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-1 sm:flex-initial">
+              <span className="text-slate-500 font-extrabold text-[11px] whitespace-nowrap">Urutkan Produk:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  if (e.target.value !== 'default') {
+                    setIsManualReordering(false);
+                  }
+                }}
+                className="w-full sm:w-auto px-3 py-2.5 bg-white border border-slate-200 rounded-2xl text-xs font-extrabold text-slate-750 focus:ring-1 focus:ring-emerald-500 focus:outline-none shadow-3xs cursor-pointer min-w-[170px]"
+              >
+                <option value="default">📌 Urutan Bawaan</option>
+                <option value="name_asc">🔤 Nama Produk (A - Z)</option>
+                <option value="name_desc">🔤 Nama Produk (Z - A)</option>
+                <option value="sku_asc">🏷️ SKU (A - Z)</option>
+                <option value="sku_desc">🏷️ SKU (Z - A)</option>
+                <option value="price_asc">💵 Harga: Terendah</option>
+                <option value="price_desc">💵 Harga: Tertinggi</option>
+                <option value="qty_asc">📦 Total Qty: Terendah</option>
+                <option value="qty_desc">📦 Total Qty: Tertinggi</option>
+                <option value="hpp_asc">💰 Total Nilai HPP: Terendah</option>
+                <option value="hpp_desc">💰 Total Nilai HPP: Tertinggi</option>
+              </select>
+            </div>
+
+            {/* Manual Reorder Toggle Button */}
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 cursor-pointer font-black text-xs"
-              title="Bersihkan Pencarian"
+              onClick={() => {
+                if (!isManualReordering) {
+                  setSortBy('default');
+                }
+                setIsManualReordering(!isManualReordering);
+              }}
+              className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-2xl text-xs font-black flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-3xs border ${
+                isManualReordering
+                  ? 'bg-emerald-600 border-emerald-700 text-white hover:bg-emerald-700'
+                  : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 hover:text-slate-900'
+              }`}
             >
-              ✕
+              {isManualReordering ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  <span>Selesai Atur</span>
+                </>
+              ) : (
+                <>
+                  <Sliders className="h-3.5 w-3.5" />
+                  <span>Atur Urutan Manual</span>
+                </>
+              )}
             </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -721,12 +886,31 @@ export default function StockMatrix({
         <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
           <div>
             <span className="font-extrabold text-slate-900 text-sm">Grup: <span className="text-emerald-700 font-black">{activeGroup}</span></span>
-            <span className="text-slate-400 ml-2 font-mono font-medium">({matchingStocks.length} Kombinasi Warna SKU)</span>
+            <span className="text-slate-400 ml-2 font-mono font-medium">({sortedMatchingStocks.length} Kombinasi Warna SKU)</span>
           </div>
           <span className="text-slate-400 text-[11px] font-medium flex items-center gap-1">💡 <span>Klik ganda atau klik sel angka ukuran untuk mengubah stok instan.</span></span>
         </div>
 
-        {matchingStocks.length === 0 ? (
+        {isManualReordering && sortBy === 'default' && (
+          <div className="px-5 py-3.5 bg-emerald-50 border-b border-emerald-100/70 text-emerald-850 text-xs font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Mode Atur Urutan Manual aktif. Silakan klik tombol <ChevronUp className="inline h-3.5 w-3.5" /> atau <ChevronDown className="inline h-3.5 w-3.5" /> di kolom "Atur" untuk memindahkan produk ke atas/bawah.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsManualReordering(false)}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg text-[10px] transition-colors uppercase tracking-wider cursor-pointer"
+            >
+              Selesai Mengatur
+            </button>
+          </div>
+        )}
+
+        {sortedMatchingStocks.length === 0 ? (
           <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center space-y-3">
             <span className="text-4xl">🗃️</span>
             <p className="text-sm font-semibold text-slate-700">
@@ -743,6 +927,9 @@ export default function StockMatrix({
             <table className="w-full text-left col-auto border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                  {sortBy === 'default' && isManualReordering && (
+                    <th className="py-3 px-2 text-center w-16 bg-slate-150/40 font-black text-slate-600 border-r border-slate-150">Atur</th>
+                  )}
                   <th className="py-3 px-4 w-32">Kode SKU</th>
                   <th className="py-3 px-4">Nama Produk Master</th>
                   {showColor && <th className="py-3 px-4">Warna</th>}
@@ -760,15 +947,54 @@ export default function StockMatrix({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-750">
-                {matchingStocks.map((stockItem) => {
+                {sortedMatchingStocks.map((stockItem, index) => {
                   const product = products.find(p => p.id === stockItem.productId);
                   if (!product) return null;
 
-                  const totalQty = Object.values(stockItem.stocks).reduce((sum, qty) => sum + (qty ?? 0), 0);
+                  const totalQty = Object.values(stockItem.stocks).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0) as number;
                   const totalHpp = totalQty * product.hpp;
+
+                  const isFirstRowOfProduct = sortedMatchingStocks.findIndex(s => s.productId === stockItem.productId) === index;
+                  const visIndex = visibleProductsInTable.findIndex(p => p.id === product.id);
+                  const isFirstVisible = visIndex === 0;
+                  const isLastVisible = visIndex === visibleProductsInTable.length - 1;
 
                   return (
                     <tr key={stockItem.id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Manual Sorting controls */}
+                      {sortBy === 'default' && isManualReordering && (
+                        <td className="py-3.5 px-2 text-center border-r border-slate-100/60 whitespace-nowrap bg-slate-50/5">
+                          {isFirstRowOfProduct ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleMoveProduct(product.id, 'up')}
+                                disabled={isFirstVisible}
+                                className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
+                                  isFirstVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                                title="Naikkan posisi produk"
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleMoveProduct(product.id, 'down')}
+                                disabled={isLastVisible}
+                                className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
+                                  isLastVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                                title="Turunkan posisi produk"
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-slate-350 font-bold tracking-widest select-none">⋮</span>
+                          )}
+                        </td>
+                      )}
+
                       {/* Kode SKU Column */}
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-800/90 whitespace-nowrap">
                         {product.sku ? (
