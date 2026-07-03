@@ -176,7 +176,7 @@ export default function OrdersList({
   };
 
   return (
-    <div className="space-y-6 animate-fade-in text-xs text-slate-700">
+    <div id="orders_section" className="space-y-6 animate-fade-in text-xs text-slate-700 pt-6 md:pt-8">
       
       {/* Header Info Block */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">

@@ -354,7 +354,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
   });
 
   return (
-    <div id="dashboard_section" className="space-y-8 animate-fade-in">
+    <div id="dashboard_section" className="space-y-8 animate-fade-in pt-6 md:pt-8">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>

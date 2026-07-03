@@ -362,7 +362,7 @@ export default function StockMatrix({
   };
 
   return (
-    <div id="stock_matrix_section" className="space-y-6 animate-fade-in text-slate-705">
+    <div id="stock_matrix_section" className="space-y-6 animate-fade-in text-slate-705 pt-6 md:pt-8">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
@@ -882,39 +882,6 @@ export default function StockMatrix({
                     </span>
                   )}
                 </div>
-
-                {/* Kombinasi SKU (Warna & Ukuran) */}
-                {prodColors.filter(c => c.trim().length > 0).length > 0 && selectedSizes.length > 0 && (
-                  <div>
-                    <label className="block font-semibold text-slate-705 mb-1 text-[11px]">Kombinasi SKU (Warna & Ukuran):</label>
-                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2 max-h-60 overflow-y-auto">
-                      {prodColors.filter(c => c.trim().length > 0).map(color => (
-                        <div key={color} className="space-y-1.5">
-                          <div className="text-[10px] font-bold text-slate-700 bg-slate-200/50 px-2 py-1 rounded">
-                            {color.trim()}
-                          </div>
-                          <div className="space-y-1.5 pl-2 border-l-2 border-slate-200 ml-1">
-                            {selectedSizes.map(sz => {
-                              const comboKey = `${color.trim()}-${sz}`;
-                              return (
-                                <div key={comboKey} className="flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-slate-600 w-12">{sz}</span>
-                                  <input
-                                    type="text"
-                                    placeholder={`SKU ${color.trim()} - ${sz}`}
-                                    value={variantSkus[comboKey] || ''}
-                                    onChange={(e) => setVariantSkus({...variantSkus, [comboKey]: e.target.value.toUpperCase()})}
-                                    className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold uppercase text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 {/* Submit button */}
                 <button

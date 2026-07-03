@@ -26,7 +26,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 
-export default function Login() {
+interface LoginProps {
+  brandName?: string;
+  brandLogo?: string;
+}
+
+export default function Login({ brandName = 'OmniOrder', brandLogo = '📦' }: LoginProps) {
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>('signin');
   
   // Fields state
@@ -180,10 +185,10 @@ export default function Login() {
         {/* Brand Header */}
         <div className="text-center space-y-3 mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 shadow-inner text-2xl">
-            📦
+            {brandLogo}
           </div>
           <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            OmniOrder Platform
+            {brandName}
           </h1>
           <p className="text-xs text-slate-400 font-normal leading-relaxed max-w-xs mx-auto">
             Sistem Pencatatan Transaksi & Manajemen Stok Multikanal Terintegrasi

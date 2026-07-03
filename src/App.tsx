@@ -147,6 +147,29 @@ export default function App() {
   // Active editing order
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
 
+  // Pre-fetch settings to show correct brand before auth finishes
+  useEffect(() => {
+    const fetchBrand = async () => {
+      try {
+        const settingsSnap = await getDoc(doc(db, "settings", "app_settings"));
+        if (settingsSnap.exists()) {
+          const data = settingsSnap.data();
+          if (data.brandName) {
+            setBrandName(data.brandName);
+            document.title = data.brandName;
+          }
+          if (data.brandLogo) {
+            setBrandLogo(data.brandLogo);
+          }
+        }
+      } catch (e) {
+        // Safe to ignore if permissions block unauthenticated reads
+        console.warn("Could not pre-fetch brand settings", e);
+      }
+    };
+    fetchBrand();
+  }, []);
+
   // Order modal triggers
   const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
 
@@ -203,6 +226,11 @@ export default function App() {
             productIdsOrder: INITIAL_PRODUCTS.map(p => p.id)
           });
         }
+
+        // Apply immediately to show in loading screen
+        setBrandName(loadedBrandName);
+        setBrandLogo(loadedBrandLogo);
+        document.title = loadedBrandName;
 
         // 2. Fetch products from Firestore
         const productsSnap = await getDocs(collection(db, "products"));
@@ -1000,46 +1028,21 @@ export default function App() {
   };
 
   // Synchronous loader component for authentic connection states
-  if (authLoading) {
+  if (authLoading || (currentUser && userProfileLoading)) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans antialiased">
         <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
           <div className="relative flex items-center justify-center">
             <div className="absolute w-24 h-24 rounded-full bg-emerald-500/10 blur-xl animate-pulse"></div>
             <div className="w-20 h-20 border-2 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
-            <div className="absolute text-4xl animate-bounce select-none">
-              {brandLogo || '📦'}
-            </div>
           </div>
-          <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
-            {brandName || 'OmniOrder'}
-          </h1>
         </div>
       </div>
     );
   }
 
   if (!currentUser) {
-    return <Login />;
-  }
-
-  if (userProfileLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans antialiased">
-        <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute w-24 h-24 rounded-full bg-emerald-500/10 blur-xl animate-pulse"></div>
-            <div className="w-20 h-20 border-2 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
-            <div className="absolute text-4xl animate-bounce select-none">
-              {brandLogo || '📦'}
-            </div>
-          </div>
-          <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
-            {brandName || 'OmniOrder'}
-          </h1>
-        </div>
-      </div>
-    );
+    return <Login brandName={brandName} brandLogo={brandLogo} />;
   }
 
   // Check approval status
@@ -1303,7 +1306,7 @@ export default function App() {
       )}
 
       {/* Dynamic Render Workspace Area */}
-      <main className="flex-1 h-screen overflow-y-auto pt-0 px-4 pb-4 md:pt-0 md:px-8 md:pb-8 flex flex-col justify-between">
+      <main className="flex-1 h-[calc(100vh-4rem)] md:h-screen overflow-y-auto pt-0 px-4 pb-4 md:pt-0 md:px-8 md:pb-8 flex flex-col justify-between">
         <div className="flex-1">
           {activeTab === 'dashboard' && (
             <Dashboard 

@@ -165,7 +165,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
   }, [orders, selectedMonth]);
 
   return (
-    <div className="space-y-6 animate-fade-in" id="recapitulation_active_page">
+    <div className="space-y-6 animate-fade-in pt-6 md:pt-8" id="recapitulation_active_page">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>

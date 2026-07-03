@@ -455,7 +455,7 @@ export default function SettingsComponent({
   };
 
   return (
-    <div id="settings_section" className="space-y-8 animate-fade-in text-xs text-slate-700">
+    <div id="settings_section" className="space-y-8 animate-fade-in text-xs text-slate-700 pt-6 md:pt-8">
       
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
