@@ -97,6 +97,8 @@ export default function App() {
         let loadedGroups = INITIAL_GROUPS;
         let productIdsOrder: string[] = [];
 
+        const isFirstTimeInit = !settingsSnap.exists();
+
         if (settingsSnap.exists()) {
           const data = settingsSnap.data();
           if (data.brandName) loadedBrandName = data.brandName;
@@ -132,8 +134,8 @@ export default function App() {
           productsSnap.forEach(doc => {
             loadedProducts.push({ id: doc.id, ...doc.data() } as Product);
           });
-        } else {
-          // Seed INITIAL_PRODUCTS if empty
+        } else if (isFirstTimeInit) {
+          // Seed INITIAL_PRODUCTS if empty on first run
           const batch = writeBatch(db);
           INITIAL_PRODUCTS.forEach(p => {
             batch.set(doc(db, "products", p.id), p);
@@ -161,8 +163,8 @@ export default function App() {
           stocksSnap.forEach(doc => {
             loadedStocks.push({ id: doc.id, ...doc.data() } as StockItem);
           });
-        } else {
-          // Seed INITIAL_STOCKS if empty
+        } else if (isFirstTimeInit) {
+          // Seed INITIAL_STOCKS if empty on first run
           const batch = writeBatch(db);
           INITIAL_STOCKS.forEach(s => {
             batch.set(doc(db, "stocks", s.id), s);
@@ -178,8 +180,8 @@ export default function App() {
           channelsSnap.forEach(doc => {
             loadedChannels.push({ id: doc.id, ...doc.data() } as Channel);
           });
-        } else {
-          // Seed INITIAL_CHANNELS if empty
+        } else if (isFirstTimeInit) {
+          // Seed INITIAL_CHANNELS if empty on first run
           const batch = writeBatch(db);
           INITIAL_CHANNELS.forEach(c => {
             batch.set(doc(db, "channels", c.id), c);
@@ -195,7 +197,7 @@ export default function App() {
           ordersSnap.forEach(doc => {
             loadedOrders.push({ id: doc.id, ...doc.data() } as Order);
           });
-        } else {
+        } else if (isFirstTimeInit) {
           // Adjust default orders to current month and day offset
           const today = new Date();
           const currYear = today.getFullYear();
@@ -216,7 +218,7 @@ export default function App() {
             return o;
           });
 
-          // Seed INITIAL_ORDERS if empty
+          // Seed INITIAL_ORDERS if empty on first run
           const batch = writeBatch(db);
           adjustedOrders.forEach(o => {
             batch.set(doc(db, "orders", o.id), o);
@@ -232,7 +234,7 @@ export default function App() {
           discountSnap.forEach(doc => {
             loadedDiscounts.push({ id: doc.id, ...doc.data() } as AutoDiscount);
           });
-        } else {
+        } else if (isFirstTimeInit) {
           const defaultDiscounts: AutoDiscount[] = [
             {
               id: 'disc_default_1',

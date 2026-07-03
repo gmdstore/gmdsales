@@ -546,16 +546,6 @@ export default function SettingsComponent({
             </div>
           </form>
 
-          {/* Quick Info Box */}
-          <div className="p-5 bg-gradient-to-br from-emerald-50 to-emerald-100/30 border border-emerald-150 rounded-3xl space-y-2.5 shadow-3xs">
-            <h4 className="font-normal text-emerald-950 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
-              <Info className="h-4 w-4 text-emerald-600 shrink-0" /> Sistem Multi-Persistensi Mandiri
-            </h4>
-            <span className="block text-slate-600 font-medium leading-relaxed">
-              Semua detail pengaturan brand di atas dan seluruh matriks sediaan gudang tersimpan aman di internal peramban peranti Anda (<span className="font-normal">localStorage</span>). Data yang Anda ubah akan langsung merestrukturisasi judul aplikasi di sebelah kiri secara instan.
-            </span>
-          </div>
-
           {/* Firebase Connection Tester Card */}
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4 shadow-sm">
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
