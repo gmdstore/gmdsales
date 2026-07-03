@@ -19,7 +19,7 @@ import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
 import Recapitulation from './components/Recapitulation';
 
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { 
   collection, 
   doc, 
@@ -29,6 +29,8 @@ import {
   deleteDoc, 
   writeBatch 
 } from 'firebase/firestore';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import Login from './components/Login';
 
 import { 
   Plus, 
@@ -44,6 +46,19 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  // User Authentication State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+
+  // Monitor auth state changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings' | 'recapitulation'>('dashboard');
   
@@ -80,8 +95,13 @@ export default function App() {
 
   // Fetch and synchronize all data from Firestore upon mounting
   useEffect(() => {
+    if (!currentUser) {
+      setIsLoading(false);
+      return;
+    }
     const initFirebaseData = async () => {
       try {
+        setIsLoading(true);
         // 1. Fetch settings from Firestore
         const settingsRef = doc(db, "settings", "app_settings");
         const settingsSnap = await getDoc(settingsRef);
@@ -288,7 +308,7 @@ export default function App() {
     };
 
     initFirebaseData();
-  }, []);
+  }, [currentUser]);
 
   // Sync current time ticker
   useEffect(() => {
@@ -923,6 +943,22 @@ export default function App() {
   };
 
   // Synchronous loader component for authentic connection states
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center font-sans space-y-4">
+        <div className="relative flex h-10 w-10">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-10 w-10 bg-emerald-500"></span>
+        </div>
+        <p className="text-xs font-mono text-slate-400">Menyelaraskan Sesi Pengguna...</p>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <Login />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans">
@@ -1151,6 +1187,7 @@ export default function App() {
 
           {activeTab === 'settings' && (
             <SettingsComponent
+              currentUser={currentUser}
               brandName={brandName}
               brandLogo={brandLogo}
               brandProfile={brandProfile}

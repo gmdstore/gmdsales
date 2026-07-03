@@ -7,10 +7,12 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
 import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { collection, limit, query, getDocs } from 'firebase/firestore';
+import { User, signOut, updateProfile, updatePassword } from 'firebase/auth';
 
 interface SettingsProps {
+  currentUser: User | null;
   // Brand configurations
   brandName: string;
   brandLogo: string;
@@ -47,6 +49,7 @@ interface SettingsProps {
 }
 
 export default function SettingsComponent({
+  currentUser,
   brandName,
   brandLogo,
   brandProfile,
@@ -99,6 +102,20 @@ export default function SettingsComponent({
   const [discSelectedProducts, setDiscSelectedProducts] = useState<string[]>(['all']);
   const [discountSuccessMsg, setDiscountSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteDiscount, setPendingDeleteDiscount] = useState<AutoDiscount | null>(null);
+
+  // User Auth & Settings states
+  const [userNameInput, setUserNameInput] = useState(currentUser?.displayName || "");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
+  const [userSuccessMsg, setUserSuccessMsg] = useState<string | null>(null);
+  const [userErrorMsg, setUserErrorMsg] = useState<string | null>(null);
+  const [isSavingUser, setIsSavingUser] = useState(false);
+
+  useEffect(() => {
+    if (currentUser) {
+      setUserNameInput(currentUser.displayName || "");
+    }
+  }, [currentUser]);
 
   // Draft discount state and database sync controls
   const [localAutoDiscounts, setLocalAutoDiscounts] = useState<AutoDiscount[]>(autoDiscounts);
@@ -201,6 +218,76 @@ export default function SettingsComponent({
     });
     setBrandSuccessMsg(true);
     setTimeout(() => setBrandSuccessMsg(false), 3000);
+  };
+
+  const handleUpdateUserProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+    const trimmed = userNameInput.trim();
+    if (!trimmed) {
+      setUserErrorMsg("Nama pengguna tidak boleh kosong.");
+      return;
+    }
+    setIsSavingUser(true);
+    setUserSuccessMsg(null);
+    setUserErrorMsg(null);
+    try {
+      await updateProfile(auth.currentUser, {
+        displayName: trimmed
+      });
+      setUserSuccessMsg("Nama profil berhasil diperbarui!");
+      setTimeout(() => setUserSuccessMsg(null), 4000);
+    } catch (err: any) {
+      console.error("Error updating profile:", err);
+      setUserErrorMsg(err?.message || "Gagal memperbarui nama profil.");
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const handleUpdateUserPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth.currentUser) return;
+    if (!newPasswordInput) {
+      setUserErrorMsg("Kata sandi baru tidak boleh kosong.");
+      return;
+    }
+    if (newPasswordInput.length < 6) {
+      setUserErrorMsg("Kata sandi baru minimal harus 6 karakter.");
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      setUserErrorMsg("Konfirmasi kata sandi baru tidak cocok.");
+      return;
+    }
+    setIsSavingUser(true);
+    setUserSuccessMsg(null);
+    setUserErrorMsg(null);
+    try {
+      await updatePassword(auth.currentUser, newPasswordInput);
+      setUserSuccessMsg("Kata sandi berhasil diubah!");
+      setNewPasswordInput("");
+      setConfirmPasswordInput("");
+      setTimeout(() => setUserSuccessMsg(null), 4000);
+    } catch (err: any) {
+      console.error("Error updating password:", err);
+      if (err.code === 'auth/requires-recent-login') {
+        setUserErrorMsg("Demi keamanan, tindakan ini memerlukan Anda untuk keluar dan masuk kembali sebelum mengubah kata sandi.");
+      } else {
+        setUserErrorMsg(err?.message || "Gagal mengubah kata sandi.");
+      }
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (err: any) {
+      console.error("Error logging out:", err);
+      alert("Gagal keluar dari akun.");
+    }
   };
 
   const handleStartEditChannel = (chan: Channel) => {
@@ -643,6 +730,107 @@ export default function SettingsComponent({
                   </>
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* User Settings & Account Card */}
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm animate-fade-in">
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                👤 Pengaturan Akun & Keamanan Sesi
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Kelola nama profil, perbarui kata sandi, dan akhiri sesi masuk Anda</p>
+            </div>
+
+            {userSuccessMsg && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-2xl text-[11px] font-normal flex items-center gap-2 animate-fade-in">
+                <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                <span>{userSuccessMsg}</span>
+              </div>
+            )}
+
+            {userErrorMsg && (
+              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-[11px] font-normal flex items-center gap-2 animate-fade-in">
+                <Info className="h-4 w-4 text-rose-600 shrink-0" />
+                <span>{userErrorMsg}</span>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Account details readonly info */}
+              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-1.5 font-sans text-[11px]">
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-400">Email Akun:</span>
+                  <span className="text-slate-800 font-medium">{currentUser?.email}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">User ID (UID):</span>
+                  <span className="text-slate-500 font-mono text-[9px] truncate max-w-[150px]">{currentUser?.uid}</span>
+                </div>
+              </div>
+
+              {/* Form 1: Profile Name Update */}
+              <form onSubmit={handleUpdateUserProfile} className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="block font-normal text-slate-800 text-xs">Ubah Nama Profil:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={userNameInput}
+                    onChange={(e) => setUserNameInput(e.target.value)}
+                    placeholder="Nama lengkap pengguna"
+                    disabled={isSavingUser}
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSavingUser}
+                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    Simpan
+                  </button>
+                </div>
+              </form>
+
+              {/* Form 2: Password Update */}
+              <form onSubmit={handleUpdateUserPassword} className="space-y-2.5 pt-3 border-t border-slate-100">
+                <label className="block font-normal text-slate-800 text-xs">Ubah Kata Sandi:</label>
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    value={newPasswordInput}
+                    onChange={(e) => setNewPasswordInput(e.target.value)}
+                    placeholder="Kata sandi baru (min 6 karakter)"
+                    disabled={isSavingUser}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
+                  />
+                  <input
+                    type="password"
+                    value={confirmPasswordInput}
+                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                    placeholder="Ketik ulang kata sandi baru"
+                    disabled={isSavingUser}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSavingUser}
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                >
+                  Ganti Kata Sandi
+                </button>
+              </form>
+
+              {/* Log Out Session Button */}
+              <div className="pt-4 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  🚪 Keluar dari Sistem
+                </button>
+              </div>
             </div>
           </div>
         </div>

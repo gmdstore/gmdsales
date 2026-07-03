@@ -256,7 +256,16 @@ export default function OrderModal({
   }, [orderNumber, orders, editingOrder]);
 
   // Selected channel rates
-  const selectedChannel = channels.find(c => c.id === channelId) || channels[0];
+  const selectedChannel = channels.find(c => c.id === channelId) || channels[0] || {
+    id: 'unknown',
+    name: 'Kanal Tidak Diketahui',
+    commissionPercent: 0,
+    paymentFeePercent: 0,
+    flatProcessingFee: 0,
+    freeShippingSubsidyPercent: 0,
+    freeShippingMaxCap: 0,
+    paymentMethods: ['Transfer']
+  };
   const availablePaymentMethods = selectedChannel.paymentMethods || [];
 
   // Sync payment method when channel changes
