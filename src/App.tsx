@@ -27,9 +27,10 @@ import {
   getDocs, 
   setDoc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  onSnapshot
 } from 'firebase/firestore';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import Login from './components/Login';
 
 import { 
@@ -49,6 +50,8 @@ export default function App() {
   // User Authentication State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [userProfile, setUserProfile] = useState<{ status: 'approved' | 'pending' | 'rejected'; role: 'admin' | 'staff'; displayName?: string } | null>(null);
+  const [userProfileLoading, setUserProfileLoading] = useState<boolean>(true);
 
   // Monitor auth state changes
   useEffect(() => {
@@ -58,6 +61,60 @@ export default function App() {
     });
     return () => unsubscribe();
   }, []);
+
+  // Subscribe to user approval document
+  useEffect(() => {
+    if (!currentUser) {
+      setUserProfile(null);
+      setUserProfileLoading(false);
+      return;
+    }
+
+    setUserProfileLoading(true);
+    const userDocRef = doc(db, "users", currentUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, async (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setUserProfile({
+          status: data.status || 'pending',
+          role: data.role || 'staff',
+          displayName: data.displayName || currentUser.displayName || ''
+        });
+        setUserProfileLoading(false);
+      } else {
+        // Doc doesn't exist yet, bootstrap it
+        const isDefaultAdmin = currentUser.email?.toLowerCase() === 'gomudastore@gmail.com';
+        const defaultData = {
+          uid: currentUser.uid,
+          email: currentUser.email || '',
+          displayName: currentUser.displayName || 'Pengguna Baru',
+          status: isDefaultAdmin ? 'approved' : 'pending',
+          role: isDefaultAdmin ? 'admin' : 'staff',
+          createdAt: new Date().toISOString()
+        };
+        try {
+          await setDoc(userDocRef, defaultData);
+          setUserProfile({
+            status: defaultData.status as any,
+            role: defaultData.role as any,
+            displayName: defaultData.displayName
+          });
+        } catch (err) {
+          console.error("Error bootstrapping user doc:", err);
+          setUserProfile({
+            status: isDefaultAdmin ? 'approved' : 'pending',
+            role: isDefaultAdmin ? 'admin' : 'staff'
+          });
+        }
+        setUserProfileLoading(false);
+      }
+    }, (err) => {
+      console.error("onSnapshot error for user doc:", err);
+      setUserProfileLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // Navigation active tab
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings' | 'recapitulation'>('dashboard');
@@ -95,7 +152,7 @@ export default function App() {
 
   // Fetch and synchronize all data from Firestore upon mounting
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || userProfile?.status !== 'approved') {
       setIsLoading(false);
       return;
     }
@@ -308,7 +365,7 @@ export default function App() {
     };
 
     initFirebaseData();
-  }, [currentUser]);
+  }, [currentUser, userProfile]);
 
   // Sync current time ticker
   useEffect(() => {
@@ -959,6 +1016,94 @@ export default function App() {
     return <Login />;
   }
 
+  if (userProfileLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center font-sans space-y-4">
+        <div className="relative flex h-10 w-10">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-10 w-10 bg-indigo-500"></span>
+        </div>
+        <p className="text-xs font-mono text-slate-400">Memeriksa Otorisasi Akses...</p>
+      </div>
+    );
+  }
+
+  // Check approval status
+  if (userProfile && userProfile.status !== 'approved') {
+    const isPending = userProfile.status === 'pending';
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden select-none font-sans">
+        {/* Decorative ambient background glows */}
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-rose-500/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-[32px] p-8 md:p-10 shadow-2xl relative z-10 text-center space-y-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-slate-950 border border-slate-800 text-3xl">
+            {isPending ? '⏳' : '❌'}
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl font-black text-slate-100 tracking-tight">
+              {isPending ? 'Menunggu Persetujuan Admin' : 'Akses Akun Ditolak'}
+            </h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              {isPending 
+                ? 'Akun Anda telah terdaftar tetapi belum disetujui oleh Administrator. Silakan hubungi pemilik brand atau administrator utama untuk mengaktifkan akses Anda.'
+                : 'Akses Anda ke sistem OmniOrder telah ditolak oleh Administrator. Jika ini merupakan kesalahan, silakan hubungi admin.'
+              }
+            </p>
+          </div>
+
+          {/* User Meta Card */}
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 text-left text-xs space-y-1.5 font-sans">
+            <div className="flex justify-between border-b border-slate-800/50 pb-1.5">
+              <span className="text-slate-500">Nama:</span>
+              <span className="text-slate-300 font-medium">{userProfile.displayName || currentUser.displayName || 'Pengguna Baru'}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-800/50 pb-1.5">
+              <span className="text-slate-500">Email:</span>
+              <span className="text-slate-300 font-medium">{currentUser.email}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Status Akses:</span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                isPending 
+                  ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}>
+                {isPending ? '⏳ Menunggu Tinjauan' : '❌ Akses Ditolak'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            {isPending && (
+              <button
+                type="button"
+                onClick={() => {
+                  window.location.reload();
+                }}
+                className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold rounded-2xl shadow-lg shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-2 transition-all"
+              >
+                🔄 Perbarui Status Sekarang
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={async () => {
+                await signOut(auth);
+              }}
+              className="w-full py-3 bg-slate-950 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded-2xl border border-slate-850 cursor-pointer transition-all flex items-center justify-center gap-2"
+            >
+              🚪 Keluar dari Akun
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans">
@@ -1188,6 +1333,7 @@ export default function App() {
           {activeTab === 'settings' && (
             <SettingsComponent
               currentUser={currentUser}
+              currentUserProfile={userProfile}
               brandName={brandName}
               brandLogo={brandLogo}
               brandProfile={brandProfile}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  auth 
+  auth,
+  db
 } from '../firebase';
 import { 
   signInWithEmailAndPassword, 
@@ -8,6 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Mail, 
@@ -114,8 +116,23 @@ export default function Login() {
         await updateProfile(userCredential.user, {
           displayName: trimmedName
         });
+
+        // Set status in Firestore user document
+        const isDefaultAdmin = trimmedEmail.toLowerCase() === 'gomudastore@gmail.com';
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          uid: userCredential.user.uid,
+          email: trimmedEmail,
+          displayName: trimmedName,
+          status: isDefaultAdmin ? 'approved' : 'pending',
+          role: isDefaultAdmin ? 'admin' : 'staff',
+          createdAt: new Date().toISOString()
+        });
       }
-      setSuccessMsg('Pendaftaran berhasil! Mengalihkan ke Dashboard...');
+      setSuccessMsg(
+        trimmedEmail.toLowerCase() === 'gomudastore@gmail.com'
+          ? 'Pendaftaran berhasil! Mengalihkan ke Dashboard...'
+          : 'Pendaftaran berhasil! Akun Anda sedang menunggu persetujuan Admin.'
+      );
     } catch (err: any) {
       console.error("Sign-up error:", err);
       setErrorMsg(translateError(err.code, err.message));

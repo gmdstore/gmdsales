@@ -8,11 +8,12 @@ import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
 import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { db, auth } from '../firebase';
-import { collection, limit, query, getDocs } from 'firebase/firestore';
+import { collection, limit, query, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { User, signOut, updateProfile, updatePassword } from 'firebase/auth';
 
 interface SettingsProps {
   currentUser: User | null;
+  currentUserProfile: { status: 'approved' | 'pending' | 'rejected'; role: 'admin' | 'staff'; displayName?: string } | null;
   // Brand configurations
   brandName: string;
   brandLogo: string;
@@ -50,6 +51,7 @@ interface SettingsProps {
 
 export default function SettingsComponent({
   currentUser,
+  currentUserProfile,
   brandName,
   brandLogo,
   brandProfile,
@@ -116,6 +118,84 @@ export default function SettingsComponent({
       setUserNameInput(currentUser.displayName || "");
     }
   }, [currentUser]);
+
+  // User listing state for admin
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState<string | null>(null);
+
+  // Subscribe to all users if current user is an admin
+  useEffect(() => {
+    const isAdmin = currentUserProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === 'gomudastore@gmail.com';
+    if (!isAdmin) {
+      setUsersList([]);
+      return;
+    }
+
+    setUsersLoading(true);
+    const usersCollectionRef = collection(db, "users");
+    const unsubscribe = onSnapshot(usersCollectionRef, (snap) => {
+      const list: any[] = [];
+      snap.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      // Sort users by email
+      list.sort((a, b) => (a.email || '').localeCompare(b.email || ''));
+      setUsersList(list);
+      setUsersLoading(false);
+    }, (err) => {
+      console.error("Error loading users list:", err);
+      setUsersError("Gagal memuat daftar pengguna.");
+      setUsersLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, currentUserProfile]);
+
+  const handleUpdateUserStatus = async (uid: string, status: 'approved' | 'pending' | 'rejected') => {
+    try {
+      if (uid === currentUser?.uid) {
+        alert("Anda tidak dapat mengubah status akses Anda sendiri.");
+        return;
+      }
+      const userDocRef = doc(db, "users", uid);
+      await updateDoc(userDocRef, { status });
+    } catch (err: any) {
+      console.error("Error updating user status:", err);
+      alert("Gagal memperbarui status akses pengguna: " + (err.message || err));
+    }
+  };
+
+  const handleUpdateUserRole = async (uid: string, role: 'admin' | 'staff') => {
+    try {
+      if (uid === currentUser?.uid) {
+        alert("Anda tidak dapat mengubah peran Anda sendiri.");
+        return;
+      }
+      const userDocRef = doc(db, "users", uid);
+      await updateDoc(userDocRef, { role });
+    } catch (err: any) {
+      console.error("Error updating user role:", err);
+      alert("Gagal memperbarui peran pengguna: " + (err.message || err));
+    }
+  };
+
+  const handleDeleteUserDoc = async (uid: string) => {
+    if (uid === currentUser?.uid) {
+      alert("Anda tidak dapat menghapus dokumen akses Anda sendiri.");
+      return;
+    }
+    if (!window.confirm("Apakah Anda yakin ingin menghapus hak akses pengguna ini? Pengguna akan diminta mendaftar/menunggu persetujuan kembali.")) {
+      return;
+    }
+    try {
+      const userDocRef = doc(db, "users", uid);
+      await deleteDoc(userDocRef);
+    } catch (err: any) {
+      console.error("Error deleting user document:", err);
+      alert("Gagal menghapus akses pengguna: " + (err.message || err));
+    }
+  };
 
   // Draft discount state and database sync controls
   const [localAutoDiscounts, setLocalAutoDiscounts] = useState<AutoDiscount[]>(autoDiscounts);
@@ -833,6 +913,127 @@ export default function SettingsComponent({
               </div>
             </div>
           </div>
+
+          {/* Admin User Management Card */}
+          {(currentUserProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === 'gomudastore@gmail.com') && (
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm animate-fade-in">
+              <div className="border-b border-slate-100 pb-3">
+                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                  👥 Manajemen Pengguna & Otorisasi Akses
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5">Setujui pengguna baru, atur peran jabatan, atau hapus izin sistem secara instan</p>
+              </div>
+
+              {usersLoading && (
+                <div className="text-center py-4 space-y-2">
+                  <RefreshCw className="h-5 w-5 animate-spin mx-auto text-emerald-500" />
+                  <p className="text-[10px] text-slate-400">Memuat daftar pengguna...</p>
+                </div>
+              )}
+
+              {usersError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-[11px] font-normal">
+                  {usersError}
+                </div>
+              )}
+
+              {!usersLoading && !usersError && usersList.length === 0 && (
+                <p className="text-[11px] text-slate-400 text-center py-4">Belum ada pengguna lain yang terdaftar.</p>
+              )}
+
+              {!usersLoading && !usersError && usersList.length > 0 && (
+                <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
+                  {usersList.map((usr) => {
+                    const isSelf = usr.uid === currentUser?.uid;
+                    return (
+                      <div key={usr.id} className="border border-slate-100 rounded-2xl p-3 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                              {usr.displayName || 'Tanpa Nama'}
+                              {isSelf && <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-md font-normal">Anda</span>}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-normal">{usr.email}</div>
+                          </div>
+
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              usr.status === 'approved' 
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                : usr.status === 'pending'
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}>
+                              {usr.status === 'approved' ? '✓ Aktif' : usr.status === 'pending' ? '⏳ Menunggu' : '✕ Ditolak'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-mono">
+                              Role: <span className="font-bold text-slate-600">{usr.role === 'admin' ? 'ADMIN' : 'STAFF'}</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action buttons (only if not self) */}
+                        {!isSelf && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                            {/* Change status actions */}
+                            <div className="flex items-center gap-1">
+                              {usr.status !== 'approved' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateUserStatus(usr.uid, 'approved')}
+                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                                >
+                                  Setujui Akses
+                                </button>
+                              )}
+                              {usr.status !== 'rejected' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateUserStatus(usr.uid, 'rejected')}
+                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                                >
+                                  Tolak / Blokir
+                                </button>
+                              )}
+                              {usr.status !== 'pending' && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateUserStatus(usr.uid, 'pending')}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
+                                >
+                                  Tinjau Kembali
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Change role action */}
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateUserRole(usr.uid, usr.role === 'admin' ? 'staff' : 'admin')}
+                                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-normal cursor-pointer transition-colors"
+                              >
+                                {usr.role === 'admin' ? 'Jadikan Staff' : 'Jadikan Admin'}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUserDoc(usr.uid)}
+                                className="p-1.5 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer transition-all"
+                                title="Hapus Akses"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Channels Configuration Manager CRUD (xl:col-span-7) */}
