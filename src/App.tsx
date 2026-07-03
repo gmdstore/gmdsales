@@ -19,6 +19,17 @@ import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
 import Recapitulation from './components/Recapitulation';
 
+import { db } from './firebase';
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  deleteDoc, 
+  writeBatch 
+} from 'firebase/firestore';
+
 import { 
   Plus, 
   LayoutDashboard, 
@@ -42,6 +53,242 @@ export default function App() {
   // Live ticking clock state
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
+  // App initialization loading state
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Core App states synced with Firestore
+  const [brandName, setBrandName] = useState<string>('OmniOrder');
+  const [brandLogo, setBrandLogo] = useState<string>('📦');
+  const [brandProfile, setBrandProfile] = useState<string>('Sistem Pengelola Transaksi Omnichannel');
+  const [brandFooter, setBrandFooter] = useState<string>('OmniOrder – All rights reserved © 2026.');
+  const [appFont, setAppFont] = useState<string>('Inter');
+  const [appFontWeight, setAppFontWeight] = useState<string>('400');
+  const [paymentMethods, setPaymentMethods] = useState<string[]>(['Transfer', 'COD', 'E-Wallet', 'Lainnya']);
+  const [pencatatList, setPencatatList] = useState<string[]>(['Admin 1', 'Admin 2', 'Owner']);
+  const [groups, setGroups] = useState<string[]>(INITIAL_GROUPS);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [stocks, setStocks] = useState<StockItem[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [autoDiscounts, setAutoDiscounts] = useState<AutoDiscount[]>([]);
+
+  // Active editing order
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+
+  // Order modal triggers
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
+
+  // Fetch and synchronize all data from Firestore upon mounting
+  useEffect(() => {
+    const initFirebaseData = async () => {
+      try {
+        // 1. Fetch settings from Firestore
+        const settingsRef = doc(db, "settings", "app_settings");
+        const settingsSnap = await getDoc(settingsRef);
+        
+        let loadedBrandName = 'OmniOrder';
+        let loadedBrandLogo = '📦';
+        let loadedBrandProfile = 'Sistem Pengelola Transaksi Omnichannel';
+        let loadedBrandFooter = 'OmniOrder – All rights reserved © 2026.';
+        let loadedAppFont = 'Inter';
+        let loadedAppFontWeight = '400';
+        let loadedPaymentMethods = ['Transfer', 'COD', 'E-Wallet', 'Lainnya'];
+        let loadedPencatatList = ['Admin 1', 'Admin 2', 'Owner'];
+        let loadedGroups = INITIAL_GROUPS;
+        let productIdsOrder: string[] = [];
+
+        if (settingsSnap.exists()) {
+          const data = settingsSnap.data();
+          if (data.brandName) loadedBrandName = data.brandName;
+          if (data.brandLogo) loadedBrandLogo = data.brandLogo;
+          if (data.brandProfile) loadedBrandProfile = data.brandProfile;
+          if (data.brandFooter) loadedBrandFooter = data.brandFooter;
+          if (data.appFont) loadedAppFont = data.appFont;
+          if (data.appFontWeight) loadedAppFontWeight = data.appFontWeight;
+          if (data.paymentMethods) loadedPaymentMethods = data.paymentMethods;
+          if (data.pencatatList) loadedPencatatList = data.pencatatList;
+          if (data.groups) loadedGroups = data.groups;
+          if (data.productIdsOrder) productIdsOrder = data.productIdsOrder;
+        } else {
+          // Document does not exist, initialize it with default values
+          await setDoc(settingsRef, {
+            brandName: loadedBrandName,
+            brandLogo: loadedBrandLogo,
+            brandProfile: loadedBrandProfile,
+            brandFooter: loadedBrandFooter,
+            appFont: loadedAppFont,
+            appFontWeight: loadedAppFontWeight,
+            paymentMethods: loadedPaymentMethods,
+            pencatatList: loadedPencatatList,
+            groups: loadedGroups,
+            productIdsOrder: INITIAL_PRODUCTS.map(p => p.id)
+          });
+        }
+
+        // 2. Fetch products from Firestore
+        const productsSnap = await getDocs(collection(db, "products"));
+        let loadedProducts: Product[] = [];
+        if (!productsSnap.empty) {
+          productsSnap.forEach(doc => {
+            loadedProducts.push({ id: doc.id, ...doc.data() } as Product);
+          });
+        } else {
+          // Seed INITIAL_PRODUCTS if empty
+          const batch = writeBatch(db);
+          INITIAL_PRODUCTS.forEach(p => {
+            batch.set(doc(db, "products", p.id), p);
+          });
+          await batch.commit();
+          loadedProducts = INITIAL_PRODUCTS;
+        }
+
+        // Apply drag-and-drop ordering if saved
+        if (productIdsOrder.length > 0) {
+          loadedProducts.sort((a, b) => {
+            const indexA = productIdsOrder.indexOf(a.id);
+            const indexB = productIdsOrder.indexOf(b.id);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+          });
+        }
+
+        // 3. Fetch stocks from Firestore
+        const stocksSnap = await getDocs(collection(db, "stocks"));
+        let loadedStocks: StockItem[] = [];
+        if (!stocksSnap.empty) {
+          stocksSnap.forEach(doc => {
+            loadedStocks.push({ id: doc.id, ...doc.data() } as StockItem);
+          });
+        } else {
+          // Seed INITIAL_STOCKS if empty
+          const batch = writeBatch(db);
+          INITIAL_STOCKS.forEach(s => {
+            batch.set(doc(db, "stocks", s.id), s);
+          });
+          await batch.commit();
+          loadedStocks = INITIAL_STOCKS;
+        }
+
+        // 4. Fetch channels from Firestore
+        const channelsSnap = await getDocs(collection(db, "channels"));
+        let loadedChannels: Channel[] = [];
+        if (!channelsSnap.empty) {
+          channelsSnap.forEach(doc => {
+            loadedChannels.push({ id: doc.id, ...doc.data() } as Channel);
+          });
+        } else {
+          // Seed INITIAL_CHANNELS if empty
+          const batch = writeBatch(db);
+          INITIAL_CHANNELS.forEach(c => {
+            batch.set(doc(db, "channels", c.id), c);
+          });
+          await batch.commit();
+          loadedChannels = INITIAL_CHANNELS;
+        }
+
+        // 5. Fetch orders from Firestore
+        const ordersSnap = await getDocs(collection(db, "orders"));
+        let loadedOrders: Order[] = [];
+        if (!ordersSnap.empty) {
+          ordersSnap.forEach(doc => {
+            loadedOrders.push({ id: doc.id, ...doc.data() } as Order);
+          });
+        } else {
+          // Adjust default orders to current month and day offset
+          const today = new Date();
+          const currYear = today.getFullYear();
+          const currMonth = String(today.getMonth() + 1).padStart(2, '0');
+          const currDay = String(today.getDate()).padStart(2, '0');
+          
+          const adjustedOrders = INITIAL_ORDERS.map(o => {
+            if (o.dateTime && (o.dateTime.startsWith('2026-05') || o.dateTime.includes('2026-05-22'))) {
+              const timePart = o.dateTime.split('T')[1] || '12:00:00.000Z';
+              const orderDate = o.dateTime.split('T')[0];
+              const dayOffset = orderDate.endsWith('-22') ? currDay : orderDate.split('-')[2];
+              return {
+                ...o,
+                dateTime: `${currYear}-${currMonth}-${dayOffset}T${timePart}`,
+                orderNumber: o.orderNumber.replace(/20260522/, `${currYear}${currMonth}${currDay}`)
+              };
+            }
+            return o;
+          });
+
+          // Seed INITIAL_ORDERS if empty
+          const batch = writeBatch(db);
+          adjustedOrders.forEach(o => {
+            batch.set(doc(db, "orders", o.id), o);
+          });
+          await batch.commit();
+          loadedOrders = adjustedOrders;
+        }
+
+        // 6. Fetch autoDiscounts from Firestore
+        const discountSnap = await getDocs(collection(db, "autoDiscounts"));
+        let loadedDiscounts: AutoDiscount[] = [];
+        if (!discountSnap.empty) {
+          discountSnap.forEach(doc => {
+            loadedDiscounts.push({ id: doc.id, ...doc.data() } as AutoDiscount);
+          });
+        } else {
+          const defaultDiscounts: AutoDiscount[] = [
+            {
+              id: 'disc_default_1',
+              name: 'Diskon Gajian 10%',
+              type: 'percent',
+              value: 10,
+              channelIds: ['shopee', 'tokopedia'],
+              productIds: ['all'],
+              isActive: true
+            },
+            {
+              id: 'disc_default_2',
+              name: 'Potongan Flat Rp 5rb',
+              type: 'nominal',
+              value: 5000,
+              channelIds: ['all'],
+              productIds: ['all'],
+              isActive: true
+            }
+          ];
+          const batch = writeBatch(db);
+          defaultDiscounts.forEach(d => {
+            batch.set(doc(db, "autoDiscounts", d.id), d);
+          });
+          await batch.commit();
+          loadedDiscounts = defaultDiscounts;
+        }
+
+        // Update React states simultaneously
+        setBrandName(loadedBrandName);
+        setBrandLogo(loadedBrandLogo);
+        setBrandProfile(loadedBrandProfile);
+        setBrandFooter(loadedBrandFooter);
+        setAppFont(loadedAppFont);
+        setAppFontWeight(loadedAppFontWeight);
+        setPaymentMethods(loadedPaymentMethods);
+        setPencatatList(loadedPencatatList);
+        setGroups(loadedGroups);
+        setProducts(loadedProducts);
+        setStocks(loadedStocks);
+        setChannels(loadedChannels);
+        setOrders(loadedOrders);
+        setAutoDiscounts(loadedDiscounts);
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Failed to fetch Firebase database documents:", error);
+        // Fail-safe: allow proceeding in case of initial setup errors
+        setIsLoading(false);
+      }
+    };
+
+    initFirebaseData();
+  }, []);
+
+  // Sync current time ticker
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -49,198 +296,38 @@ export default function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // Active editing order
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
-
-  // Dynamic Brand Identity configurations
-  const [brandName, setBrandName] = useState<string>(() => {
-    return localStorage.getItem('omni_brand_name') || 'OmniOrder';
-  });
-  const [brandLogo, setBrandLogo] = useState<string>(() => {
-    return localStorage.getItem('omni_brand_logo') || '📦';
-  });
-  const [brandProfile, setBrandProfile] = useState<string>(() => {
-    return localStorage.getItem('omni_brand_profile') || 'Sistem Pengelola Transaksi Omnichannel';
-  });
-  const [brandFooter, setBrandFooter] = useState<string>(() => {
-    return localStorage.getItem('omni_brand_footer') || 'OmniOrder – All rights reserved © 2026.';
-  });
-
-  const [appFont, setAppFont] = useState<string>(() => {
-    return localStorage.getItem('omni_app_font') || 'Inter';
-  });
-
-  const [appFontWeight, setAppFontWeight] = useState<string>(() => {
-    return localStorage.getItem('omni_app_font_weight') || '400';
-  });
-
-  const [paymentMethods, setPaymentMethods] = useState<string[]>(() => {
-    const saved = localStorage.getItem('omni_payment_methods');
-    return saved ? JSON.parse(saved) : ['Transfer', 'COD', 'E-Wallet', 'Lainnya'];
-  });
-
-  const [pencatatList, setPencatatList] = useState<string[]>(() => {
-    const saved = localStorage.getItem('omni_pencatat_list');
-    return saved ? JSON.parse(saved) : ['Admin 1', 'Admin 2', 'Owner'];
-  });
-
-  const [autoDiscounts, setAutoDiscounts] = useState<AutoDiscount[]>(() => {
-    const saved = localStorage.getItem('omni_auto_discounts');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'disc_default_1',
-        name: 'Diskon Gajian 10%',
-        type: 'percent',
-        value: 10,
-        channelIds: ['shopee', 'tokopedia'],
-        productIds: ['all'],
-        isActive: true
-      },
-      {
-        id: 'disc_default_2',
-        name: 'Potongan Flat Rp 5rb',
-        type: 'nominal',
-        value: 5000,
-        channelIds: ['all'],
-        productIds: ['all'],
-        isActive: true
-      }
-    ];
-  });
-
-  const updatePaymentMethods = (newMethods: string[]) => {
-    setPaymentMethods(newMethods);
-    // Remove deleted payment methods from channels
-    setChannels(prevChannels => prevChannels.map(chan => ({
-      ...chan,
-      paymentMethods: (chan.paymentMethods || []).filter(m => newMethods.includes(m))
-    })));
-  };
-
-  // Preserve operational state in localStorage
-  const [products, setProducts] = useState<Product[]>(() => {
-    const saved = localStorage.getItem('omni_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
-
-  const [stocks, setStocks] = useState<StockItem[]>(() => {
-    const saved = localStorage.getItem('omni_stocks');
-    return saved ? JSON.parse(saved) : INITIAL_STOCKS;
-  });
-
-  const [channels, setChannels] = useState<Channel[]>(() => {
-    const saved = localStorage.getItem('omni_channels');
-    return saved ? JSON.parse(saved) : INITIAL_CHANNELS;
-  });
-
-  const [groups, setGroups] = useState<string[]>(() => {
-    const saved = localStorage.getItem('omni_groups');
-    return saved ? JSON.parse(saved) : INITIAL_GROUPS;
-  });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('omni_orders');
-    const loadedOrders: Order[] = saved ? JSON.parse(saved) : INITIAL_ORDERS;
-
-    // Synchronize legacy mock data or saved May dates to today's active month & relative day
-    const today = new Date();
-    const currYear = today.getFullYear();
-    const currMonth = String(today.getMonth() + 1).padStart(2, '0');
-    const currDay = String(today.getDate()).padStart(2, '0');
-
-    return loadedOrders.map(o => {
-      if (o.dateTime && (o.dateTime.startsWith('2026-05') || o.dateTime.includes('2026-05-22'))) {
-        const timePart = o.dateTime.split('T')[1] || '12:00:00.000Z';
-        const orderDate = o.dateTime.split('T')[0];
-        const dayOffset = orderDate.endsWith('-22') ? currDay : orderDate.split('-')[2];
-        return {
-          ...o,
-          dateTime: `${currYear}-${currMonth}-${dayOffset}T${timePart}`,
-          orderNumber: o.orderNumber.replace(/20260522/, `${currYear}${currMonth}${currDay}`)
-        };
-      }
-      return o;
-    });
-  });
-
-  // Order modal triggers
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState<boolean>(false);
-
-  // Sync to localStorage and HTML page tab document title
+  // Update layout typography and title side effects in browser
   useEffect(() => {
-    localStorage.setItem('omni_brand_name', brandName);
     document.title = brandName;
   }, [brandName]);
 
   useEffect(() => {
-    localStorage.setItem('omni_brand_logo', brandLogo);
-  }, [brandLogo]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_brand_profile', brandProfile);
-  }, [brandProfile]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_brand_footer', brandFooter);
-  }, [brandFooter]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_app_font', appFont);
     document.documentElement.style.setProperty('--app-font', appFont);
   }, [appFont]);
 
   useEffect(() => {
-    localStorage.setItem('omni_app_font_weight', appFontWeight);
     document.documentElement.style.setProperty('--app-font-weight', appFontWeight);
   }, [appFontWeight]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_payment_methods', JSON.stringify(paymentMethods));
-  }, [paymentMethods]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_pencatat_list', JSON.stringify(pencatatList));
-  }, [pencatatList]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_auto_discounts', JSON.stringify(autoDiscounts));
-  }, [autoDiscounts]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_stocks', JSON.stringify(stocks));
-  }, [stocks]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_channels', JSON.stringify(channels));
-  }, [channels]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_groups', JSON.stringify(groups));
-  }, [groups]);
-
-  useEffect(() => {
-    localStorage.setItem('omni_orders', JSON.stringify(orders));
-  }, [orders]);
 
 
   // Business Operations implementation
 
   // F-01: Update specific stock level inline (Excel-like matrix edit)
-  const handleUpdateStock = (stockItemId: string, size: string, newQty: number) => {
+  const handleUpdateStock = async (stockItemId: string, size: string, newQty: number) => {
     setStocks(prev => 
       prev.map(item => {
         if (item.id === stockItemId) {
-          return {
+          const updatedItem = {
             ...item,
             stocks: {
               ...item.stocks,
               [size]: newQty
             }
           };
+          // Write to Firestore asynchronously
+          setDoc(doc(db, "stocks", stockItemId), updatedItem, { merge: true })
+            .catch(err => console.error("Error updating stock in Firestore:", err));
+          return updatedItem;
         }
         return item;
       })
@@ -248,11 +335,18 @@ export default function App() {
   };
 
   // F-03/F-04: Save Order and subtract warehouse matrix stock dynamically!
-  const handleSaveOrder = (newOrder: Order) => {
+  const handleSaveOrder = async (newOrder: Order) => {
     // 1. Add order to state
     setOrders(prev => [newOrder, ...prev]);
 
-    // 2. Subtract stocks from warehouse metrics
+    // Save order to Firestore
+    try {
+      await setDoc(doc(db, "orders", newOrder.id), newOrder);
+    } catch (err) {
+      console.error("Error saving order to Firestore:", err);
+    }
+
+    // 2. Subtract stocks from warehouse metrics in state and Firestore
     setStocks(prevStocks => {
       return prevStocks.map(stockItem => {
         const matchedPurchasedItems = newOrder.products.filter(purchased => 
@@ -266,10 +360,16 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          return {
+          const updatedItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+
+          // Save stock to Firestore
+          setDoc(doc(db, "stocks", stockItem.id), updatedItem)
+            .catch(err => console.error("Error saving stock to Firestore:", err));
+
+          return updatedItem;
         }
 
         return stockItem;
@@ -278,14 +378,19 @@ export default function App() {
   };
 
   // Restore previous stocks when deleting an order
-  const handleDeleteOrder = (orderId: string) => {
+  const handleDeleteOrder = async (orderId: string) => {
     const targetOrder = orders.find(o => o.id === orderId);
     if (!targetOrder) return;
 
     // 1. Remove order from list
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    try {
+      await deleteDoc(doc(db, "orders", orderId));
+    } catch (err) {
+      console.error("Error deleting order from Firestore:", err);
+    }
 
-    // 2. Return items back to stocks
+    // 2. Return items back to stocks in state and Firestore
     setStocks(prevStocks => {
       return prevStocks.map(stockItem => {
         const matchedPurchasedItems = targetOrder.products.filter(purchased => 
@@ -299,10 +404,16 @@ export default function App() {
             updatedSizeStocks[purchased.size] = currentStockVal + purchased.qty;
           });
 
-          return {
+          const updatedItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+
+          // Update stock in Firestore
+          setDoc(doc(db, "stocks", stockItem.id), updatedItem)
+            .catch(err => console.error("Error updating stock in Firestore:", err));
+
+          return updatedItem;
         }
 
         return stockItem;
@@ -311,9 +422,14 @@ export default function App() {
   };
 
   // Adjust warehouse stocks properly by rollback old and commit new quantities
-  const handleUpdateOrder = (updatedOrder: Order, oldOrder: Order) => {
+  const handleUpdateOrder = async (updatedOrder: Order, oldOrder: Order) => {
     // 1. Update order metadata in state list
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    try {
+      await setDoc(doc(db, "orders", updatedOrder.id), updatedOrder);
+    } catch (err) {
+      console.error("Error updating order in Firestore:", err);
+    }
 
     // 2. Adjust warehouse stocks by adding back old bought items, then subtracting updated bought items
     setStocks(prevStocks => {
@@ -342,10 +458,16 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          return {
+          const updatedItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+
+          // Update stock in Firestore
+          setDoc(doc(db, "stocks", stockItem.id), updatedItem)
+            .catch(err => console.error("Error updating stock in Firestore:", err));
+
+          return updatedItem;
         }
 
         return stockItem;
@@ -354,34 +476,51 @@ export default function App() {
   };
 
   // Create Category Group
-  const handleCreateGroup = (groupName: string) => {
+  const handleCreateGroup = async (groupName: string) => {
     if (!groups.includes(groupName)) {
-      setGroups(prev => [...prev, groupName]);
+      const nextGroups = [...groups, groupName];
+      setGroups(nextGroups);
+      try {
+        await setDoc(doc(db, "settings", "app_settings"), { groups: nextGroups }, { merge: true });
+      } catch (err) {
+        console.error("Error creating group in Firestore:", err);
+      }
     }
   };
 
   // Delete Category Group
-  const handleDeleteGroup = (groupName: string) => {
+  const handleDeleteGroup = async (groupName: string) => {
     const nextGroups = groups.filter(g => g !== groupName);
     setGroups(nextGroups);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { groups: nextGroups }, { merge: true });
+    } catch (err) {
+      console.error("Error deleting group settings in Firestore:", err);
+    }
 
     const fallbackGroup = nextGroups[0] || 'Uncategorized';
-    setProducts(prev => 
-      prev.map(p => {
+    setProducts(prev => {
+      return prev.map(p => {
         if (p.group === groupName) {
-          return { ...p, group: fallbackGroup };
+          const updatedProduct = { ...p, group: fallbackGroup };
+          setDoc(doc(db, "products", p.id), updatedProduct)
+            .catch(err => console.error("Error updating product group in Firestore:", err));
+          return updatedProduct;
         }
         return p;
-      })
-    );
+      });
+    });
   };
 
   // Relocate a product category individually
-  const handleUpdateProductGroup = (productId: string, newGroup: string) => {
+  const handleUpdateProductGroup = async (productId: string, newGroup: string) => {
     setProducts(prev => 
       prev.map(p => {
         if (p.id === productId) {
-          return { ...p, group: newGroup };
+          const updatedProduct = { ...p, group: newGroup };
+          setDoc(doc(db, "products", productId), updatedProduct)
+            .catch(err => console.error("Error updating product group in Firestore:", err));
+          return updatedProduct;
         }
         return p;
       })
@@ -389,8 +528,17 @@ export default function App() {
   };
 
   // F-01 Product Master mutations: Add, Edit, Delete
-  const handleAddProduct = (newProduct: Product) => {
+  const handleAddProduct = async (newProduct: Product) => {
     setProducts(prev => [...prev, newProduct]);
+    try {
+      await setDoc(doc(db, "products", newProduct.id), newProduct);
+      // Also update the order list with the new product at the end
+      await setDoc(doc(db, "settings", "app_settings"), {
+        productIdsOrder: [...products.map(p => p.id), newProduct.id]
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error saving new product to Firestore:", err);
+    }
 
     const newStockObjects: StockItem[] = newProduct.colors.map(color => {
       const initialStocks: { [size: string]: number } = {};
@@ -402,19 +550,30 @@ export default function App() {
         initialStocks[sz] = 0;
       });
 
-      return {
+      const stockItem: StockItem = {
         id: `${newProduct.id}_${color}`,
         productId: newProduct.id,
         productName: newProduct.name,
         color: color,
         stocks: initialStocks
       };
+
+      // Save stock item to Firestore
+      setDoc(doc(db, "stocks", stockItem.id), stockItem)
+        .catch(err => console.error("Error saving stock item to Firestore:", err));
+
+      return stockItem;
     });
     setStocks(prev => [...prev, ...newStockObjects]);
   };
 
-  const handleUpdateProduct = (updatedProduct: Product) => {
+  const handleUpdateProduct = async (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    try {
+      await setDoc(doc(db, "products", updatedProduct.id), updatedProduct);
+    } catch (err) {
+      console.error("Error updating product in Firestore:", err);
+    }
 
     setStocks(prevStocks => {
       const otherStocks = prevStocks.filter(s => s.productId !== updatedProduct.id);
@@ -432,14 +591,15 @@ export default function App() {
           alignedSizeStocks[sz] = existing?.stocks?.[sz] ?? 0;
         });
 
+        let stockItem: StockItem;
         if (existing) {
-          return {
+          stockItem = {
             ...existing,
             productName: updatedProduct.name,
             stocks: alignedSizeStocks
           };
         } else {
-          return {
+          stockItem = {
             id: `${updatedProduct.id}_${color}`,
             productId: updatedProduct.id,
             productName: updatedProduct.name,
@@ -447,19 +607,50 @@ export default function App() {
             stocks: alignedSizeStocks
           };
         }
+
+        // Save stock item to Firestore
+        setDoc(doc(db, "stocks", stockItem.id), stockItem)
+          .catch(err => console.error("Error updating stock item in Firestore:", err));
+
+        return stockItem;
       });
 
       return [...otherStocks, ...alignedStocks];
     });
   };
 
-  const handleDeleteProduct = (productId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
-    setStocks(prev => prev.filter(s => s.productId !== productId));
+    try {
+      await deleteDoc(doc(db, "products", productId));
+    } catch (err) {
+      console.error("Error deleting product from Firestore:", err);
+    }
+
+    setStocks(prev => {
+      const stocksToDelete = prev.filter(s => s.productId === productId);
+      stocksToDelete.forEach(s => {
+        deleteDoc(doc(db, "stocks", s.id))
+          .catch(err => console.error("Error deleting stock item from Firestore:", err));
+      });
+      return prev.filter(s => s.productId !== productId);
+    });
+  };
+
+  // Reorder products sorting persistence
+  const handleReorderProducts = async (newProducts: Product[]) => {
+    setProducts(newProducts);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), {
+        productIdsOrder: newProducts.map(p => p.id)
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error saving product order to Firestore:", err);
+    }
   };
 
   // Brand Info and Channels management handlers
-  const handleUpdateBrand = (updated: {
+  const handleUpdateBrand = async (updated: {
     brandName: string;
     brandLogo: string;
     brandProfile: string;
@@ -469,54 +660,284 @@ export default function App() {
     setBrandLogo(updated.brandLogo);
     setBrandProfile(updated.brandProfile);
     setBrandFooter(updated.brandFooter);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), {
+        brandName: updated.brandName,
+        brandLogo: updated.brandLogo,
+        brandProfile: updated.brandProfile,
+        brandFooter: updated.brandFooter
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error updating brand settings in Firestore:", err);
+    }
   };
 
-  const handleAddChannel = (newChannel: Channel) => {
+  const handleAddChannel = async (newChannel: Channel) => {
     setChannels(prev => [...prev, newChannel]);
+    try {
+      await setDoc(doc(db, "channels", newChannel.id), newChannel);
+    } catch (err) {
+      console.error("Error adding channel to Firestore:", err);
+    }
   };
 
-  const handleUpdateChannel = (updatedChannel: Channel) => {
+  const handleUpdateChannel = async (updatedChannel: Channel) => {
     setChannels(prev => 
       prev.map(c => c.id === updatedChannel.id ? updatedChannel : c)
     );
-  };
-
-  const handleDeleteChannel = (channelId: string) => {
-    setChannels(prev => prev.filter(c => c.id !== channelId));
-  };
-
-  // Full hard factory settings reset to restore original mock template
-  const handleResetFactoryDefaults = () => {
-    if (confirm("Apakah Anda yakin ingin menyetel ulang data? Ini akan mengosongkan transaksi order & produk, mengembalikan parameter brand ke setelan default.")) {
-      localStorage.removeItem('omni_products');
-      localStorage.removeItem('omni_stocks');
-      localStorage.removeItem('omni_channels');
-      localStorage.removeItem('omni_groups');
-      localStorage.removeItem('omni_orders');
-      localStorage.removeItem('omni_brand_name');
-      localStorage.removeItem('omni_brand_logo');
-      localStorage.removeItem('omni_brand_profile');
-      localStorage.removeItem('omni_brand_footer');
-      localStorage.removeItem('omni_app_font');
-      localStorage.removeItem('omni_app_font_weight');
-      localStorage.removeItem('omni_pencatat_list');
-
-      setProducts(INITIAL_PRODUCTS);
-      setStocks(INITIAL_STOCKS);
-      setChannels(INITIAL_CHANNELS);
-      setGroups(INITIAL_GROUPS);
-      setOrders(INITIAL_ORDERS);
-      setBrandName('OmniOrder');
-      setBrandLogo('📦');
-      setBrandProfile('Sistem Pengelola Transaksi Omnichannel');
-      setBrandFooter('OmniOrder – All rights reserved © 2026.');
-      setAppFont('Inter');
-      setAppFontWeight('400');
-      setPencatatList(['Admin 1', 'Admin 2', 'Owner']);
-      setActiveTab('dashboard');
-      setIsMobileSidebarOpen(false);
+    try {
+      await setDoc(doc(db, "channels", updatedChannel.id), updatedChannel);
+    } catch (err) {
+      console.error("Error updating channel in Firestore:", err);
     }
   };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    setChannels(prev => prev.filter(c => c.id !== channelId));
+    try {
+      await deleteDoc(doc(db, "channels", channelId));
+    } catch (err) {
+      console.error("Error deleting channel from Firestore:", err);
+    }
+  };
+
+  // Synchronized payment methods updater
+  const updatePaymentMethods = async (newMethods: string[]) => {
+    setPaymentMethods(newMethods);
+    // Remove deleted payment methods from channels
+    const updatedChannels = channels.map(chan => ({
+      ...chan,
+      paymentMethods: (chan.paymentMethods || []).filter(m => newMethods.includes(m))
+    }));
+    setChannels(updatedChannels);
+
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { paymentMethods: newMethods }, { merge: true });
+      const batch = writeBatch(db);
+      updatedChannels.forEach(c => {
+        batch.set(doc(db, "channels", c.id), c);
+      });
+      await batch.commit();
+    } catch (err) {
+      console.error("Error syncing payment methods to Firestore:", err);
+    }
+  };
+
+  // Synchronized pencatat admin list updater
+  const handleUpdatePencatatList = async (newList: string[]) => {
+    setPencatatList(newList);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { pencatatList: newList }, { merge: true });
+    } catch (err) {
+      console.error("Error syncing admin list to Firestore:", err);
+    }
+  };
+
+  // Synchronized discount scheme updater
+  const handleUpdateAutoDiscounts = async (newDiscounts: AutoDiscount[]) => {
+    setAutoDiscounts(newDiscounts);
+    try {
+      const querySnapshot = await getDocs(collection(db, "autoDiscounts"));
+      const existingIds = querySnapshot.docs.map(doc => doc.id);
+      const nextIds = newDiscounts.map(d => d.id);
+      
+      const batch = writeBatch(db);
+      
+      // Delete removed documents
+      existingIds.forEach(id => {
+        if (!nextIds.includes(id)) {
+          batch.delete(doc(db, "autoDiscounts", id));
+        }
+      });
+      
+      // Set or update remaining/new documents
+      newDiscounts.forEach(d => {
+        batch.set(doc(db, "autoDiscounts", d.id), d);
+      });
+      
+      await batch.commit();
+    } catch (err) {
+      console.error("Error syncing autoDiscounts to Firestore:", err);
+    }
+  };
+
+  // Custom typography controllers
+  const handleUpdateFont = async (font: string) => {
+    setAppFont(font);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { appFont: font }, { merge: true });
+    } catch (err) {
+      console.error("Error saving font settings in Firestore:", err);
+    }
+  };
+
+  const handleUpdateFontWeight = async (weight: string) => {
+    setAppFontWeight(weight);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { appFontWeight: weight }, { merge: true });
+    } catch (err) {
+      console.error("Error saving font weight settings in Firestore:", err);
+    }
+  };
+
+  // Full Firestore database resets restoring defaults
+  const handleResetFactoryDefaults = async () => {
+    if (confirm("Apakah Anda yakin ingin menyetel ulang data? Ini akan mengosongkan transaksi order & produk, mengembalikan parameter brand ke setelan default di server Firestore.")) {
+      setIsLoading(true);
+      try {
+        // Delete all products
+        const productsSnap = await getDocs(collection(db, "products"));
+        const prodBatch = writeBatch(db);
+        productsSnap.forEach(d => prodBatch.delete(d.ref));
+        await prodBatch.commit();
+
+        // Delete all stocks
+        const stocksSnap = await getDocs(collection(db, "stocks"));
+        const stockBatch = writeBatch(db);
+        stocksSnap.forEach(d => stockBatch.delete(d.ref));
+        await stockBatch.commit();
+
+        // Delete all channels
+        const channelsSnap = await getDocs(collection(db, "channels"));
+        const chanBatch = writeBatch(db);
+        channelsSnap.forEach(d => chanBatch.delete(d.ref));
+        await chanBatch.commit();
+
+        // Delete all orders
+        const ordersSnap = await getDocs(collection(db, "orders"));
+        const orderBatch = writeBatch(db);
+        ordersSnap.forEach(d => orderBatch.delete(d.ref));
+        await orderBatch.commit();
+
+        // Delete all autoDiscounts
+        const discountSnap = await getDocs(collection(db, "autoDiscounts"));
+        const discBatch = writeBatch(db);
+        discountSnap.forEach(d => discBatch.delete(d.ref));
+        await discBatch.commit();
+
+        // Re-set app settings doc
+        const settingsRef = doc(db, "settings", "app_settings");
+        const defaultSettings = {
+          brandName: 'OmniOrder',
+          brandLogo: '📦',
+          brandProfile: 'Sistem Pengelola Transaksi Omnichannel',
+          brandFooter: 'OmniOrder – All rights reserved © 2026.',
+          appFont: 'Inter',
+          appFontWeight: '400',
+          paymentMethods: ['Transfer', 'COD', 'E-Wallet', 'Lainnya'],
+          pencatatList: ['Admin 1', 'Admin 2', 'Owner'],
+          groups: INITIAL_GROUPS,
+          productIdsOrder: INITIAL_PRODUCTS.map(p => p.id)
+        };
+        await setDoc(settingsRef, defaultSettings);
+
+        // Re-seed products
+        const pBatch = writeBatch(db);
+        INITIAL_PRODUCTS.forEach(p => pBatch.set(doc(db, "products", p.id), p));
+        await pBatch.commit();
+
+        // Re-seed stocks
+        const sBatch = writeBatch(db);
+        INITIAL_STOCKS.forEach(s => sBatch.set(doc(db, "stocks", s.id), s));
+        await sBatch.commit();
+
+        // Re-seed channels
+        const cBatch = writeBatch(db);
+        INITIAL_CHANNELS.forEach(c => cBatch.set(doc(db, "channels", c.id), c));
+        await cBatch.commit();
+
+        // Re-seed orders (with current adjusted date)
+        const today = new Date();
+        const currYear = today.getFullYear();
+        const currMonth = String(today.getMonth() + 1).padStart(2, '0');
+        const currDay = String(today.getDate()).padStart(2, '0');
+        const adjustedOrders = INITIAL_ORDERS.map(o => {
+          if (o.dateTime && (o.dateTime.startsWith('2026-05') || o.dateTime.includes('2026-05-22'))) {
+            const timePart = o.dateTime.split('T')[1] || '12:00:00.000Z';
+            const orderDate = o.dateTime.split('T')[0];
+            const dayOffset = orderDate.endsWith('-22') ? currDay : orderDate.split('-')[2];
+            return {
+              ...o,
+              dateTime: `${currYear}-${currMonth}-${dayOffset}T${timePart}`,
+              orderNumber: o.orderNumber.replace(/20260522/, `${currYear}${currMonth}${currDay}`)
+            };
+          }
+          return o;
+        });
+        const oBatch = writeBatch(db);
+        adjustedOrders.forEach(o => oBatch.set(doc(db, "orders", o.id), o));
+        await oBatch.commit();
+
+        // Re-seed autoDiscounts
+        const defaultDiscounts: AutoDiscount[] = [
+          {
+            id: 'disc_default_1',
+            name: 'Diskon Gajian 10%',
+            type: 'percent',
+            value: 10,
+            channelIds: ['shopee', 'tokopedia'],
+            productIds: ['all'],
+            isActive: true
+          },
+          {
+            id: 'disc_default_2',
+            name: 'Potongan Flat Rp 5rb',
+            type: 'nominal',
+            value: 5000,
+            channelIds: ['all'],
+            productIds: ['all'],
+            isActive: true
+          }
+        ];
+        const dBatch = writeBatch(db);
+        defaultDiscounts.forEach(d => dBatch.set(doc(db, "autoDiscounts", d.id), d));
+        await dBatch.commit();
+
+        // Reset state values
+        setBrandName(defaultSettings.brandName);
+        setBrandLogo(defaultSettings.brandLogo);
+        setBrandProfile(defaultSettings.brandProfile);
+        setBrandFooter(defaultSettings.brandFooter);
+        setAppFont(defaultSettings.appFont);
+        setAppFontWeight(defaultSettings.appFontWeight);
+        setPaymentMethods(defaultSettings.paymentMethods);
+        setPencatatList(defaultSettings.pencatatList);
+        setGroups(defaultSettings.groups);
+        setProducts(INITIAL_PRODUCTS);
+        setStocks(INITIAL_STOCKS);
+        setChannels(INITIAL_CHANNELS);
+        setOrders(adjustedOrders);
+        setAutoDiscounts(defaultDiscounts);
+
+        setActiveTab('dashboard');
+        setIsMobileSidebarOpen(false);
+      } catch (err) {
+        console.error("Error resetting factory defaults in Firestore:", err);
+        alert("Gagal melakukan reset penuh di Firestore. Silakan periksa koneksi internet Anda.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  // Synchronous loader component for authentic connection states
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <span className="text-4xl animate-bounce">⚡</span>
+          <div className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </div>
+          <p className="text-xs tracking-wider text-slate-400 font-medium font-mono uppercase">Sinkronisasi Database Cloud...</p>
+          <p className="text-[10px] text-slate-550 font-sans max-w-xs text-center leading-normal">
+            Kredensial database OmniOrder Anda sedang dimuat dan disinkronkan secara langsung dengan server Google Firestore.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-950">
@@ -723,7 +1144,7 @@ export default function App() {
               onAddProduct={handleAddProduct}
               onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
-              onReorderProducts={setProducts}
+              onReorderProducts={handleReorderProducts}
             />
           )}
 
@@ -746,15 +1167,15 @@ export default function App() {
               onUpdateChannel={handleUpdateChannel}
               onDeleteChannel={handleDeleteChannel}
               appFont={appFont}
-              onUpdateFont={setAppFont}
+              onUpdateFont={handleUpdateFont}
               appFontWeight={appFontWeight}
-              onUpdateFontWeight={setAppFontWeight}
+              onUpdateFontWeight={handleUpdateFontWeight}
               paymentMethods={paymentMethods}
               onUpdatePaymentMethods={updatePaymentMethods}
               pencatatList={pencatatList}
-              onUpdatePencatatList={setPencatatList}
+              onUpdatePencatatList={handleUpdatePencatatList}
               autoDiscounts={autoDiscounts}
-              onUpdateAutoDiscounts={setAutoDiscounts}
+              onUpdateAutoDiscounts={handleUpdateAutoDiscounts}
               products={products}
             />
           )}
