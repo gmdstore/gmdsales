@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
 import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
@@ -99,6 +99,30 @@ export default function SettingsComponent({
   const [discSelectedProducts, setDiscSelectedProducts] = useState<string[]>(['all']);
   const [discountSuccessMsg, setDiscountSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteDiscount, setPendingDeleteDiscount] = useState<AutoDiscount | null>(null);
+
+  // Draft discount state and database sync controls
+  const [localAutoDiscounts, setLocalAutoDiscounts] = useState<AutoDiscount[]>(autoDiscounts);
+  const [isSavingDiscounts, setIsSavingDiscounts] = useState(false);
+
+  useEffect(() => {
+    setLocalAutoDiscounts(autoDiscounts);
+  }, [autoDiscounts]);
+
+  const hasUnsavedDiscounts = JSON.stringify(localAutoDiscounts) !== JSON.stringify(autoDiscounts);
+
+  const handleSaveDiscountsToDatabase = async () => {
+    setIsSavingDiscounts(true);
+    try {
+      await onUpdateAutoDiscounts(localAutoDiscounts);
+      setDiscountSuccessMsg("Semua skema diskon otomatis berhasil disimpan dan disinkronkan ke Firestore!");
+      setTimeout(() => setDiscountSuccessMsg(null), 4000);
+    } catch (err) {
+      console.error("Error saving discounts to Firestore:", err);
+      alert("Gagal menyimpan diskon otomatis ke Firestore.");
+    } finally {
+      setIsSavingDiscounts(false);
+    }
+  };
 
   // Firebase testing states
   const [firebaseStatus, setFirebaseStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
@@ -975,15 +999,48 @@ export default function SettingsComponent({
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">Konfigurasikan diskon otomatis (persentase atau nominal rupiah) yang berlaku per saluran dan per produk</p>
           </div>
-          <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
-            {autoDiscounts.length} Skema Aktif
-          </span>
+          <div className="flex items-center gap-2">
+            {hasUnsavedDiscounts && (
+              <span className="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full font-bold animate-pulse">
+                ⚠️ Ada Perubahan Draf
+              </span>
+            )}
+            <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
+              {localAutoDiscounts.length} Skema Aktif
+            </span>
+          </div>
         </div>
 
         {discountSuccessMsg && (
           <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
             <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>{discountSuccessMsg}</span>
+          </div>
+        )}
+
+        {hasUnsavedDiscounts && (
+          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-850 rounded-2xl flex items-center justify-between gap-3 animate-fade-in font-normal text-xs">
+            <div className="flex items-center gap-2">
+              <span className="animate-bounce">⚠️</span>
+              <span>Anda memiliki perubahan pengaturan diskon yang belum disimpan ke database.</span>
+            </div>
+            <button
+              onClick={handleSaveDiscountsToDatabase}
+              disabled={isSavingDiscounts}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 text-white font-medium rounded-lg transition-colors text-xs shrink-0 flex items-center gap-1 cursor-pointer"
+            >
+              {isSavingDiscounts ? (
+                <>
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save className="h-3 w-3" />
+                  Simpan Sekarang
+                </>
+              )}
+            </button>
           </div>
         )}
 
@@ -1015,16 +1072,18 @@ export default function SettingsComponent({
               value: Number(discValue),
               channelIds: discSelectedChannels,
               productIds: discSelectedProducts,
-              isActive: editingDiscId ? (autoDiscounts.find(d => d.id === editingDiscId)?.isActive ?? true) : true
+              isActive: editingDiscId ? (localAutoDiscounts.find(d => d.id === editingDiscId)?.isActive ?? true) : true
             };
 
+            let nextDiscounts: AutoDiscount[];
             if (editingDiscId) {
-              onUpdateAutoDiscounts(autoDiscounts.map(d => d.id === editingDiscId ? newDiscount : d));
-              setDiscountSuccessMsg("Skema diskon otomatis berhasil diperbarui!");
+              nextDiscounts = localAutoDiscounts.map(d => d.id === editingDiscId ? newDiscount : d);
+              setDiscountSuccessMsg("Draf skema diskon berhasil diperbarui! Jangan lupa simpan perubahan.");
             } else {
-              onUpdateAutoDiscounts([...autoDiscounts, newDiscount]);
-              setDiscountSuccessMsg("Skema diskon otomatis baru berhasil ditambahkan!");
+              nextDiscounts = [...localAutoDiscounts, newDiscount];
+              setDiscountSuccessMsg("Draf skema diskon baru berhasil ditambahkan! Jangan lupa simpan perubahan.");
             }
+            setLocalAutoDiscounts(nextDiscounts);
 
             // Reset form
             setEditingDiscId(null);
@@ -1242,7 +1301,7 @@ export default function SettingsComponent({
               <span className="text-[10px] text-slate-400 font-normal uppercase font-sans">Sistem Prioritas Auto-Match</span>
             </h4>
 
-            {autoDiscounts.length === 0 ? (
+            {localAutoDiscounts.length === 0 ? (
               <div className="p-8 border border-dashed border-slate-200 rounded-2xl text-center space-y-2">
                 <span className="text-2xl block">🏷️</span>
                 <p className="text-xs font-normal text-slate-500">Belum ada aturan diskon otomatis.</p>
@@ -1250,7 +1309,7 @@ export default function SettingsComponent({
               </div>
             ) : (
               <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-                {autoDiscounts.map((discount) => {
+                {localAutoDiscounts.map((discount) => {
                   return (
                     <div
                       key={discount.id}
@@ -1329,8 +1388,8 @@ export default function SettingsComponent({
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = autoDiscounts.map(d => d.id === discount.id ? { ...d, isActive: !d.isActive } : d);
-                            onUpdateAutoDiscounts(updated);
+                            const updated = localAutoDiscounts.map(d => d.id === discount.id ? { ...d, isActive: !d.isActive } : d);
+                            setLocalAutoDiscounts(updated);
                           }}
                           className={`px-3 py-1 text-[9.5px] font-normal rounded-lg border transition-all cursor-pointer ${
                             discount.isActive
@@ -1379,6 +1438,48 @@ export default function SettingsComponent({
                 })}
               </div>
             )}
+
+            {/* Save & Confirm Button Section */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="text-[11px] text-slate-500 font-normal">
+                {hasUnsavedDiscounts ? (
+                  <span className="text-amber-600 flex items-center gap-1.5 font-bold">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    Ada perubahan draf diskon belum disimpan!
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-505 bg-emerald-500"></span>
+                    Pengaturan sinkron dengan database Firestore.
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveDiscountsToDatabase}
+                disabled={isSavingDiscounts}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  hasUnsavedDiscounts
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/25 active:scale-95 hover:-translate-y-0.5'
+                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                }`}
+              >
+                {isSavingDiscounts ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Sedang Menyimpan ke Database...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Simpan & Konfirmasi Aturan Diskon
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1493,13 +1594,13 @@ export default function SettingsComponent({
               >
                 Batal
               </button>
-              <button
+               <button
                 type="button"
                 onClick={() => {
-                  onUpdateAutoDiscounts(autoDiscounts.filter(d => d.id !== pendingDeleteDiscount.id));
-                  setDiscountSuccessMsg(`Berhasil menghapus aturan diskon "${pendingDeleteDiscount.name}"`);
+                  setLocalAutoDiscounts(localAutoDiscounts.filter(d => d.id !== pendingDeleteDiscount.id));
+                  setDiscountSuccessMsg(`Berhasil menghapus draf aturan diskon "${pendingDeleteDiscount.name}". Klik Simpan untuk konfirmasi ke database.`);
                   setPendingDeleteDiscount(null);
-                  setTimeout(() => setDiscountSuccessMsg(null), 3000);
+                  setTimeout(() => setDiscountSuccessMsg(null), 4000);
                 }}
                 className="flex-1 py-2.5 px-4 text-xs font-black text-white bg-rose-500 hover:bg-rose-600 active:bg-rose-700 rounded-xl shadow-md shadow-rose-500/10 cursor-pointer select-none transition-all active:scale-95"
               >

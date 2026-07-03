@@ -1064,15 +1064,7 @@ export default function App() {
 
         {/* Global Sidebar Footer & System actions */}
         <div className="p-4 border-t border-slate-900 space-y-4">
-          <div className="px-2 flex items-center justify-between">
-            <button
-              onClick={handleResetFactoryDefaults}
-              className="inline-flex items-center gap-1 text-[10px] font-normal text-slate-500 hover:text-red-400 cursor-pointer transition-colors"
-              title="Kembalikan sistem ke data kosong instan"
-            >
-              <RotateCcw className="h-3 w-3 shrink-0" />
-              Reset setelan sistem
-            </button>
+          <div className="px-2 flex items-center justify-end">
             <span className="text-[9px] font-normal text-slate-400 font-mono tracking-wider uppercase bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-md">MVP</span>
           </div>
 
