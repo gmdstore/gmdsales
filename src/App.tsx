@@ -1002,12 +1002,19 @@ export default function App() {
   // Synchronous loader component for authentic connection states
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center font-sans space-y-4">
-        <div className="relative flex h-10 w-10">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-10 w-10 bg-emerald-500"></span>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans antialiased">
+        <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-24 h-24 rounded-full bg-emerald-500/10 blur-xl animate-pulse"></div>
+            <div className="w-20 h-20 border-2 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
+            <div className="absolute text-4xl animate-bounce select-none">
+              {brandLogo || '📦'}
+            </div>
+          </div>
+          <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
+            {brandName || 'OmniOrder'}
+          </h1>
         </div>
-        <p className="text-xs font-mono text-slate-400">Menyelaraskan Sesi Pengguna...</p>
       </div>
     );
   }
@@ -1018,12 +1025,19 @@ export default function App() {
 
   if (userProfileLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center font-sans space-y-4">
-        <div className="relative flex h-10 w-10">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-10 w-10 bg-indigo-500"></span>
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans antialiased">
+        <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-24 h-24 rounded-full bg-emerald-500/10 blur-xl animate-pulse"></div>
+            <div className="w-20 h-20 border-2 border-slate-800 border-t-emerald-500 rounded-full animate-spin"></div>
+            <div className="absolute text-4xl animate-bounce select-none">
+              {brandLogo || '📦'}
+            </div>
+          </div>
+          <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
+            {brandName || 'OmniOrder'}
+          </h1>
         </div>
-        <p className="text-xs font-mono text-slate-400">Memeriksa Otorisasi Akses...</p>
       </div>
     );
   }
@@ -1107,7 +1121,7 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-100 font-sans antialiased">
-        <div className="flex flex-col items-center gap-6 max-w-xs text-center px-4">
+        <div className="flex flex-col items-center gap-5 max-w-xs text-center px-4">
           {/* Animated outer ring with logo inside */}
           <div className="relative flex items-center justify-center">
             {/* Glowing background */}
@@ -1123,21 +1137,9 @@ export default function App() {
           </div>
 
           {/* Brand details */}
-          <div className="space-y-2">
-            <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
-              {brandName || 'OmniOrder'}
-            </h1>
-            <p className="text-[10px] tracking-widest text-emerald-400 font-semibold font-mono uppercase">
-              SINKRONISASI DATABASE...
-            </p>
-          </div>
-
-          {/* Status explanation */}
-          <div className="border-t border-slate-900 pt-4 w-full">
-            <p className="text-[11px] text-slate-400 font-sans leading-relaxed">
-              Menghubungkan secara langsung ke layanan Google Firestore untuk sinkronisasi data transaksi, inventaris, dan saluran penjualan.
-            </p>
-          </div>
+          <h1 className="text-xl font-extrabold tracking-widest text-white uppercase font-sans">
+            {brandName || 'OmniOrder'}
+          </h1>
         </div>
       </div>
     );

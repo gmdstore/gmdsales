@@ -62,12 +62,12 @@ export default function StockMatrix({
   const [isManagingProducts, setIsManagingProducts] = useState<boolean>(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [prodName, setProdName] = useState<string>('');
-  const [prodSku, setProdSku] = useState<string>('');
   const [prodGroup, setProdGroup] = useState<string>(groups[0] || 'Best Seller');
   const [prodHpp, setProdHpp] = useState<number>(100000);
   const [prodPrice, setProdPrice] = useState<number>(250000);
   const [prodImageUrl, setProdImageUrl] = useState<string>('👕');
-  const [prodColorsText, setProdColorsText] = useState<string>('');
+  const [prodColors, setProdColors] = useState<string[]>(['']);
+  const [variantSkus, setVariantSkus] = useState<Record<string, string>>({});
 
   // Column Visibility state
   const [showPhoto, setShowPhoto] = useState<boolean>(false);
@@ -300,24 +300,24 @@ export default function StockMatrix({
   const handleStartEditProduct = (p: Product) => {
     setEditingProductId(p.id);
     setProdName(p.name);
-    setProdSku(p.sku || '');
     setProdGroup(p.group);
     setProdHpp(p.hpp);
     setProdPrice(p.price);
     setProdImageUrl(p.imageUrl);
-    setProdColorsText(p.colors.join(', '));
+    setProdColors(p.colors && p.colors.length > 0 ? p.colors : ['']);
+    setVariantSkus(p.variantSkus || {});
     setSelectedSizes(p.sizes && p.sizes.length > 0 ? p.sizes : ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL']);
   };
 
   const handleCancelEditProduct = () => {
     setEditingProductId(null);
     setProdName('');
-    setProdSku('');
     setProdGroup(groups[0] || 'Best Seller');
     setProdHpp(100000);
     setProdPrice(250000);
     setProdImageUrl('👕');
-    setProdColorsText('');
+    setProdColors(['']);
+    setVariantSkus({});
     setSelectedSizes(['S', 'M', 'L', 'XL', '2XL']);
   };
 
@@ -325,28 +325,22 @@ export default function StockMatrix({
     const trimmedName = prodName.trim();
     if (!trimmedName) return;
 
-    const colors = prodColorsText
-      .split(',')
-      .map(col => col.trim())
-      .filter(col => col.length > 0);
-
-    if (colors.length === 0) {
+    const validColors = prodColors.map(c => c.trim()).filter(c => c.length > 0);
+    if (validColors.length === 0) {
       alert("Harus ada minimal 1 variasi warna.");
       return;
     }
-
-    const skuNormalized = prodSku.trim().toUpperCase();
 
     if (editingProductId) {
       const updatedProduct: Product = {
         id: editingProductId,
         name: trimmedName,
-        sku: skuNormalized || undefined,
         group: prodGroup,
         hpp: prodHpp,
         price: prodPrice,
         imageUrl: prodImageUrl,
-        colors: colors,
+        colors: validColors,
+        variantSkus: variantSkus,
         sizes: selectedSizes
       };
       onUpdateProduct(updatedProduct);
@@ -354,17 +348,16 @@ export default function StockMatrix({
       const newProduct: Product = {
         id: `p_${Date.now()}`,
         name: trimmedName,
-        sku: skuNormalized || undefined,
         group: prodGroup,
         hpp: prodHpp,
         price: prodPrice,
         imageUrl: prodImageUrl,
-        colors: colors,
+        colors: validColors,
+        variantSkus: variantSkus,
         sizes: selectedSizes
       };
       onAddProduct(newProduct);
     }
-
     handleCancelEditProduct();
   };
 
@@ -685,11 +678,6 @@ export default function StockMatrix({
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="min-w-0">
                         <div className="font-bold text-slate-900 truncate flex items-center gap-1.5 flex-wrap">
-                          {p.sku && (
-                            <span className="text-[9px] font-mono font-black bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase tracking-wide">
-                              {p.sku}
-                            </span>
-                          )}
                           <span>{p.name}</span>
                           <span className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-md font-extrabold">
                             {p.group}
@@ -750,9 +738,9 @@ export default function StockMatrix({
               </div>
 
               <div className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
                   {/* Nama Produk */}
-                  <div className="sm:col-span-2">
+                  <div>
                     <label className="block font-bold text-slate-700 mb-1">Nama Produk:</label>
                     <input
                       type="text"
@@ -761,18 +749,6 @@ export default function StockMatrix({
                       value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Kode SKU */}
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Kode SKU:</label>
-                    <input
-                      type="text"
-                      placeholder="Contoh: TS-COT"
-                      value={prodSku}
-                      onChange={(e) => setProdSku(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold uppercase text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -831,20 +807,45 @@ export default function StockMatrix({
                   </div>
                 )}
 
-                {/* Variasi Warna (tags/comma separated) */}
+                {/* Variasi Warna (List) */}
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Variasi Warna (koma):</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Misal: Hitam, Biru Navy, Putih"
-                    value={prodColorsText}
-                    onChange={(e) => setProdColorsText(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none"
-                  />
-                  <span className="text-[9px] text-slate-400 block mt-1 leading-normal">
-                    Pemisah koma. Menghasilkan sedia baris entri stok tersendiri.
-                  </span>
+                  <label className="block font-semibold text-slate-700 mb-1">Variasi Warna:</label>
+                  <div className="space-y-2">
+                    {prodColors.map((color, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          required
+                          placeholder="Warna (Misal: Hitam)"
+                          value={color}
+                          onChange={(e) => {
+                            const newColors = [...prodColors];
+                            newColors[index] = e.target.value;
+                            setProdColors(newColors);
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-850 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (prodColors.length > 1) {
+                              setProdColors(prodColors.filter((_, i) => i !== index));
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setProdColors([...prodColors, ''])}
+                      className="text-xs font-semibold text-emerald-600 hover:text-emerald-700"
+                    >
+                      + Tambah Variasi
+                    </button>
+                  </div>
                 </div>
 
                 {/* Variasi Ukuran (checkboxes) */}
@@ -882,10 +883,43 @@ export default function StockMatrix({
                   )}
                 </div>
 
+                {/* Kombinasi SKU (Warna & Ukuran) */}
+                {prodColors.filter(c => c.trim().length > 0).length > 0 && selectedSizes.length > 0 && (
+                  <div>
+                    <label className="block font-semibold text-slate-705 mb-1 text-[11px]">Kombinasi SKU (Warna & Ukuran):</label>
+                    <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2 max-h-60 overflow-y-auto">
+                      {prodColors.filter(c => c.trim().length > 0).map(color => (
+                        <div key={color} className="space-y-1.5">
+                          <div className="text-[10px] font-bold text-slate-700 bg-slate-200/50 px-2 py-1 rounded">
+                            {color.trim()}
+                          </div>
+                          <div className="space-y-1.5 pl-2 border-l-2 border-slate-200 ml-1">
+                            {selectedSizes.map(sz => {
+                              const comboKey = `${color.trim()}-${sz}`;
+                              return (
+                                <div key={comboKey} className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-slate-600 w-12">{sz}</span>
+                                  <input
+                                    type="text"
+                                    placeholder={`SKU ${color.trim()} - ${sz}`}
+                                    value={variantSkus[comboKey] || ''}
+                                    onChange={(e) => setVariantSkus({...variantSkus, [comboKey]: e.target.value.toUpperCase()})}
+                                    className="flex-1 px-2 py-1.5 bg-white border border-slate-200 rounded text-[10px] font-mono font-bold uppercase text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Submit button */}
                 <button
                   type="button"
-                  disabled={!prodName.trim() || !prodColorsText.trim() || selectedSizes.length === 0}
+                  disabled={!prodName.trim() || prodColors.filter(c => c.trim().length > 0).length === 0 || selectedSizes.length === 0}
                   onClick={handleSubmitProductForm}
                   className="w-full mt-2 py-2.5 bg-slate-900 border border-slate-950 hover:bg-slate-850 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed text-xs animate-pulse"
                 >
@@ -941,32 +975,29 @@ export default function StockMatrix({
             </p>
           </div>
         ) : (
-          <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-100/60 rounded-2xl relative">
+          <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-300 rounded-2xl relative">
             <table className="w-full text-left col-auto border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-normal text-slate-400 uppercase tracking-wider">
+                <tr className="bg-slate-100 border-b border-slate-300 text-[10px] font-semibold text-black uppercase tracking-wider">
                   {sortBy === 'default' && isManualReordering && (
-                    <th className="py-3 px-2 text-center w-16 bg-slate-150/90 font-normal text-slate-600 border-r border-slate-150 sticky top-0 z-20">
+                    <th className="py-3 px-2 text-center w-16 bg-slate-100 text-black border-r border-slate-300 sticky top-0 z-20">
                       Atur
                     </th>
                   )}
-                  <th className="py-3 px-4 w-32 bg-slate-50 sticky top-0 z-20">Kode SKU</th>
-                  <th className="py-3 px-4 bg-slate-50 sticky top-0 z-20">Nama Produk Master</th>
-                  {showColor && <th className="py-3 px-4 bg-slate-50 sticky top-0 z-20">Warna</th>}
-                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-normal bg-rose-50 sticky top-0 z-20">HPP</th>}
-                  <th className="py-3 px-4 text-right bg-slate-50 sticky top-0 z-20">Harga Jual</th>
+                  <th className="py-3 px-4 bg-slate-100 text-black sticky top-0 z-20">Nama Produk Master</th>
+                  {showColor && <th className="py-3 px-4 bg-slate-100 text-black sticky top-0 z-20">Warna</th>}
                   
                   {/* Sizegroup columns S-4XL */}
                   {SIZES.map(size => (
-                    <th key={size} className="py-3 px-2 text-center w-16 bg-slate-50 sticky top-0 z-20">
+                    <th key={size} className="py-3 px-2 text-center w-16 bg-slate-100 text-black sticky top-0 z-20 border-l border-slate-300">
                       {size}
                     </th>
                   ))}
-                  <th className="py-3 px-4 text-center w-20 bg-slate-100 font-normal text-slate-700 border-l border-slate-200 sticky top-0 z-20">Total Qty</th>
-                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100 font-normal text-rose-800 border-l border-slate-200 sticky top-0 z-20">Total HPP</th>}
+                  <th className="py-3 px-4 text-center w-20 bg-slate-100 font-semibold text-black border-l border-slate-300 sticky top-0 z-20">Total Qty</th>
+                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-slate-100 font-semibold text-black border-l border-slate-300 sticky top-0 z-20">Total HPP</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-750">
+              <tbody className="divide-y divide-slate-300 text-xs text-slate-750">
                 {sortedMatchingStocks.map((stockItem, index) => {
                   const product = products.find(p => p.id === stockItem.productId);
                   if (!product) return null;
@@ -974,88 +1005,101 @@ export default function StockMatrix({
                   const totalQty = Object.values(stockItem.stocks).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0) as number;
                   const totalHpp = totalQty * product.hpp;
 
-                  const isFirstRowOfProduct = sortedMatchingStocks.findIndex(s => s.productId === stockItem.productId) === index;
                   const visIndex = visibleProductsInTable.findIndex(p => p.id === product.id);
                   const isFirstVisible = visIndex === 0;
                   const isLastVisible = visIndex === visibleProductsInTable.length - 1;
 
+                  const currentProductId = stockItem.productId;
+                  const isConsecutiveFirstRow = index === 0 || sortedMatchingStocks[index - 1].productId !== currentProductId;
+                  const isConsecutiveLastRow = index === sortedMatchingStocks.length - 1 || sortedMatchingStocks[index + 1].productId !== currentProductId;
+                  
+                  let productRowCount = 0;
+                  if (isConsecutiveFirstRow) {
+                    productRowCount = 1;
+                    for (let i = index + 1; i < sortedMatchingStocks.length; i++) {
+                      if (sortedMatchingStocks[i].productId === currentProductId) {
+                        productRowCount++;
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+
+                  let productOverallQty = 0;
+                  if (isConsecutiveLastRow) {
+                    for (let i = index; i >= 0; i--) {
+                      if (sortedMatchingStocks[i].productId === currentProductId) {
+                        const itemQty = Object.values(sortedMatchingStocks[i].stocks).reduce((sum: number, qty: any) => sum + (Number(qty) || 0), 0) as number;
+                        productOverallQty += itemQty;
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+                  const productOverallHpp = productOverallQty * product.hpp;
+
+                  let beforeQtyColSpan = 1 + SIZES.length; // Nama(1), SIZES(n)
+                  if (sortBy === 'default' && isManualReordering) beforeQtyColSpan++;
+                  if (showColor) beforeQtyColSpan++;
+
                   return (
-                    <tr key={stockItem.id} className="hover:bg-slate-50/50 transition-colors">
+                    <React.Fragment key={stockItem.id}>
+                      <tr className="bg-white text-black hover:bg-slate-50 transition-colors">
                       {/* Manual Sorting controls */}
-                      {sortBy === 'default' && isManualReordering && (
-                        <td className="py-3.5 px-2 text-center border-r border-slate-100/60 whitespace-nowrap bg-slate-50/5">
-                          {isFirstRowOfProduct ? (
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleMoveProduct(product.id, 'up')}
-                                disabled={isFirstVisible}
-                                className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
-                                  isFirstVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
-                                }`}
-                                title="Naikkan posisi produk"
-                              >
-                                <ChevronUp className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleMoveProduct(product.id, 'down')}
-                                disabled={isLastVisible}
-                                className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
-                                  isLastVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
-                                }`}
-                                title="Turunkan posisi produk"
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-slate-350 font-normal tracking-widest select-none">⋮</span>
-                          )}
+                      {sortBy === 'default' && isManualReordering && isConsecutiveFirstRow && (
+                        <td rowSpan={productRowCount} className="py-3.5 px-2 text-center border-r border-slate-300 whitespace-nowrap bg-white text-black">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveProduct(product.id, 'up')}
+                              disabled={isFirstVisible}
+                              className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
+                                isFirstVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                              title="Naikkan posisi produk"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveProduct(product.id, 'down')}
+                              disabled={isLastVisible}
+                              className={`p-1 rounded hover:bg-slate-100 transition-colors cursor-pointer ${
+                                isLastVisible ? 'text-slate-200 cursor-not-allowed' : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50'
+                              }`}
+                              title="Turunkan posisi produk"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </button>
+                          </div>
                         </td>
                       )}
 
-                      {/* Kode SKU Column */}
-                      <td className="py-3.5 px-4 font-mono font-normal text-slate-800/90 whitespace-nowrap">
-                        {product.sku ? (
-                          <span className="bg-slate-100/80 px-2 py-1 rounded text-[11px] border border-slate-200">
-                            {product.sku}
-                          </span>
-                        ) : (
-                          <span className="text-slate-350 italic font-normal text-[11px]">- none -</span>
-                        )}
-                      </td>
-
                       {/* Name */}
-                      <td className="py-3.5 px-4 font-normal text-slate-900 font-sans">
-                        <div className="flex flex-col">
-                          <span>{product.name}</span>
-                          {searchQuery && (
-                            <span className="text-[9px] text-emerald-600 font-normal mt-0.5">
-                              Grup: {product.group}
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                      {isConsecutiveFirstRow && (
+                        <td rowSpan={productRowCount} className="py-3.5 px-4 font-normal text-black font-sans bg-white">
+                          <div className="flex flex-col">
+                            <span>{product.name}</span>
+                            {showHpp && (
+                              <span className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                HPP: {formatRp(product.hpp)}
+                              </span>
+                            )}
+                            {searchQuery && (
+                              <span className="text-[9px] text-emerald-600 font-normal mt-0.5">
+                                Grup: {product.group}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
 
                       {/* Optional Color */}
                       {showColor && (
-                        <td className="py-3.5 px-4 font-normal text-slate-500">
+                        <td className="py-3.5 px-4 font-normal text-black bg-white">
                           {stockItem.color}
                         </td>
                       )}
-
-                      {/* Optional Protected HPP */}
-                      {showHpp && (
-                        <td className="py-3.5 px-4 text-right font-mono font-normal text-rose-700 bg-rose-50/40 select-none">
-                          {formatRp(product.hpp)}
-                        </td>
-                      )}
-
-                      {/* Value Price */}
-                      <td className="py-3.5 px-4 text-right font-mono font-normal text-slate-900">
-                        {formatRp(product.price)}
-                      </td>
 
                       {/* Matriks Size levels */}
                       {SIZES.map(size => {
@@ -1068,7 +1112,7 @@ export default function StockMatrix({
                           return (
                             <td 
                               key={size}
-                              className="py-3 px-1 text-center font-mono select-none border-l border-r border-slate-100/40 bg-slate-50/10"
+                              className="py-3 px-1 text-center font-mono select-none border-l border-slate-300 bg-white text-black"
                               title="Ukuran tidak aktif untuk produk ini"
                             >
                               
@@ -1080,7 +1124,7 @@ export default function StockMatrix({
                           <td 
                             key={size} 
                             onClick={() => !isEditing && handleStartEditStock(stockItem.id, size, qtyVal)}
-                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-r border-slate-100/40 select-none ${isEditing ? 'bg-amber-100/50 font-normal text-amber-950 scale-102 border-amber-300' : qtyVal === 0 ? 'bg-rose-50/40 text-rose-600/70 hover:bg-rose-100/80' : qtyVal < 5 ? 'bg-amber-50 hover:bg-amber-100/80 font-normal text-amber-600' : 'hover:bg-slate-100/60 font-normal text-slate-800'}`}
+                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-slate-300 select-none ${isEditing ? 'bg-amber-100/50 font-normal text-black scale-102 border-amber-300' : qtyVal === 0 ? 'bg-white text-black hover:bg-slate-50' : qtyVal < 5 ? 'bg-white hover:bg-slate-50 font-normal text-black' : 'bg-white hover:bg-slate-50 font-normal text-black'}`}
                           >
                             {isEditing ? (
                               <input
@@ -1103,27 +1147,45 @@ export default function StockMatrix({
                                     e.preventDefault();
                                   }
                                 }}
-                                className="w-12 text-center text-xs font-normal font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-slate-300 rounded-md px-1 py-0.5 bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-12 text-center text-xs font-normal font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-slate-300 rounded-md px-1 py-0.5 bg-white text-black [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             ) : (
-                              <span>{qtyVal === 0 ? "" : qtyVal}</span>
+                              <div className="flex flex-col items-center justify-center min-h-[1.5rem]">
+                                <span>{qtyVal === 0 ? "" : qtyVal}</span>
+                              </div>
                             )}
                           </td>
                         );
                       })}
 
                       {/* Total Qty column */}
-                      <td className="py-3.5 px-4 font-mono font-normal text-slate-900 bg-slate-100/20 text-center select-none border-l border-slate-200">
+                      <td className="py-3.5 px-4 font-mono font-normal text-black bg-white text-center select-none border-l border-slate-300">
                         {totalQty === 0 ? "" : totalQty}
                       </td>
 
                       {/* Total HPP column */}
                       {showHpp && (
-                        <td className="py-3.5 px-4 text-right font-mono font-normal text-rose-700 bg-rose-50/30 select-none border-l border-slate-200">
+                        <td className="py-3.5 px-4 text-right font-mono font-normal text-black bg-white select-none border-l border-slate-300">
                           {totalQty === 0 ? "" : formatRp(totalHpp)}
                         </td>
                       )}
                     </tr>
+                    {isConsecutiveLastRow && (
+                      <tr className="bg-slate-100 font-medium text-black">
+                        <td colSpan={beforeQtyColSpan} className="py-2 px-4 text-right font-semibold text-black border-t border-b border-slate-300 bg-slate-100">
+                          Total
+                        </td>
+                        <td className="py-2 px-4 text-center font-mono text-black border-l border-t border-b border-slate-300 bg-slate-100">
+                          {productOverallQty}
+                        </td>
+                        {showHpp && (
+                          <td className="py-2 px-4 text-right font-mono text-black border-l border-t border-b border-slate-300 bg-slate-100">
+                            {formatRp(productOverallHpp)}
+                          </td>
+                        )}
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>

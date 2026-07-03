@@ -7,6 +7,8 @@ export interface Product {
   id: string;
   name: string;
   sku?: string;
+  colorSkus?: Record<string, string>; // Maps color name to SKU
+  variantSkus?: Record<string, string>; // Maps `${color}-${size}` to SKU
   hpp: number;
   price: number;
   imageUrl: string;
