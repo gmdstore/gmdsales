@@ -31,6 +31,17 @@ export default function OrdersList({
   const [customEndDate, setCustomEndDate] = useState('');
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [activeTooltip, setActiveTooltip] = useState<{ orderId: string; type: 'discount' | 'commission' } | null>(null);
+
+  React.useEffect(() => {
+    const handleDocumentClick = () => {
+      setActiveTooltip(null);
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
 
   // Format currency helper
   const formatRp = (value: number) => {
@@ -538,11 +549,25 @@ export default function OrdersList({
                             <span className="font-normal leading-none">
                               -{formatRp(totalDiscount)}
                             </span>
-                            <div className="relative group inline-block shrink-0">
-                              <Info className="w-3.5 h-3.5 text-rose-400 hover:text-rose-600 cursor-help transition-colors" />
+                            <div className="relative inline-block shrink-0">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveTooltip(prev => 
+                                    prev && prev.orderId === ord.id && prev.type === 'discount'
+                                      ? null
+                                      : { orderId: ord.id, type: 'discount' }
+                                  );
+                                }}
+                                className="p-0.5 hover:bg-rose-50 rounded text-rose-400 hover:text-rose-600 focus:outline-none cursor-pointer transition-colors"
+                                title="Rincian Diskon"
+                              >
+                                <Info className="w-3.5 h-3.5" />
+                              </button>
                               
-                              {/* Custom CSS Hover Tooltip for Combined Discount */}
-                              <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2.5 hidden group-hover:flex flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans pointer-events-none transition-all duration-200 animate-fade-in">
+                              {/* Custom CSS Click Tooltip for Combined Discount */}
+                              <div className={`absolute right-full top-1/2 -translate-y-1/2 mr-2.5 ${activeTooltip && activeTooltip.orderId === ord.id && activeTooltip.type === 'discount' ? 'flex' : 'hidden'} flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans transition-all duration-200 animate-fade-in`}>
                                 {ord.products.filter(p => (p.discountAmount ?? 0) > 0).map((p, pIdx) => (
                                   <div key={pIdx} className="flex justify-between gap-4">
                                     <span className="text-slate-400 truncate max-w-[100px]">{p.discountName || 'Diskon Otomatis'}</span>
@@ -575,11 +600,25 @@ export default function OrdersList({
                           <span className="font-normal leading-none">
                             -{formatRp(ord.calculatedFees.totalFees)}
                           </span>
-                          <div className="relative group inline-block shrink-0">
-                            <Info className="w-3.5 h-3.5 text-rose-400 hover:text-rose-600 cursor-help transition-colors" />
+                          <div className="relative inline-block shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTooltip(prev => 
+                                  prev && prev.orderId === ord.id && prev.type === 'commission'
+                                    ? null
+                                    : { orderId: ord.id, type: 'commission' }
+                                );
+                              }}
+                              className="p-0.5 hover:bg-rose-50 rounded text-rose-400 hover:text-rose-600 focus:outline-none cursor-pointer transition-colors"
+                              title="Rincian Komisi & Biaya"
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                            </button>
                             
-                            {/* Custom CSS Hover Tooltip */}
-                            <div className="absolute right-full top-1/2 -translate-y-1/2 mr-2.5 hidden group-hover:flex flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans pointer-events-none transition-all duration-200 animate-fade-in">
+                            {/* Custom CSS Click Tooltip */}
+                            <div className={`absolute right-full top-1/2 -translate-y-1/2 mr-2.5 ${activeTooltip && activeTooltip.orderId === ord.id && activeTooltip.type === 'commission' ? 'flex' : 'hidden'} flex-col gap-1 bg-slate-950 text-slate-100 text-[10px] p-2 rounded-xl shadow-xl border border-slate-800 z-50 min-w-[180px] text-left font-sans transition-all duration-200 animate-fade-in`}>
                               <div className="flex justify-between gap-4">
                                 <span className="text-slate-400">Komisi:</span>
                                 <span className="font-mono text-rose-300 font-normal">-{formatRp(ord.calculatedFees.commission)}</span>
