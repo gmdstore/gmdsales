@@ -1280,7 +1280,7 @@ export default function App() {
       )}
 
       {/* Dynamic Render Workspace Area */}
-      <main className="flex-1 h-screen overflow-y-auto p-4 md:p-8 flex flex-col justify-between">
+      <main className="flex-1 h-screen overflow-y-auto pt-0 px-4 pb-4 md:pt-0 md:px-8 md:pb-8 flex flex-col justify-between">
         <div className="flex-1">
           {activeTab === 'dashboard' && (
             <Dashboard 

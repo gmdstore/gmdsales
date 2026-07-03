@@ -265,32 +265,24 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-100/60 rounded-2xl relative">
           <table className="w-full text-left border-collapse text-xs select-none">
             <thead>
-              <tr className="bg-transparent font-normal text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-100">
-                <th className="py-3.5 px-4 w-32 font-normal bg-transparent">Tanggal</th>
+              <tr className="bg-slate-50 font-normal text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-100">
+                <th className="py-3.5 px-4 w-32 font-normal bg-slate-50 sticky top-0 z-20">Tanggal</th>
                 
                 {/* Dynamically List Channels as Columns */}
                 {channels.map(chan => {
                   const hasPipe = chan.color && chan.color.includes('|');
                   const [bg, text] = hasPipe ? chan.color.split('|') : ['', ''];
                   return (
-                    <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-100/80 sticky top-0 z-20 bg-transparent">
+                    <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-100/80 sticky top-0 z-20 bg-slate-50">
                       {hasPipe ? (
                         <span 
                           style={{ backgroundColor: bg, color: text }}
-                          className={`inline-block font-normal rounded border border-slate-200 transition-all duration-300 ease-out ${
-                            isHeaderFloating 
-                              ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
-                              : 'px-2 py-0.5 text-[8px]'
-                          }`}
+                          className="inline-block px-2 py-0.5 text-[8px] font-normal rounded border border-slate-200"
                         >
                           {chan.name}
                         </span>
                       ) : (
-                        <span className={`inline-block font-normal rounded transition-all duration-300 ease-out ${
-                          isHeaderFloating 
-                            ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
-                            : 'px-2 py-0.5 text-[8px]'
-                        } ${chan.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
+                        <span className={`inline-block px-2 py-0.5 text-[8px] font-normal rounded ${chan.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
                           {chan.name}
                         </span>
                       )}
@@ -298,12 +290,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                   );
                 })}
                 
-                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-normal border-l border-slate-205 sticky top-0 z-20 bg-transparent">
-                  <span className={`inline-block font-normal rounded bg-emerald-100 text-emerald-800 transition-all duration-300 ease-out ${
-                    isHeaderFloating 
-                      ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
-                      : 'px-2 py-0.5 text-[8px]'
-                  }`}>
+                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-normal border-l border-slate-205 sticky top-0 z-20 bg-slate-50">
+                  <span className="inline-block px-2 py-0.5 text-[8px] font-normal rounded bg-emerald-100 text-emerald-800">
                     Total Harian
                   </span>
                 </th>

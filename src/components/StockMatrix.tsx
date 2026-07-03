@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Product, StockItem, SIZES, SizeType } from '../types';
 import { Eye, EyeOff, ShieldCheck, ShieldAlert, Plus, Trash2, Edit2, Check, X, Sliders, Search, ChevronUp, ChevronDown } from 'lucide-react';
@@ -39,6 +39,24 @@ export default function StockMatrix({
   const [activeGroup, setActiveGroup] = useState<string>('Semua Grup');
   const [isManagingGroups, setIsManagingGroups] = useState<boolean>(false);
   const [newGroupName, setNewGroupName] = useState<string>('');
+
+  const [isHeaderFloating, setIsHeaderFloating] = useState(false);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!tableContainerRef.current) return;
+      const rect = tableContainerRef.current.getBoundingClientRect();
+      setIsHeaderFloating(rect.top < 0);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true, capture: true });
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, { capture: true } as any);
+    };
+  }, []);
 
   // Master Data Product ADD/EDIT States
   const [isManagingProducts, setIsManagingProducts] = useState<boolean>(false);
@@ -882,7 +900,7 @@ export default function StockMatrix({
       )}
 
       {/* Matriks Stok Main Table Representation */}
-      <div className="bg-white border border-slate-205 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden" id="stock_matrix_table_panel">
+      <div className="bg-white border border-slate-205 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 lg:overflow-visible" id="stock_matrix_table_panel">
         <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
           <div>
             <span className="font-extrabold text-slate-900 text-sm">Grup: <span className="text-emerald-700 font-black">{activeGroup}</span></span>
@@ -923,27 +941,29 @@ export default function StockMatrix({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-100/60 rounded-2xl relative">
             <table className="w-full text-left col-auto border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-normal text-slate-400 uppercase tracking-wider">
                   {sortBy === 'default' && isManualReordering && (
-                    <th className="py-3 px-2 text-center w-16 bg-slate-150/40 font-normal text-slate-600 border-r border-slate-150">Atur</th>
+                    <th className="py-3 px-2 text-center w-16 bg-slate-150/90 font-normal text-slate-600 border-r border-slate-150 sticky top-0 z-20">
+                      Atur
+                    </th>
                   )}
-                  <th className="py-3 px-4 w-32">Kode SKU</th>
-                  <th className="py-3 px-4">Nama Produk Master</th>
-                  {showColor && <th className="py-3 px-4">Warna</th>}
-                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-normal bg-rose-50/50">HPP</th>}
-                  <th className="py-3 px-4 text-right">Harga Jual</th>
+                  <th className="py-3 px-4 w-32 bg-slate-50 sticky top-0 z-20">Kode SKU</th>
+                  <th className="py-3 px-4 bg-slate-50 sticky top-0 z-20">Nama Produk Master</th>
+                  {showColor && <th className="py-3 px-4 bg-slate-50 sticky top-0 z-20">Warna</th>}
+                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-normal bg-rose-50 sticky top-0 z-20">HPP</th>}
+                  <th className="py-3 px-4 text-right bg-slate-50 sticky top-0 z-20">Harga Jual</th>
                   
                   {/* Sizegroup columns S-4XL */}
                   {SIZES.map(size => (
-                    <th key={size} className="py-3 px-2 text-center w-16 bg-slate-50/30">
+                    <th key={size} className="py-3 px-2 text-center w-16 bg-slate-50 sticky top-0 z-20">
                       {size}
                     </th>
                   ))}
-                  <th className="py-3 px-4 text-center w-20 bg-slate-100/80 font-normal text-slate-700 border-l border-slate-200">Total Qty</th>
-                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100/40 font-normal text-rose-800 border-l border-slate-200">Total HPP</th>}
+                  <th className="py-3 px-4 text-center w-20 bg-slate-100 font-normal text-slate-700 border-l border-slate-200 sticky top-0 z-20">Total Qty</th>
+                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100 font-normal text-rose-800 border-l border-slate-200 sticky top-0 z-20">Total HPP</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-750">
