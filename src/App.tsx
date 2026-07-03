@@ -19,6 +19,28 @@ import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
 import Recapitulation from './components/Recapitulation';
 
+// Firebase integrations
+import { 
+  getSavedFirebaseConfig, 
+  saveFirebaseConfig, 
+  getFirebaseServices 
+} from './firebase';
+import { 
+  uploadAllToFirestore, 
+  downloadAllFromFirestore,
+  isFirestoreEmpty,
+  saveOrderToFirestore,
+  deleteOrderFromFirestore,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  saveStockToFirestore,
+  deleteStockFromFirestore,
+  saveChannelToFirestore,
+  deleteChannelFromFirestore,
+  saveAutoDiscountToFirestore,
+  saveSettingsToFirestore
+} from './firebaseSync';
+
 import { 
   Plus, 
   LayoutDashboard, 
@@ -68,6 +90,10 @@ export default function App() {
 
   const [appFont, setAppFont] = useState<string>(() => {
     return localStorage.getItem('omni_app_font') || 'Inter';
+  });
+
+  const [appFontWeight, setAppFontWeight] = useState<string>(() => {
+    return localStorage.getItem('omni_app_font_weight') || '400';
   });
 
   const [paymentMethods, setPaymentMethods] = useState<string[]>(() => {
@@ -186,6 +212,11 @@ export default function App() {
   }, [appFont]);
 
   useEffect(() => {
+    localStorage.setItem('omni_app_font_weight', appFontWeight);
+    document.documentElement.style.setProperty('--app-font-weight', appFontWeight);
+  }, [appFontWeight]);
+
+  useEffect(() => {
     localStorage.setItem('omni_payment_methods', JSON.stringify(paymentMethods));
   }, [paymentMethods]);
 
@@ -218,30 +249,216 @@ export default function App() {
   }, [orders]);
 
 
+  // Firebase synchronization states and handlers
+  const [isFirebaseEnabled, setIsFirebaseEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('omni_firebase_enabled') === 'true';
+  });
+  const [isFirebaseLoading, setIsFirebaseLoading] = useState<boolean>(false);
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+
+  const handleSaveFirebaseConfig = async (config: any | null): Promise<boolean> => {
+    setIsFirebaseLoading(true);
+    setFirebaseError(null);
+    try {
+      if (config === null) {
+        saveFirebaseConfig(null);
+        setIsFirebaseEnabled(false);
+        localStorage.setItem('omni_firebase_enabled', 'false');
+        return true;
+      }
+
+      saveFirebaseConfig(config);
+      
+      const { db } = getFirebaseServices();
+      if (!db) {
+        throw new Error("Gagal menginisialisasi Firestore dengan konfigurasi tersebut.");
+      }
+
+      // Test connection
+      await isFirestoreEmpty();
+
+      setIsFirebaseEnabled(true);
+      localStorage.setItem('omni_firebase_enabled', 'true');
+      return true;
+    } catch (e: any) {
+      console.error("Firebase connection test failed:", e);
+      setFirebaseError(e?.message || String(e));
+      saveFirebaseConfig(null);
+      setIsFirebaseEnabled(false);
+      localStorage.setItem('omni_firebase_enabled', 'false');
+      return false;
+    } finally {
+      setIsFirebaseLoading(false);
+    }
+  };
+
+  const handleToggleFirebase = (enabled: boolean) => {
+    setIsFirebaseEnabled(enabled);
+    localStorage.setItem('omni_firebase_enabled', enabled ? 'true' : 'false');
+  };
+
+  const handleUploadAllToFirebase = async () => {
+    setIsFirebaseLoading(true);
+    setFirebaseError(null);
+    try {
+      await uploadAllToFirestore({
+        products,
+        stocks,
+        channels,
+        autoDiscounts,
+        orders,
+        brandName,
+        brandLogo,
+        brandProfile,
+        brandFooter,
+        appFont,
+        appFontWeight,
+        paymentMethods,
+        pencatatList,
+      });
+      alert('Berhasil mengunggah semua data lokal ke Firebase Firestore!');
+    } catch (e: any) {
+      setFirebaseError(`Gagal mengekspor data: ${e?.message || String(e)}`);
+    } finally {
+      setIsFirebaseLoading(false);
+    }
+  };
+
+  const handleDownloadAllFromFirebase = async () => {
+    setIsFirebaseLoading(true);
+    setFirebaseError(null);
+    try {
+      const data = await downloadAllFromFirestore();
+      if (data) {
+        if (data.products && data.products.length > 0) setProducts(data.products);
+        if (data.stocks && data.stocks.length > 0) setStocks(data.stocks);
+        if (data.channels && data.channels.length > 0) setChannels(data.channels);
+        if (data.autoDiscounts && data.autoDiscounts.length > 0) setAutoDiscounts(data.autoDiscounts);
+        if (data.orders && data.orders.length > 0) setOrders(data.orders);
+        if (data.settings) {
+          if (data.settings.brandName) setBrandName(data.settings.brandName);
+          if (data.settings.brandLogo) setBrandLogo(data.settings.brandLogo);
+          if (data.settings.brandProfile) setBrandProfile(data.settings.brandProfile);
+          if (data.settings.brandFooter) setBrandFooter(data.settings.brandFooter);
+          if (data.settings.appFont) setAppFont(data.settings.appFont);
+          if (data.settings.appFontWeight) setAppFontWeight(data.settings.appFontWeight);
+          if (data.settings.paymentMethods) setPaymentMethods(data.settings.paymentMethods);
+          if (data.settings.pencatatList) setPencatatList(data.settings.pencatatList);
+        }
+        alert('Berhasil mengunduh semua data dari Firebase Firestore ke sistem lokal!');
+      } else {
+        alert('Tidak ada data yang ditemukan di database Firestore Anda.');
+      }
+    } catch (e: any) {
+      setFirebaseError(`Gagal mengimpor data: ${e?.message || String(e)}`);
+    } finally {
+      setIsFirebaseLoading(false);
+    }
+  };
+
+  // Sync settings when they change
+  useEffect(() => {
+    if (isFirebaseEnabled) {
+      saveSettingsToFirestore({
+        brandName,
+        brandLogo,
+        brandProfile,
+        brandFooter,
+        appFont,
+        appFontWeight,
+        paymentMethods,
+        pencatatList,
+      }).catch(err => console.error("Error syncing settings to Firestore:", err));
+    }
+  }, [
+    isFirebaseEnabled,
+    brandName,
+    brandLogo,
+    brandProfile,
+    brandFooter,
+    appFont,
+    appFontWeight,
+    paymentMethods,
+    pencatatList,
+  ]);
+
+  // Sync discounts when they change
+  useEffect(() => {
+    if (isFirebaseEnabled) {
+      autoDiscounts.forEach(ad => {
+        saveAutoDiscountToFirestore(ad).catch(err => console.error("Error syncing discount:", err));
+      });
+    }
+  }, [isFirebaseEnabled, autoDiscounts]);
+
+  // Load Firestore data on mount if enabled
+  useEffect(() => {
+    if (isFirebaseEnabled) {
+      const loadInitialFirebaseData = async () => {
+        setIsFirebaseLoading(true);
+        try {
+          const data = await downloadAllFromFirestore();
+          if (data) {
+            if (data.products && data.products.length > 0) setProducts(data.products);
+            if (data.stocks && data.stocks.length > 0) setStocks(data.stocks);
+            if (data.channels && data.channels.length > 0) setChannels(data.channels);
+            if (data.autoDiscounts && data.autoDiscounts.length > 0) setAutoDiscounts(data.autoDiscounts);
+            if (data.orders && data.orders.length > 0) setOrders(data.orders);
+            if (data.settings) {
+              if (data.settings.brandName) setBrandName(data.settings.brandName);
+              if (data.settings.brandLogo) setBrandLogo(data.settings.brandLogo);
+              if (data.settings.brandProfile) setBrandProfile(data.settings.brandProfile);
+              if (data.settings.brandFooter) setBrandFooter(data.settings.brandFooter);
+              if (data.settings.appFont) setAppFont(data.settings.appFont);
+              if (data.settings.appFontWeight) setAppFontWeight(data.settings.appFontWeight);
+              if (data.settings.paymentMethods) setPaymentMethods(data.settings.paymentMethods);
+              if (data.settings.pencatatList) setPencatatList(data.settings.pencatatList);
+            }
+          }
+        } catch (e: any) {
+          console.error("Gagal melakukan sinkronisasi awal Firebase:", e);
+          setFirebaseError(`Sinkronisasi awal gagal: ${e?.message || String(e)}`);
+        } finally {
+          setIsFirebaseLoading(false);
+        }
+      };
+      loadInitialFirebaseData();
+    }
+  }, [isFirebaseEnabled]);
+
+
   // Business Operations implementation
 
   // F-01: Update specific stock level inline (Excel-like matrix edit)
   const handleUpdateStock = (stockItemId: string, size: string, newQty: number) => {
-    setStocks(prev => 
-      prev.map(item => {
+    setStocks(prev => {
+      const updated = prev.map(item => {
         if (item.id === stockItemId) {
-          return {
+          const updatedItem = {
             ...item,
             stocks: {
               ...item.stocks,
               [size]: newQty
             }
           };
+          if (isFirebaseEnabled) {
+            saveStockToFirestore(updatedItem).catch(err => console.error("Error saving stock:", err));
+          }
+          return updatedItem;
         }
         return item;
-      })
-    );
+      });
+      return updated;
+    });
   };
 
   // F-03/F-04: Save Order and subtract warehouse matrix stock dynamically!
   const handleSaveOrder = (newOrder: Order) => {
     // 1. Add order to state
     setOrders(prev => [newOrder, ...prev]);
+    if (isFirebaseEnabled) {
+      saveOrderToFirestore(newOrder).catch(err => console.error("Error saving order:", err));
+    }
 
     // 2. Subtract stocks from warehouse metrics
     setStocks(prevStocks => {
@@ -257,10 +474,14 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          return {
+          const updatedStockItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+          if (isFirebaseEnabled) {
+            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
+          }
+          return updatedStockItem;
         }
 
         return stockItem;
@@ -275,6 +496,9 @@ export default function App() {
 
     // 1. Remove order from list
     setOrders(prev => prev.filter(o => o.id !== orderId));
+    if (isFirebaseEnabled) {
+      deleteOrderFromFirestore(orderId).catch(err => console.error("Error deleting order:", err));
+    }
 
     // 2. Return items back to stocks
     setStocks(prevStocks => {
@@ -290,10 +514,14 @@ export default function App() {
             updatedSizeStocks[purchased.size] = currentStockVal + purchased.qty;
           });
 
-          return {
+          const updatedStockItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+          if (isFirebaseEnabled) {
+            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
+          }
+          return updatedStockItem;
         }
 
         return stockItem;
@@ -305,6 +533,9 @@ export default function App() {
   const handleUpdateOrder = (updatedOrder: Order, oldOrder: Order) => {
     // 1. Update order metadata in state list
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+    if (isFirebaseEnabled) {
+      saveOrderToFirestore(updatedOrder).catch(err => console.error("Error saving order:", err));
+    }
 
     // 2. Adjust warehouse stocks by adding back old bought items, then subtracting updated bought items
     setStocks(prevStocks => {
@@ -333,10 +564,14 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          return {
+          const updatedStockItem = {
             ...stockItem,
             stocks: updatedSizeStocks
           };
+          if (isFirebaseEnabled) {
+            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
+          }
+          return updatedStockItem;
         }
 
         return stockItem;
@@ -360,7 +595,11 @@ export default function App() {
     setProducts(prev => 
       prev.map(p => {
         if (p.group === groupName) {
-          return { ...p, group: fallbackGroup };
+          const updated = { ...p, group: fallbackGroup };
+          if (isFirebaseEnabled) {
+            saveProductToFirestore(updated).catch(err => console.error("Error saving product group relocation:", err));
+          }
+          return updated;
         }
         return p;
       })
@@ -372,7 +611,11 @@ export default function App() {
     setProducts(prev => 
       prev.map(p => {
         if (p.id === productId) {
-          return { ...p, group: newGroup };
+          const updated = { ...p, group: newGroup };
+          if (isFirebaseEnabled) {
+            saveProductToFirestore(updated).catch(err => console.error("Error saving product group relocation:", err));
+          }
+          return updated;
         }
         return p;
       })
@@ -382,6 +625,9 @@ export default function App() {
   // F-01 Product Master mutations: Add, Edit, Delete
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [...prev, newProduct]);
+    if (isFirebaseEnabled) {
+      saveProductToFirestore(newProduct).catch(err => console.error("Error saving product:", err));
+    }
 
     const newStockObjects: StockItem[] = newProduct.colors.map(color => {
       const initialStocks: { [size: string]: number } = {};
@@ -393,19 +639,26 @@ export default function App() {
         initialStocks[sz] = 0;
       });
 
-      return {
+      const newStock = {
         id: `${newProduct.id}_${color}`,
         productId: newProduct.id,
         productName: newProduct.name,
         color: color,
         stocks: initialStocks
       };
+      if (isFirebaseEnabled) {
+        saveStockToFirestore(newStock).catch(err => console.error("Error saving stock:", err));
+      }
+      return newStock;
     });
     setStocks(prev => [...prev, ...newStockObjects]);
   };
 
   const handleUpdateProduct = (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    if (isFirebaseEnabled) {
+      saveProductToFirestore(updatedProduct).catch(err => console.error("Error saving product:", err));
+    }
 
     setStocks(prevStocks => {
       const otherStocks = prevStocks.filter(s => s.productId !== updatedProduct.id);
@@ -423,14 +676,15 @@ export default function App() {
           alignedSizeStocks[sz] = existing?.stocks?.[sz] ?? 0;
         });
 
+        let updatedStock: StockItem;
         if (existing) {
-          return {
+          updatedStock = {
             ...existing,
             productName: updatedProduct.name,
             stocks: alignedSizeStocks
           };
         } else {
-          return {
+          updatedStock = {
             id: `${updatedProduct.id}_${color}`,
             productId: updatedProduct.id,
             productName: updatedProduct.name,
@@ -438,6 +692,10 @@ export default function App() {
             stocks: alignedSizeStocks
           };
         }
+        if (isFirebaseEnabled) {
+          saveStockToFirestore(updatedStock).catch(err => console.error("Error saving stock:", err));
+        }
+        return updatedStock;
       });
 
       return [...otherStocks, ...alignedStocks];
@@ -446,7 +704,19 @@ export default function App() {
 
   const handleDeleteProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
-    setStocks(prev => prev.filter(s => s.productId !== productId));
+    if (isFirebaseEnabled) {
+      deleteProductFromFirestore(productId).catch(err => console.error("Error deleting product:", err));
+    }
+
+    setStocks(prev => {
+      const toDelete = prev.filter(s => s.productId === productId);
+      if (isFirebaseEnabled) {
+        toDelete.forEach(s => {
+          deleteStockFromFirestore(s.id).catch(err => console.error("Error deleting stock:", err));
+        });
+      }
+      return prev.filter(s => s.productId !== productId);
+    });
   };
 
   // Brand Info and Channels management handlers
@@ -464,16 +734,29 @@ export default function App() {
 
   const handleAddChannel = (newChannel: Channel) => {
     setChannels(prev => [...prev, newChannel]);
+    if (isFirebaseEnabled) {
+      saveChannelToFirestore(newChannel).catch(err => console.error("Error saving channel:", err));
+    }
   };
 
   const handleUpdateChannel = (updatedChannel: Channel) => {
-    setChannels(prev => 
-      prev.map(c => c.id === updatedChannel.id ? updatedChannel : c)
-    );
+    setChannels(prev => {
+      const updated = prev.map(c => c.id === updatedChannel.id ? updatedChannel : c);
+      if (isFirebaseEnabled) {
+        saveChannelToFirestore(updatedChannel).catch(err => console.error("Error saving channel:", err));
+      }
+      return updated;
+    });
   };
 
   const handleDeleteChannel = (channelId: string) => {
-    setChannels(prev => prev.filter(c => c.id !== channelId));
+    setChannels(prev => {
+      const updated = prev.filter(c => c.id !== channelId);
+      if (isFirebaseEnabled) {
+        deleteChannelFromFirestore(channelId).catch(err => console.error("Error deleting channel:", err));
+      }
+      return updated;
+    });
   };
 
   // Full hard factory settings reset to restore original mock template
@@ -489,6 +772,7 @@ export default function App() {
       localStorage.removeItem('omni_brand_profile');
       localStorage.removeItem('omni_brand_footer');
       localStorage.removeItem('omni_app_font');
+      localStorage.removeItem('omni_app_font_weight');
       localStorage.removeItem('omni_pencatat_list');
 
       setProducts(INITIAL_PRODUCTS);
@@ -501,6 +785,7 @@ export default function App() {
       setBrandProfile('Sistem Pengelola Transaksi Omnichannel');
       setBrandFooter('OmniOrder – All rights reserved © 2026.');
       setAppFont('Inter');
+      setAppFontWeight('400');
       setPencatatList(['Admin 1', 'Admin 2', 'Owner']);
       setActiveTab('dashboard');
       setIsMobileSidebarOpen(false);
@@ -547,7 +832,7 @@ export default function App() {
             <h1 className="text-lg font-black tracking-tight text-white line-clamp-1">
               {brandName}
             </h1>
-            <p className="text-[10px] text-slate-550 leading-relaxed line-clamp-2 px-1 font-medium">
+            <p className="text-[10px] text-slate-550 leading-relaxed line-clamp-2 px-1 font-normal">
               {brandProfile}
             </p>
           </div>
@@ -555,7 +840,7 @@ export default function App() {
 
         {/* Navigation List Item Section */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          <span className="block px-3 text-[9px] font-bold text-slate-400 tracking-wider uppercase mb-2 font-mono">
+          <span className="block px-3 text-[9px] font-normal text-slate-400 tracking-wider uppercase mb-2 font-mono">
             Menu Operasional
           </span>
 
@@ -564,7 +849,7 @@ export default function App() {
               setActiveTab('dashboard');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'dashboard' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'dashboard' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <LayoutDashboard className="h-4 w-4" />
             Dashboard Finansial
@@ -575,7 +860,7 @@ export default function App() {
               setActiveTab('orders');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'orders' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'orders' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <ClipboardList className="h-4 w-4" />
             Daftar Pesanan & Detail
@@ -586,7 +871,7 @@ export default function App() {
               setActiveTab('stocks');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'stocks' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'stocks' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Layers className="h-4 w-4" />
             Produk & Stok
@@ -597,7 +882,7 @@ export default function App() {
               setActiveTab('recapitulation');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'recapitulation' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'recapitulation' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Calendar className="h-4 w-4" />
             Rekapitulasi Penjualan
@@ -608,7 +893,7 @@ export default function App() {
               setActiveTab('settings');
               setIsMobileSidebarOpen(false);
             }}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold font-sans cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-emerald-500 text-white font-heavy shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Settings2 className="h-4 w-4" />
             Pengaturan Brand & Kanal
@@ -622,7 +907,7 @@ export default function App() {
                 setIsOrderModalOpen(true);
                 setIsMobileSidebarOpen(false);
               }}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-black rounded-xl text-xs transition-transform transform active:scale-95 cursor-pointer shadow-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-normal rounded-xl text-xs transition-transform transform active:scale-95 cursor-pointer shadow-sm"
             >
               <Plus className="h-3.5 w-3.5 text-slate-950 strike-2" />
               Pencatatan Order Baru
@@ -635,18 +920,18 @@ export default function App() {
           <div className="px-2 flex items-center justify-between">
             <button
               onClick={handleResetFactoryDefaults}
-              className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 hover:text-red-400 cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1 text-[10px] font-normal text-slate-500 hover:text-red-400 cursor-pointer transition-colors"
               title="Kembalikan sistem ke data kosong instan"
             >
               <RotateCcw className="h-3 w-3 shrink-0" />
               Reset setelan sistem
             </button>
-            <span className="text-[9px] font-semibold text-slate-400 font-mono tracking-wider uppercase bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-md">MVP</span>
+            <span className="text-[9px] font-normal text-slate-400 font-mono tracking-wider uppercase bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded-md">MVP</span>
           </div>
 
-          <div className="px-2 text-[10px] text-slate-550 border-t border-slate-900/40 pt-3 flex flex-col gap-1 font-medium">
+          <div className="px-2 text-[10px] text-slate-550 border-t border-slate-900/40 pt-3 flex flex-col gap-1 font-normal">
             <span className="leading-relaxed font-sans">{brandFooter}</span>
-            <div className="flex items-center gap-2 text-[9px] text-slate-500 mt-1 font-mono font-bold tracking-wide">
+            <div className="flex items-center gap-2 text-[9px] text-slate-500 mt-1 font-mono font-normal tracking-wide">
               <span>Local Time: {(() => {
                 const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
                 const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -736,6 +1021,8 @@ export default function App() {
               onDeleteChannel={handleDeleteChannel}
               appFont={appFont}
               onUpdateFont={setAppFont}
+              appFontWeight={appFontWeight}
+              onUpdateFontWeight={setAppFontWeight}
               paymentMethods={paymentMethods}
               onUpdatePaymentMethods={updatePaymentMethods}
               pencatatList={pencatatList}
@@ -743,6 +1030,14 @@ export default function App() {
               autoDiscounts={autoDiscounts}
               onUpdateAutoDiscounts={setAutoDiscounts}
               products={products}
+              
+              isFirebaseEnabled={isFirebaseEnabled}
+              onToggleFirebase={handleToggleFirebase}
+              isFirebaseLoading={isFirebaseLoading}
+              onSaveFirebaseConfig={handleSaveFirebaseConfig}
+              firebaseError={firebaseError}
+              onUploadAllToFirebase={handleUploadAllToFirebase}
+              onDownloadAllFromFirebase={handleDownloadAllFromFirebase}
             />
           )}
         </div>

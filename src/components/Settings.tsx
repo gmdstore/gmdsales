@@ -6,7 +6,26 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
-import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart } from 'lucide-react';
+import { 
+  Percent, 
+  Edit3, 
+  Settings, 
+  Save, 
+  Trash2, 
+  PlusCircle, 
+  CheckCircle, 
+  Info, 
+  Heart,
+  Database,
+  Wifi,
+  WifiOff,
+  CloudUpload,
+  CloudDownload,
+  Loader2,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { getSavedFirebaseConfig, FirebaseConfig } from '../firebase';
 
 interface SettingsProps {
   // Brand configurations
@@ -30,6 +49,8 @@ interface SettingsProps {
   // Font configurations
   appFont: string;
   onUpdateFont: (fontValue: string) => void;
+  appFontWeight: string;
+  onUpdateFontWeight: (weightValue: string) => void;
   // Payment Method configurations
   paymentMethods: string[];
   onUpdatePaymentMethods: (methods: string[]) => void;
@@ -40,6 +61,15 @@ interface SettingsProps {
   autoDiscounts: AutoDiscount[];
   onUpdateAutoDiscounts: (discounts: AutoDiscount[]) => void;
   products: Product[];
+
+  // Firebase configurations
+  isFirebaseEnabled: boolean;
+  onToggleFirebase: (enabled: boolean) => void;
+  isFirebaseLoading: boolean;
+  onSaveFirebaseConfig: (config: FirebaseConfig | null) => Promise<boolean>;
+  firebaseError: string | null;
+  onUploadAllToFirebase: () => Promise<void>;
+  onDownloadAllFromFirebase: () => Promise<void>;
 }
 
 export default function SettingsComponent({
@@ -54,13 +84,24 @@ export default function SettingsComponent({
   onDeleteChannel,
   appFont,
   onUpdateFont,
+  appFontWeight,
+  onUpdateFontWeight,
   paymentMethods,
   onUpdatePaymentMethods,
   pencatatList,
   onUpdatePencatatList,
   autoDiscounts,
   onUpdateAutoDiscounts,
-  products
+  products,
+  
+  // Firebase props
+  isFirebaseEnabled,
+  onToggleFirebase,
+  isFirebaseLoading,
+  onSaveFirebaseConfig,
+  firebaseError,
+  onUploadAllToFirebase,
+  onDownloadAllFromFirebase
 }: SettingsProps) {
   // Brand identity edit states
   const [inputBrandName, setInputBrandName] = useState(brandName);
@@ -68,6 +109,36 @@ export default function SettingsComponent({
   const [inputBrandProfile, setInputBrandProfile] = useState(brandProfile);
   const [inputBrandFooter, setInputBrandFooter] = useState(brandFooter);
   const [brandSuccessMsg, setBrandSuccessMsg] = useState(false);
+
+  // Firebase configuration form states
+  const [fbApiKey, setFbApiKey] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.apiKey || '';
+  });
+  const [fbAuthDomain, setFbAuthDomain] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.authDomain || '';
+  });
+  const [fbProjectId, setFbProjectId] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.projectId || '';
+  });
+  const [fbStorageBucket, setFbStorageBucket] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.storageBucket || '';
+  });
+  const [fbMessagingSenderId, setFbMessagingSenderId] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.messagingSenderId || '';
+  });
+  const [fbAppId, setFbAppId] = useState(() => {
+    const saved = getSavedFirebaseConfig();
+    return saved?.appId || '';
+  });
+
+  const [fbShowInstructions, setFbShowInstructions] = useState(false);
+  const [fbSuccessMsg, setFbSuccessMsg] = useState<string | null>(null);
+  const [fbLocalError, setFbLocalError] = useState<string | null>(null);
 
   // Sales Channel form states
   const [editingChanId, setEditingChanId] = useState<string | null>(null);
@@ -77,7 +148,7 @@ export default function SettingsComponent({
   const [chanFlat, setChanFlat] = useState<number>(0);
   const [chanShipping, setChanShipping] = useState<number>(0);
   const [chanShippingMax, setChanShippingMax] = useState<number>(0);
-  const [chanColor, setChanColor] = useState('bg-slate-100 text-slate-850 border-slate-250');
+  const [chanColor, setChanColor] = useState('#f1f5f9|#334155');
   const [chanPaymentMethods, setChanPaymentMethods] = useState<string[]>([]);
 
   const [channelSuccessMsg, setChannelSuccessMsg] = useState<string | null>(null);
@@ -94,16 +165,43 @@ export default function SettingsComponent({
   const [discountSuccessMsg, setDiscountSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteDiscount, setPendingDeleteDiscount] = useState<AutoDiscount | null>(null);
 
-  // Colors preset options in Tailwind css
+  // Helper to parse hex colors from chanColor
+  const parseChanColor = (colorStr: string) => {
+    if (colorStr && colorStr.includes('|')) {
+      const [bg, text] = colorStr.split('|');
+      return { bg, text };
+    }
+    // Fallbacks for legacy Tailwind color classes
+    if (colorStr && colorStr.includes('bg-orange-105')) return { bg: '#ffedd5', text: '#ea580c' };
+    if (colorStr && colorStr.includes('bg-orange-100')) return { bg: '#ffedd5', text: '#ea580c' };
+    if (colorStr && colorStr.includes('bg-emerald-105')) return { bg: '#d1fae5', text: '#059669' };
+    if (colorStr && colorStr.includes('bg-emerald-100')) return { bg: '#d1fae5', text: '#059669' };
+    if (colorStr && colorStr.includes('bg-teal-105')) return { bg: '#ccfbf1', text: '#0d9488' };
+    if (colorStr && colorStr.includes('bg-teal-100')) return { bg: '#ccfbf1', text: '#0d9488' };
+    if (colorStr && colorStr.includes('bg-slate-900')) return { bg: '#0f172a', text: '#ffffff' };
+    if (colorStr && colorStr.includes('bg-indigo-105')) return { bg: '#e0e7ff', text: '#4f46e5' };
+    if (colorStr && colorStr.includes('bg-indigo-100')) return { bg: '#e0e7ff', text: '#4f46e5' };
+    if (colorStr && colorStr.includes('bg-violet-105')) return { bg: '#f3e8ff', text: '#7c3aed' };
+    if (colorStr && colorStr.includes('bg-violet-100')) return { bg: '#f3e8ff', text: '#7c3aed' };
+    if (colorStr && colorStr.includes('bg-rose-105')) return { bg: '#ffe4e6', text: '#e11d48' };
+    if (colorStr && colorStr.includes('bg-rose-100')) return { bg: '#ffe4e6', text: '#e11d48' };
+    if (colorStr && colorStr.includes('bg-amber-105')) return { bg: '#fef3c7', text: '#d97706' };
+    if (colorStr && colorStr.includes('bg-amber-100')) return { bg: '#fef3c7', text: '#d97706' };
+    return { bg: '#f1f5f9', text: '#334155' }; // default gray
+  };
+
+  const { bg: currentBg, text: currentText } = parseChanColor(chanColor);
+
+  // Colors preset options in Hex values
   const colorPresets = [
-    { label: 'Orange (Shopee)', value: 'bg-orange-100 text-orange-900 border-orange-250' },
-    { label: 'Emerald (Tokopedia)', value: 'bg-emerald-100 text-emerald-900 border-emerald-250' },
-    { label: 'Teal (WhatsApp)', value: 'bg-teal-100 text-teal-900 border-teal-250' },
-    { label: 'Midnight (TikTok)', value: 'bg-slate-900 text-white border-slate-950 shadow-xs' },
-    { label: 'Indigo (Expo)', value: 'bg-indigo-100 text-indigo-900 border-indigo-250' },
-    { label: 'Violet (Store)', value: 'bg-violet-100 text-violet-900 border-violet-250' },
-    { label: 'Rose (Promo)', value: 'bg-rose-100 text-rose-900 border-rose-250' },
-    { label: 'Amber (Market)', value: 'bg-amber-100 text-amber-900 border-amber-250' }
+    { label: 'Orange (Shopee)', value: '#ffedd5|#ea580c' },
+    { label: 'Emerald (Tokopedia)', value: '#d1fae5|#059669' },
+    { label: 'Teal (WhatsApp)', value: '#ccfbf1|#0d9488' },
+    { label: 'Midnight (TikTok)', value: '#0f172a|#ffffff' },
+    { label: 'Indigo (Expo)', value: '#e0e7ff|#4f46e5' },
+    { label: 'Violet (Store)', value: '#f3e8ff|#7c3aed' },
+    { label: 'Rose (Promo)', value: '#ffe4e6|#e11d48' },
+    { label: 'Amber (Market)', value: '#fef3c7|#d97706' }
   ];
 
   const handleSaveBrandInfo = (e: React.FormEvent) => {
@@ -116,6 +214,48 @@ export default function SettingsComponent({
     });
     setBrandSuccessMsg(true);
     setTimeout(() => setBrandSuccessMsg(false), 3000);
+  };
+
+  const handleConnectFirebase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFbLocalError(null);
+    setFbSuccessMsg(null);
+
+    const apiKey = fbApiKey.trim();
+    const authDomain = fbAuthDomain.trim();
+    const projectId = fbProjectId.trim();
+    const storageBucket = fbStorageBucket.trim();
+    const messagingSenderId = fbMessagingSenderId.trim();
+    const appId = fbAppId.trim();
+
+    if (!apiKey || !projectId || !appId) {
+      setFbLocalError('API Key, Project ID, dan App ID wajib diisi!');
+      return;
+    }
+
+    const config: FirebaseConfig = {
+      apiKey,
+      authDomain,
+      projectId,
+      storageBucket,
+      messagingSenderId,
+      appId
+    };
+
+    const success = await onSaveFirebaseConfig(config);
+    if (success) {
+      setFbSuccessMsg('Koneksi Firebase berhasil disimpan dan dihubungkan!');
+    } else {
+      setFbLocalError('Gagal menghubungkan ke Firebase Firestore. Silakan periksa kredensial Anda dan pastikan Firestore rules mengizinkan akses.');
+    }
+  };
+
+  const handleDisconnectFirebase = () => {
+    if (confirm('Apakah Anda yakin ingin memutuskan hubungan dengan Firebase Firestore? Kredensial akan dihapus dari sistem ini.')) {
+      onSaveFirebaseConfig(null);
+      setFbSuccessMsg('Hubungan Firebase diputuskan.');
+      setTimeout(() => setFbSuccessMsg(null), 3000);
+    }
   };
 
   const handleStartEditChannel = (chan: Channel) => {
@@ -138,7 +278,7 @@ export default function SettingsComponent({
     setChanFlat(0);
     setChanShipping(0);
     setChanShippingMax(0);
-    setChanColor('bg-slate-100 text-slate-850 border-slate-250');
+    setChanColor('#f1f5f9|#334155');
     setChanPaymentMethods([]);
   };
 
@@ -217,6 +357,223 @@ export default function SettingsComponent({
         </div>
       </div>
 
+      {/* Firebase Firestore Connection Panel */}
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Database className="h-5 w-5" />
+            </span>
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                Hubungkan dengan Firebase Firestore Anda
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">Sinkronisasi data multi-perangkat dan kolaborasi tim secara real-time</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isFirebaseEnabled ? (
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-semibold uppercase tracking-wider">
+                <Wifi className="h-3 w-3 animate-pulse" /> Aktif
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-[10px] font-semibold uppercase tracking-wider">
+                <WifiOff className="h-3 w-3" /> Nonaktif
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Info messages */}
+        {fbSuccessMsg && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
+            <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{fbSuccessMsg}</span>
+          </div>
+        )}
+        {(fbLocalError || firebaseError) && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
+            <span className="text-rose-600 font-bold shrink-0">⚠️</span>
+            <span>{fbLocalError || firebaseError}</span>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={() => setFbShowInstructions(!fbShowInstructions)}
+            className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 focus:outline-none cursor-pointer"
+          >
+            {fbShowInstructions ? (
+              <>Sembunyikan Panduan Hubungkan <ChevronUp className="h-4 w-4" /></>
+            ) : (
+              <>Tampilkan Panduan Hubungkan <ChevronDown className="h-4 w-4" /></>
+            )}
+          </button>
+
+          {fbShowInstructions && (
+            <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5 text-[11px] text-slate-600 leading-relaxed">
+              <h4 className="font-bold text-slate-800 flex items-center gap-1">
+                <span>📋</span> Langkah-Langkah Menghubungkan Firebase Firestore:
+              </h4>
+              <ol className="list-decimal pl-4 space-y-2 font-normal">
+                <li>Buka console Firebase Anda di <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">https://console.firebase.google.com/</a>.</li>
+                <li>Buat proyek Firebase baru atau gunakan proyek yang sudah ada.</li>
+                <li>Buka menu <strong>Build &gt; Firestore Database</strong> dan klik <strong>Create Database</strong>. Pastikan rules mengizinkan akses tulis/baca (direkomendasikan dalam <i>test mode</i> untuk kemudahan setup pertama kali).</li>
+                <li>Pergi ke <strong>Project Settings</strong> (ikon roda gigi di pojok kiri atas).</li>
+                <li>Scroll ke bawah ke bagian <strong>Your Apps</strong>, tambahkan aplikasi berbasis Web (klik ikon <strong>&lt;/&gt;</strong>).</li>
+                <li>Salin data objek konfigurasi <code>firebaseConfig</code> yang tampil (berisi <i>apiKey</i>, <i>authDomain</i>, <i>projectId</i>, dst).</li>
+                <li>Masukkan nilai-nilai tersebut ke formulir di bawah ini, lalu klik <strong>Simpan & Sinkronkan</strong>.</li>
+              </ol>
+              <div className="bg-amber-50 border border-amber-200 text-amber-850 p-3 rounded-xl flex gap-2 font-normal">
+                <span className="text-amber-600">💡</span>
+                <span><strong>Tips Keamanan:</strong> Gunakan aturan Firestore Security Rules yang sesuai untuk mengamankan data Anda di lingkungan produksi.</span>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handleConnectFirebase} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block font-medium text-slate-750 mb-1">API Key:</label>
+              <input
+                type="text"
+                required
+                placeholder="AIzaSy..."
+                value={fbApiKey}
+                onChange={(e) => setFbApiKey(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-755 mb-1">Auth Domain (Opsional):</label>
+              <input
+                type="text"
+                placeholder="project-id.firebaseapp.com"
+                value={fbAuthDomain}
+                onChange={(e) => setFbAuthDomain(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-755 mb-1">Project ID:</label>
+              <input
+                type="text"
+                required
+                placeholder="my-firebase-project-id"
+                value={fbProjectId}
+                onChange={(e) => setFbProjectId(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-755 mb-1">Storage Bucket (Opsional):</label>
+              <input
+                type="text"
+                placeholder="project-id.appspot.com"
+                value={fbStorageBucket}
+                onChange={(e) => setFbStorageBucket(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-755 mb-1">Messaging Sender ID (Opsional):</label>
+              <input
+                type="text"
+                placeholder="123456789012"
+                value={fbMessagingSenderId}
+                onChange={(e) => setFbMessagingSenderId(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-slate-755 mb-1">App ID:</label>
+              <input
+                type="text"
+                required
+                placeholder="1:12345:web:abcd"
+                value={fbAppId}
+                onChange={(e) => setFbAppId(e.target.value)}
+                disabled={isFirebaseLoading}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
+              />
+            </div>
+
+            <div className="md:col-span-2 lg:col-span-3 flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={isFirebaseLoading}
+                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isFirebaseLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Database className="h-3.5 w-3.5" />
+                  )}
+                  Simpan & Sinkronkan
+                </button>
+
+                {getSavedFirebaseConfig() && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onToggleFirebase(!isFirebaseEnabled)}
+                      disabled={isFirebaseLoading}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors border ${
+                        isFirebaseEnabled
+                          ? 'bg-amber-50 border-amber-250 text-amber-700 hover:bg-amber-100'
+                          : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
+                      }`}
+                    >
+                      {isFirebaseEnabled ? 'Nonaktifkan Sinkronisasi' : 'Aktifkan Sinkronisasi'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDisconnectFirebase}
+                      disabled={isFirebaseLoading}
+                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-250 text-rose-650 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                    >
+                      Hapus Hubungan
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {isFirebaseEnabled && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={onUploadAllToFirebase}
+                    disabled={isFirebaseLoading}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-750 rounded-lg text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
+                    title="Unggah data lokal Anda yang ada saat ini ke Firestore"
+                  >
+                    <CloudUpload className="h-3.5 w-3.5 text-indigo-500" />
+                    Ekspor ke Firestore
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onDownloadAllFromFirebase}
+                    disabled={isFirebaseLoading}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-750 rounded-lg text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
+                    title="Unduh seluruh data yang tersimpan di Firestore ke sistem lokal"
+                  >
+                    <CloudDownload className="h-3.5 w-3.5 text-emerald-500" />
+                    Impor dari Firestore
+                  </button>
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
         
         {/* Left Column: Brand Customization Form & Footer Setup (xl:col-span-5) */}
@@ -241,7 +598,7 @@ export default function SettingsComponent({
               {/* Brand logo & Brand Name row */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-1">
-                  <label className="block font-bold text-slate-700 mb-1">Logo (Emoji/Icon):</label>
+                  <label className="block font-normal text-slate-700 mb-1">Logo (Emoji/Icon):</label>
                   <input
                     type="text"
                     required
@@ -249,26 +606,26 @@ export default function SettingsComponent({
                     placeholder="👕"
                     value={inputBrandLogo}
                     onChange={(e) => setInputBrandLogo(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-emoji text-lg focus:ring-1 focus:ring-emerald-500 outline-none font-bold"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center font-emoji text-lg focus:ring-1 focus:ring-emerald-500 outline-none font-normal"
                   />
                 </div>
                 
                 <div className="col-span-2">
-                  <label className="block font-bold text-slate-700 mb-1">Nama Brand:</label>
+                  <label className="block font-normal text-slate-700 mb-1">Nama Brand:</label>
                   <input
                     type="text"
                     required
                     placeholder="OmniOrder Store"
                     value={inputBrandName}
                     onChange={(e) => setInputBrandName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-900 focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:ring-1 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
 
               {/* Shop profile / Description sentence */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Profil Toko / Tagline:</label>
+                <label className="block font-normal text-slate-700 mb-1">Profil Toko / Tagline:</label>
                 <textarea
                   required
                   rows={2}
@@ -276,30 +633,30 @@ export default function SettingsComponent({
                   placeholder="Ketik profil singkat toko, misal: Grosir Pakaian Anak & Remaja Online-Offline Jakarta Barat"
                   value={inputBrandProfile}
                   onChange={(e) => setInputBrandProfile(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none resize-none leading-relaxed"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none resize-none leading-relaxed"
                 />
               </div>
 
               {/* Customizable Footer Text */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Custom Teks Footer Hak Cipta:</label>
+                <label className="block font-normal text-slate-700 mb-1">Custom Teks Footer Hak Cipta:</label>
                 <input
                   type="text"
                   required
                   placeholder="© 2026 PT. Busana Sejahtera Mandiri - Hak Cipta Dilindungi"
                   value={inputBrandFooter}
                   onChange={(e) => setInputBrandFooter(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none"
                 />
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">Teks ini akan dirender di bagian bawah sidebar menu secara terus menerus.</span>
               </div>
 
               {/* CRUD Payment Methods */}
               <div className="border-t border-slate-100/80 pt-4 mt-2">
-                <label className="block font-bold text-slate-800 mb-1.5 text-xs">💳 Atur Metode Pembayaran:</label>
+                <label className="block font-normal text-slate-800 mb-1.5 text-xs">💳 Atur Metode Pembayaran:</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {paymentMethods.map((m, idx) => (
-                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-[10px] font-bold border border-slate-200">
+                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-[10px] font-normal border border-slate-200">
                       {m}
                       <button type="button" onClick={() => {
                         const newName = prompt('Ubah Metode Pembayaran:', m);
@@ -318,7 +675,7 @@ export default function SettingsComponent({
                     type="text"
                     id="new_method_input"
                     placeholder="Contoh: Bank BCA"
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -335,10 +692,10 @@ export default function SettingsComponent({
 
               {/* CRUD Pencatat / Operator / PIC */}
               <div className="border-t border-slate-100/80 pt-4 mt-2">
-                <label className="block font-bold text-slate-800 mb-1.5 text-xs">👤 Atur Daftar Pencatat / Operator / PIC:</label>
+                <label className="block font-normal text-slate-800 mb-1.5 text-xs">👤 Atur Daftar Pencatat / Operator / PIC:</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {pencatatList.map((p, idx) => (
-                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200">
+                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-normal border border-slate-200">
                       {p}
                       <button type="button" onClick={() => {
                         const newName = prompt('Ubah Nama Pencatat:', p);
@@ -357,7 +714,7 @@ export default function SettingsComponent({
                     type="text"
                     id="new_pencatat_input"
                     placeholder="Contoh: Admin Susi"
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -379,7 +736,7 @@ export default function SettingsComponent({
                         input.value = '';
                       }
                     }}
-                    className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                    className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors"
                   >
                     Tambah
                   </button>
@@ -387,41 +744,74 @@ export default function SettingsComponent({
               </div>
 
               {/* Dynamic Font Selector option */}
-              <div className="border-t border-slate-100/80 pt-4 mt-2">
-                <label className="block font-bold text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
-                  <span>🔤</span> Pilih Gaya Font (Tipografi):
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {[
-                    { name: 'Inter (Sleek/Clean)', value: 'Inter' },
-                    { name: 'Plus Jakarta Sans', value: 'Plus Jakarta Sans' },
-                    { name: 'Outfit (Geometric)', value: 'Outfit' },
-                    { name: 'JetBrains Mono', value: 'JetBrains Mono' },
-                    { name: 'Playfair Display (Elegant Serif)', value: 'Playfair Display' }
-                  ].map((fontItem) => (
-                    <button
-                      key={fontItem.value}
-                      type="button"
-                      onClick={() => onUpdateFont(fontItem.value)}
-                      className={`px-3 py-2 text-xs font-black rounded-xl border text-left transition-all cursor-pointer ${
-                        appFont === fontItem.value
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs'
-                          : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
-                      }`}
-                      style={{ fontFamily: fontItem.value }}
-                    >
-                      {fontItem.name}
-                    </button>
-                  ))}
+              <div className="border-t border-slate-100/80 pt-4 mt-2 space-y-3.5">
+                <div>
+                  <label className="block font-normal text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
+                    <span>🔤</span> Pilih Gaya Font (Tipografi):
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {[
+                      { name: 'Inter (Sleek/Clean)', value: 'Inter' },
+                      { name: 'Plus Jakarta Sans', value: 'Plus Jakarta Sans' },
+                      { name: 'Outfit (Geometric)', value: 'Outfit' },
+                      { name: 'JetBrains Mono', value: 'JetBrains Mono' },
+                      { name: 'Playfair Display (Elegant Serif)', value: 'Playfair Display' }
+                    ].map((fontItem) => (
+                      <button
+                        key={fontItem.value}
+                        type="button"
+                        onClick={() => onUpdateFont(fontItem.value)}
+                        className={`px-3 py-2 text-xs font-normal rounded-xl border text-left transition-all cursor-pointer ${
+                          appFont === fontItem.value
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs'
+                            : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
+                        }`}
+                        style={{ fontFamily: fontItem.value }}
+                      >
+                        {fontItem.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-[10px] text-slate-400 block mt-2.5 leading-normal">
-                  Mengubah seluruh font tampilan Dashboard, detail, nominal angka, tombol input, dan halaman pesanan secara merata.
+
+                <div>
+                  <label className="block font-normal text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
+                    <span>⚖️</span> Pilih Ketebalan Font Utama:
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: 'Tipis (300)', value: '300' },
+                      { label: 'Normal (400)', value: '400' },
+                      { label: 'Medium (500)', value: '500' },
+                      { label: 'Semi-Tebal (600)', value: '600' },
+                      { label: 'Tebal (700)', value: '700' },
+                      { label: 'Sangat Tebal (800)', value: '800' }
+                    ].map((weightItem) => (
+                      <button
+                        key={weightItem.value}
+                        type="button"
+                        onClick={() => onUpdateFontWeight(weightItem.value)}
+                        className={`px-3 py-1.5 text-[11px] rounded-lg border transition-all cursor-pointer ${
+                          appFontWeight === weightItem.value
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs font-normal'
+                            : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
+                        }`}
+                        style={{ fontFamily: appFont, fontWeight: weightItem.value }}
+                      >
+                        {weightItem.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <span className="text-[10px] text-slate-400 block mt-1 leading-normal">
+                  Mengubah seluruh font tampilan Dashboard, detail, nominal angka, tombol input, dan halaman pesanan secara merata beserta tingkat ketebalannya.
                 </span>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-950 text-white font-extrabold rounded-xl shadow-md transition-all cursor-pointer font-sans"
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-950 text-white font-normal rounded-xl shadow-md transition-all cursor-pointer font-sans"
               >
                 💾 Terapkan & Simpan Identitas Brand
               </button>
@@ -430,11 +820,11 @@ export default function SettingsComponent({
 
           {/* Quick Info Box */}
           <div className="p-5 bg-gradient-to-br from-emerald-50 to-emerald-100/30 border border-emerald-150 rounded-3xl space-y-2.5 shadow-3xs">
-            <h4 className="font-bold text-emerald-950 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
+            <h4 className="font-normal text-emerald-950 flex items-center gap-1.5 text-[11px] uppercase tracking-wider">
               <Info className="h-4 w-4 text-emerald-600 shrink-0" /> Sistem Multi-Persistensi Mandiri
             </h4>
             <span className="block text-slate-600 font-medium leading-relaxed">
-              Semua detail pengaturan brand di atas dan seluruh matriks sediaan gudang tersimpan aman di internal peramban peranti Anda (<span className="font-bold">localStorage</span>). Data yang Anda ubah akan langsung merestrukturisasi judul aplikasi di sebelah kiri secara instan.
+              Semua detail pengaturan brand di atas dan seluruh matriks sediaan gudang tersimpan aman di internal peramban peranti Anda (<span className="font-normal">localStorage</span>). Data yang Anda ubah akan langsung merestrukturisasi judul aplikasi di sebelah kiri secara instan.
             </span>
           </div>
         </div>
@@ -449,14 +839,14 @@ export default function SettingsComponent({
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-0.5">Sesuaikan parameter diskon, gratis ongkir, atau tambahkan kanal baru secara otonom</p>
               </div>
-              <span className="text-[10px] bg-indigo-50 text-indigo-800 border-indigo-200 px-2 py-0.5 rounded-full font-extrabold tracking-wider uppercase font-mono">
+              <span className="text-[10px] bg-indigo-50 text-indigo-800 border-indigo-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
                 {channels.length} Aktif
               </span>
             </div>
 
             {/* Notifications */}
             {channelSuccessMsg && (
-              <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-2xl flex items-center gap-2 animate-fade-in font-bold">
+              <div className="p-3 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-2xl flex items-center gap-2 animate-fade-in font-normal">
                 <CheckCircle className="h-4 w-4 text-indigo-600 shrink-0" />
                 <span>{channelSuccessMsg}</span>
               </div>
@@ -466,63 +856,76 @@ export default function SettingsComponent({
               
               {/* Operational Active Channel List (lg:col-span-6) */}
               <div className="lg:col-span-6 space-y-3">
-                <span className="block font-bold text-slate-800 pb-1 border-b border-slate-50">Daftar Saluran Penjual:</span>
+                <span className="block font-normal text-slate-800 pb-1 border-b border-slate-50">Daftar Saluran Penjual:</span>
                 
                 <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto pr-1">
-                  {channels.map((chan) => (
-                    <div key={chan.id} className="py-3 flex items-center justify-between gap-3 group">
-                      <div className="min-w-0 flex items-center gap-2">
-                        <span className={`inline-block px-2.5 py-1 text-[10px] font-extrabold rounded-lg border shadow-3xs tracking-wide uppercase ${chan.color}`}>
-                          {chan.name}
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-[9px] text-slate-400 font-mono font-semibold space-y-0.5">
-                            <div className="flex gap-2">
-                              <span>Komisi: <span className="text-slate-700 font-bold">{chan.commissionPercent}%</span></span>
-                              <span>P.Fee: <span className="text-slate-700 font-bold">{chan.paymentFeePercent}%</span></span>
-                            </div>
-                            <div className="flex gap-2">
-                              <span>Flat: <span className="text-slate-700 font-bold">{formatRp(chan.flatProcessingFee)}</span></span>
-                              <span>MaxSub: <span className="text-amber-700 font-bold">{formatRp(chan.freeShippingMaxCap)}</span></span>
+                  {channels.map((chan) => {
+                    const hasPipe = chan.color && chan.color.includes('|');
+                    const [bg, text] = hasPipe ? chan.color.split('|') : ['', ''];
+                    return (
+                      <div key={chan.id} className="py-3 flex items-center justify-between gap-3 group">
+                        <div className="min-w-0 flex items-center gap-2">
+                          {hasPipe ? (
+                            <span 
+                              style={{ backgroundColor: bg, color: text }}
+                              className="inline-block px-2.5 py-1 text-[10px] font-normal rounded-lg border border-slate-200 shadow-3xs tracking-wide uppercase"
+                            >
+                              {chan.name}
+                            </span>
+                          ) : (
+                            <span className={`inline-block px-2.5 py-1 text-[10px] font-normal rounded-lg border shadow-3xs tracking-wide uppercase ${chan.color}`}>
+                              {chan.name}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-[9px] text-slate-400 font-mono font-normal space-y-0.5">
+                              <div className="flex gap-2">
+                                <span>Komisi: <span className="text-slate-700 font-normal">{chan.commissionPercent}%</span></span>
+                                <span>P.Fee: <span className="text-slate-700 font-normal">{chan.paymentFeePercent}%</span></span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span>Flat: <span className="text-slate-700 font-normal">{formatRp(chan.flatProcessingFee)}</span></span>
+                                <span>MaxSub: <span className="text-amber-700 font-normal">{formatRp(chan.freeShippingMaxCap)}</span></span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditChannel(chan)}
-                          className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
-                          title="Edit skema finansial saluran ini"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteChannelClick(chan)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
-                          title="Hapus saluran ini dari sistem"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditChannel(chan)}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
+                            title="Edit skema finansial saluran ini"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteChannelClick(chan)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer transition-colors border border-slate-200"
+                            title="Hapus saluran ini dari sistem"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Add/Edit Channel form (lg:col-span-6) */}
               <div className="lg:col-span-6 bg-slate-50/70 border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-3xs">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                  <span className="font-extrabold text-slate-900 text-[11px] uppercase tracking-wider flex items-center gap-1">
+                  <span className="font-normal text-slate-900 text-[11px] uppercase tracking-wider flex items-center gap-1">
                     {editingChanId ? '📝 Edit Skema Saluran' : '✨ Tambah Saluran Baru'}
                   </span>
                   {editingChanId && (
                     <button
                       type="button"
                       onClick={handleCancelChannelEdit}
-                      className="text-rose-600 hover:text-rose-800 font-bold hover:underline"
+                      className="text-rose-600 hover:text-rose-800 font-normal hover:underline"
                     >
                       Batal
                     </button>
@@ -532,21 +935,21 @@ export default function SettingsComponent({
                 <div className="space-y-2 text-[11px]">
                   {/* Channel Name */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-0.5">Nama Saluran:</label>
+                    <label className="block font-normal text-slate-700 mb-0.5">Nama Saluran:</label>
                     <input
                       type="text"
                       required
                       placeholder="Contoh: Shopee Premium, TikTok Mall, Ekspor"
                       value={chanName}
                       onChange={(e) => setChanName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     {/* Platform Commission Percent */}
                     <div>
-                      <label className="block font-bold text-slate-700 mb-0.5">Biaya Komisi (%):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Komisi (%):</label>
                       <input
                         type="number"
                         step="0.1"
@@ -555,13 +958,13 @@ export default function SettingsComponent({
                         placeholder="5"
                         value={chanCommission}
                         onChange={(e) => setChanCommission(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
                       />
                     </div>
 
                     {/* Payment Gateway Fee Percent */}
                     <div>
-                      <label className="block font-bold text-slate-700 mb-0.5">Biaya Payment (%):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Payment (%):</label>
                       <input
                         type="number"
                         step="0.1"
@@ -570,7 +973,7 @@ export default function SettingsComponent({
                         placeholder="2"
                         value={chanPayment}
                         onChange={(e) => setChanPayment(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
                       />
                     </div>
                   </div>
@@ -578,7 +981,7 @@ export default function SettingsComponent({
                   <div className="grid grid-cols-2 gap-2">
                     {/* Flat processing fee */}
                     <div>
-                      <label className="block font-bold text-slate-700 mb-0.5">Biaya Proses (Rp):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Proses (Rp):</label>
                       <input
                         type="number"
                         min="0"
@@ -586,13 +989,13 @@ export default function SettingsComponent({
                         placeholder="1000"
                         value={chanFlat}
                         onChange={(e) => setChanFlat(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
                       />
                     </div>
 
                     {/* Free shipping subsidy percent */}
                     <div>
-                      <label className="block font-bold text-slate-700 mb-0.5">Subsidi Ongkir (%):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Subsidi Ongkir (%):</label>
                       <input
                         type="number"
                         step="0.1"
@@ -600,14 +1003,14 @@ export default function SettingsComponent({
                         placeholder="4"
                         value={chanShipping}
                         onChange={(e) => setChanShipping(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-center text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
                       />
                     </div>
                   </div>
 
                   {/* Free shipping maximum limit cap */}
                   <div>
-                    <label className="block font-bold text-slate-700 mb-0.5">Batas Maks Subs Ongkir (Rp):</label>
+                    <label className="block font-normal text-slate-700 mb-0.5">Batas Maks Subs Ongkir (Rp):</label>
                     <input
                       type="number"
                       min="0"
@@ -615,17 +1018,17 @@ export default function SettingsComponent({
                       placeholder="10000"
                       value={chanShippingMax}
                       onChange={(e) => setChanShippingMax(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800"
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-slate-800"
                     />
                   </div>
 
 
                   {/* Payment Methods Checkboxes */}
                   <div className="py-2">
-                    <label className="block font-bold text-slate-700 mb-1.5">Metode Pembayaran:</label>
+                    <label className="block font-normal text-slate-700 mb-1.5">Metode Pembayaran:</label>
                     <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 border border-slate-200 rounded-2xl">
                       {paymentMethods.map((m) => (
-                        <label key={m} className="flex items-center gap-1.5 cursor-pointer text-slate-800 text-[11px] font-bold">
+                        <label key={m} className="flex items-center gap-1.5 cursor-pointer text-slate-800 text-[11px] font-normal">
                           <input
                             type="checkbox"
                             checked={(chanPaymentMethods || []).includes(m)}
@@ -644,19 +1047,98 @@ export default function SettingsComponent({
 
                   {/* Channel Color Theme Badge Previewer Grid */}
                   <div>
-                    <span className="block font-bold text-slate-700 mb-1 leading-normal">Tema Warna Badge:</span>
+                    <span className="block font-normal text-slate-700 mb-1 leading-normal">Tema Warna Badge:</span>
                     <div className="grid grid-cols-4 gap-1.5">
-                      {colorPresets.map((preset, pIdx) => (
-                        <button
-                          key={pIdx}
-                          type="button"
-                          onClick={() => setChanColor(preset.value)}
-                          className={`p-1.5 text-[8px] rounded border font-bold text-center truncate ${chanColor === preset.value ? 'ring-2 ring-emerald-505 bg-slate-105 border-slate-350 scale-102 font-black' : 'bg-white hover:bg-slate-100 border-slate-200'}`}
-                          title={preset.label}
+                      {colorPresets.map((preset, pIdx) => {
+                        const hasPipe = preset.value && preset.value.includes('|');
+                        const [bg, text] = hasPipe ? preset.value.split('|') : ['', ''];
+                        const isSelected = chanColor === preset.value;
+                        return (
+                          <button
+                            key={pIdx}
+                            type="button"
+                            onClick={() => setChanColor(preset.value)}
+                            style={hasPipe ? { backgroundColor: bg, color: text } : {}}
+                            className={`p-1.5 text-[8px] rounded border font-normal text-center truncate transition-all duration-150 cursor-pointer ${
+                              isSelected 
+                                ? 'ring-2 ring-emerald-500 scale-105 border-slate-400 font-normal' 
+                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
+                            }`}
+                            title={preset.label}
+                          >
+                            {preset.label.split(' ')[0]}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3.5 space-y-2.5 bg-white p-3 border border-slate-200 rounded-2xl">
+                      <span className="block font-normal text-[10px] text-slate-500 uppercase tracking-wider">Kustom Kode Hex Warna:</span>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Background Color Picker & Hex Code */}
+                        <div>
+                          <label className="block text-[10px] font-normal text-slate-600 mb-1">Background:</label>
+                          <div className="flex gap-1.5">
+                            <input
+                               type="color"
+                               value={currentBg}
+                               onChange={(e) => setChanColor(`${e.target.value}|${currentText}`)}
+                               className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
+                            />
+                            <input
+                              type="text"
+                              maxLength={7}
+                              value={currentBg}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val.startsWith('#') && val.length <= 7) {
+                                  setChanColor(`${val}|${currentText}`);
+                                }
+                              }}
+                              placeholder="#ffffff"
+                              className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Text Color Picker & Hex Code */}
+                        <div>
+                          <label className="block text-[10px] font-normal text-slate-600 mb-1">Warna Huruf:</label>
+                          <div className="flex gap-1.5">
+                            <input
+                               type="color"
+                               value={currentText}
+                               onChange={(e) => setChanColor(`${currentBg}|${e.target.value}`)}
+                               className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
+                            />
+                            <input
+                              type="text"
+                              maxLength={7}
+                              value={currentText}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val.startsWith('#') && val.length <= 7) {
+                                  setChanColor(`${currentBg}|${val}`);
+                                }
+                              }}
+                              placeholder="#000000"
+                              className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Preview of the Badge */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[9px] font-normal text-slate-400 uppercase">Preview Badge:</span>
+                        <span 
+                          style={{ backgroundColor: currentBg, color: currentText }}
+                          className="inline-block px-2.5 py-1 text-[10px] font-normal rounded-lg border border-slate-200 tracking-wide uppercase"
                         >
-                          {preset.label.split(' ')[0]}
-                        </button>
-                      ))}
+                          {chanName || 'PREVIEW'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -665,7 +1147,7 @@ export default function SettingsComponent({
                     type="button"
                     disabled={!chanName.trim()}
                     onClick={handleSaveChannel}
-                    className="w-full py-2 bg-slate-900 border border-slate-950 text-white font-extrabold rounded-xl hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-40"
+                    className="w-full py-2 bg-slate-900 border border-slate-950 text-white font-normal rounded-xl hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-40"
                   >
                     {editingChanId ? '💾 Update Saluran' : '✨ Daftarkan Saluran'}
                   </button>
@@ -689,13 +1171,13 @@ export default function SettingsComponent({
             </h3>
             <p className="text-[10px] text-slate-400 mt-0.5">Konfigurasikan diskon otomatis (persentase atau nominal rupiah) yang berlaku per saluran dan per produk</p>
           </div>
-          <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-extrabold tracking-wider uppercase font-mono">
+          <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
             {autoDiscounts.length} Skema Aktif
           </span>
         </div>
 
         {discountSuccessMsg && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-2xl flex items-center gap-2 animate-fade-in font-bold text-xs">
+          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
             <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>{discountSuccessMsg}</span>
           </div>
@@ -750,31 +1232,31 @@ export default function SettingsComponent({
 
             setTimeout(() => setDiscountSuccessMsg(null), 3000);
           }} className="lg:col-span-5 space-y-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-150">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">
+            <h4 className="font-normal text-xs text-slate-800 uppercase tracking-wider">
               {editingDiscId ? '📝 Edit Aturan Diskon' : '✨ Buat Aturan Diskon Baru'}
             </h4>
 
             {/* Discount Name */}
             <div>
-              <label className="block font-bold text-slate-700 mb-1 text-[11px]">Nama Pengaturan Diskon:</label>
+              <label className="block font-normal text-slate-700 mb-1 text-[11px]">Nama Pengaturan Diskon:</label>
               <input
                 type="text"
                 required
                 placeholder="Contoh: Promo Shopee Live 10%"
                 value={discName}
                 onChange={(e) => setDiscName(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
               />
             </div>
 
             {/* Discount Type & Value */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">Jenis Diskon:</label>
+                <label className="block font-normal text-slate-700 mb-1 text-[11px]">Jenis Diskon:</label>
                 <select
                   value={discType}
                   onChange={(e) => setDiscType(e.target.value as 'percent' | 'nominal')}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:ring-1 focus:ring-emerald-500 outline-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
                 >
                   <option value="percent">Persentase (%)</option>
                   <option value="nominal">Nominal (Rupiah)</option>
@@ -782,7 +1264,7 @@ export default function SettingsComponent({
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1 text-[11px]">Nilai Potongan:</label>
+                <label className="block font-normal text-slate-700 mb-1 text-[11px]">Nilai Potongan:</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -791,9 +1273,9 @@ export default function SettingsComponent({
                     value={discValue || ''}
                     onChange={(e) => setDiscValue(Number(e.target.value))}
                     placeholder={discType === 'percent' ? '10' : '5000'}
-                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold focus:ring-1 focus:ring-emerald-500 outline-none"
+                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
                   />
-                  <span className="absolute right-3 top-2 text-[11px] font-black text-slate-400">
+                  <span className="absolute right-3 top-2 text-[11px] font-normal text-slate-400">
                     {discType === 'percent' ? '%' : 'Rp'}
                   </span>
                 </div>
@@ -803,7 +1285,7 @@ export default function SettingsComponent({
             {/* Channels Selection - interactive select badge lists */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block font-bold text-slate-700 text-[11px]">Diterapkan di Saluran (Kanal):</label>
+                <label className="block font-normal text-slate-700 text-[11px]">Diterapkan di Saluran (Kanal):</label>
                 <button
                   type="button"
                   onClick={() => {
@@ -813,7 +1295,7 @@ export default function SettingsComponent({
                       setDiscSelectedChannels(['all']);
                     }
                   }}
-                  className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border transition-all ${
+                  className={`text-[9px] font-normal uppercase px-1.5 py-0.5 rounded border transition-all ${
                     discSelectedChannels.includes('all')
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-slate-100 text-slate-500 border-slate-200'
@@ -838,7 +1320,7 @@ export default function SettingsComponent({
                             setDiscSelectedChannels([...discSelectedChannels, chan.id]);
                           }
                         }}
-                        className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center gap-1 ${
+                        className={`px-2 py-1 text-[10px] font-normal rounded-lg border transition-all flex items-center gap-1 ${
                           isSelected
                             ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                             : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -853,7 +1335,7 @@ export default function SettingsComponent({
                 </div>
               )}
               {discSelectedChannels.includes('all') && (
-                <div className="bg-emerald-50/50 border border-emerald-150 rounded-xl p-2.5 text-[10px] text-emerald-800 font-semibold leading-relaxed">
+                <div className="bg-emerald-50/50 border border-emerald-150 rounded-xl p-2.5 text-[10px] text-emerald-800 font-normal leading-relaxed">
                   📢 Aturan diskon ini berlaku otomatis untuk <strong>Semua Saluran Penjualan</strong> yang aktif.
                 </div>
               )}
@@ -862,7 +1344,7 @@ export default function SettingsComponent({
             {/* Products Selection - interactive select badge lists */}
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block font-bold text-slate-700 text-[11px]">Berlaku untuk Produk Mana Saja:</label>
+                <label className="block font-normal text-slate-700 text-[11px]">Berlaku untuk Produk Mana Saja:</label>
                 <button
                   type="button"
                   onClick={() => {
@@ -872,7 +1354,7 @@ export default function SettingsComponent({
                       setDiscSelectedProducts(['all']);
                     }
                   }}
-                  className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded border transition-all ${
+                  className={`text-[9px] font-normal uppercase px-1.5 py-0.5 rounded border transition-all ${
                     discSelectedProducts.includes('all')
                       ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                       : 'bg-slate-100 text-slate-500 border-slate-200'
@@ -897,7 +1379,7 @@ export default function SettingsComponent({
                             setDiscSelectedProducts([...discSelectedProducts, prod.id]);
                           }
                         }}
-                        className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition-all flex items-center gap-1.5 ${
+                        className={`px-2 py-1 text-[10px] font-normal rounded-lg border transition-all flex items-center gap-1.5 ${
                           isSelected
                             ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
                             : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
@@ -916,7 +1398,7 @@ export default function SettingsComponent({
                 </div>
               )}
               {discSelectedProducts.includes('all') && (
-                <div className="bg-indigo-50/50 border border-indigo-150 rounded-xl p-2.5 text-[10px] text-indigo-800 font-semibold leading-relaxed">
+                <div className="bg-indigo-50/50 border border-indigo-150 rounded-xl p-2.5 text-[10px] text-indigo-800 font-normal leading-relaxed">
                   📢 Aturan diskon ini berlaku otomatis untuk <strong>Semua Jenis Produk Master</strong> yang terdaftar.
                 </div>
               )}
@@ -935,14 +1417,14 @@ export default function SettingsComponent({
                     setDiscSelectedChannels(['all']);
                     setDiscSelectedProducts(['all']);
                   }}
-                  className="flex-1 py-2 text-xs font-bold bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
+                  className="flex-1 py-2 text-xs font-normal bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
                 >
                   Batal
                 </button>
               )}
               <button
                 type="submit"
-                className="flex-1 py-2 text-xs font-extrabold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-500/10 transition-colors"
+                className="flex-1 py-2 text-xs font-normal bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-500/10 transition-colors"
               >
                 {editingDiscId ? '💾 Simpan Perubahan' : '➕ Tambah Aturan Diskon'}
               </button>
@@ -953,13 +1435,13 @@ export default function SettingsComponent({
           <div className="lg:col-span-7 space-y-4">
             <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center justify-between">
               <span>📋 Daftar Aturan Diskon Terdaftar</span>
-              <span className="text-[10px] text-slate-400 font-semibold uppercase font-sans">Sistem Prioritas Auto-Match</span>
+              <span className="text-[10px] text-slate-400 font-normal uppercase font-sans">Sistem Prioritas Auto-Match</span>
             </h4>
 
             {autoDiscounts.length === 0 ? (
               <div className="p-8 border border-dashed border-slate-200 rounded-2xl text-center space-y-2">
                 <span className="text-2xl block">🏷️</span>
-                <p className="text-xs font-extrabold text-slate-500">Belum ada aturan diskon otomatis.</p>
+                <p className="text-xs font-normal text-slate-500">Belum ada aturan diskon otomatis.</p>
                 <p className="text-[10px] text-slate-400 max-w-xs mx-auto">Gunakan form di sebelah kiri untuk membuat aturan diskon otomatis pertama Anda.</p>
               </div>
             ) : (
@@ -976,10 +1458,10 @@ export default function SettingsComponent({
                     >
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2">
-                          <h5 className="font-bold text-slate-900 text-xs">
+                          <h5 className="font-normal text-slate-900 text-xs">
                             {discount.name}
                           </h5>
-                          <span className={`text-[9px] font-black px-1.5 py-0.2 rounded-full border uppercase leading-tight ${
+                          <span className={`text-[9px] font-normal px-1.5 py-0.2 rounded-full border uppercase leading-tight ${
                             discount.isActive
                               ? 'bg-emerald-50 border-emerald-250 text-emerald-700'
                               : 'bg-slate-100 border-slate-200 text-slate-500'
@@ -988,21 +1470,21 @@ export default function SettingsComponent({
                           </span>
                         </div>
 
-                        <div className="text-[11px] text-slate-500 font-medium">
-                          Besar Potongan: <strong className="text-rose-600 font-extrabold">{discount.type === 'percent' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`}</strong>
+                        <div className="text-[11px] text-slate-500 font-normal">
+                          Besar Potongan: <strong className="text-rose-600 font-normal">{discount.type === 'percent' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`}</strong>
                         </div>
 
                         {/* Applied channels list */}
                         <div className="space-y-1">
-                          <span className="text-[9.5px] font-bold text-slate-400 block uppercase">Saluran Terpilih:</span>
+                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Saluran Terpilih:</span>
                           <div className="flex flex-wrap gap-1">
                             {discount.channelIds.includes('all') ? (
-                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-extrabold">Semua Saluran (Global)</span>
+                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Saluran (Global)</span>
                             ) : (
                               discount.channelIds.map(chanId => {
                                 const chan = channels.find(c => c.id === chanId);
                                 return (
-                                  <span key={chanId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5">
+                                  <span key={chanId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-0.5">
                                     <span>{'🛍️'}</span>
                                     <span>{chan?.name || chanId}</span>
                                   </span>
@@ -1014,15 +1496,15 @@ export default function SettingsComponent({
 
                         {/* Applied products list */}
                         <div className="space-y-1">
-                          <span className="text-[9.5px] font-bold text-slate-400 block uppercase">Produk Terpilih:</span>
+                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Produk Terpilih:</span>
                           <div className="flex flex-wrap gap-1">
                             {discount.productIds.includes('all') ? (
-                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-extrabold">Semua Produk Master</span>
+                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Produk Master</span>
                             ) : (
                               discount.productIds.map(prodId => {
                                 const prod = products.find(p => p.id === prodId);
                                 return (
-                                  <span key={prodId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                  <span key={prodId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-1">
                                     {prod?.imageUrl ? (
                                       <img src={prod.imageUrl} alt="" className="w-3 h-3 rounded object-cover" referrerPolicy="no-referrer" />
                                     ) : (
@@ -1046,7 +1528,7 @@ export default function SettingsComponent({
                             const updated = autoDiscounts.map(d => d.id === discount.id ? { ...d, isActive: !d.isActive } : d);
                             onUpdateAutoDiscounts(updated);
                           }}
-                          className={`px-3 py-1 text-[9.5px] font-black rounded-lg border transition-all cursor-pointer ${
+                          className={`px-3 py-1 text-[9.5px] font-normal rounded-lg border transition-all cursor-pointer ${
                             discount.isActive
                               ? 'bg-rose-50 border-rose-250 text-rose-700 hover:bg-rose-100'
                               : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'

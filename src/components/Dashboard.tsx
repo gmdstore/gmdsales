@@ -362,43 +362,25 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             <span>📈</span> Dashboard Performa Finansial
           </h1>
           <p className="text-sm text-slate-500 mt-1.5">
-            Data Terkonsolidasi Omnichannel per tanggal <span className="font-semibold text-slate-800">{getFormattedToday()}</span>
+            Data Terkonsolidasi Omnichannel per tanggal <span className="font-normal text-slate-800">{getFormattedToday()}</span>
           </p>
         </div>
         
-        <button
-          id="btn_floating_add_order"
-          onClick={onOpenOrderModal}
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 hover:scale-[1.02] active:scale-[0.98] transition-all bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-2xl shadow-lg shadow-slate-950/10 cursor-pointer"
-        >
-          <span className="text-lg leading-none">➕</span> Input Pesanan Baru
-        </button>
+        {/* Current selected range summary badge - Moved outside to the top-right corner */}
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-3.5 py-2 rounded-2xl text-xs font-normal flex items-center gap-2 self-start sm:self-center shadow-xs shrink-0">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>
+            Aktif: <strong className="font-normal">{filterLabel}</strong> ({startDateStr.split('-').reverse().join('/')} s.d {endDateStr.split('-').reverse().join('/')})
+          </span>
+        </div>
       </div>
 
       {/* Date Filter Panel */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-5 shadow-sm space-y-4" id="date_filter_panel">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <span className="text-xl">📅</span>
-            <div>
-              <h2 className="font-bold text-slate-800 text-sm">Filter Jangka Waktu Data</h2>
-              <p className="text-[11px] text-slate-400">Pilih periode laporan untuk memperbarui ringkasan, kontribusi saluran, dan grafik</p>
-            </div>
-          </div>
-          
-          {/* Current selected range summary badge */}
-          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-3 py-1.5 rounded-2xl text-xs font-semibold flex items-center gap-2 self-start md:self-auto shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>
-              Aktif: <strong className="font-extrabold">{filterLabel}</strong> ({startDateStr.split('-').reverse().join('/')} s.d {endDateStr.split('-').reverse().join('/')})
-            </span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 pt-3 border-t border-slate-100">
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm" id="date_filter_panel">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
           
           {/* Preset Buttons - spans 5 cols */}
           <div className="xl:col-span-5 flex flex-wrap gap-2 items-center">
@@ -412,7 +394,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
               <button
                 key={preset.type}
                 onClick={() => setFilterType(preset.type as FilterType)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer border ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-normal transition-all duration-150 cursor-pointer border ${
                   filterType === preset.type
                     ? 'bg-emerald-500 text-white border-emerald-500 shadow-sm shadow-emerald-500/20'
                     : 'bg-slate-50 text-slate-600 border-slate-200/60 hover:bg-slate-100 hover:text-slate-800'
@@ -425,7 +407,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
           {/* Specific Month selector - spans 3 cols */}
           <div className="xl:col-span-3 flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase shrink-0">Bulan:</span>
+            <span className="text-xs font-normal text-slate-400 uppercase shrink-0">Bulan:</span>
             <select
               value={filterType === 'specific_month' ? selectedSpecificMonth : ''}
               onChange={(e) => {
@@ -434,7 +416,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                   setFilterType('specific_month');
                 }
               }}
-              className={`w-full text-xs font-semibold rounded-xl px-2.5 py-1.5 cursor-pointer transition-all duration-150 border bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+              className={`w-full text-xs font-normal rounded-xl px-2.5 py-1.5 cursor-pointer transition-all duration-150 border bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
                 filterType === 'specific_month'
                   ? 'border-emerald-500 text-emerald-800 bg-emerald-50/20'
                   : 'border-slate-200/80 text-slate-600 hover:border-slate-300'
@@ -451,7 +433,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
           {/* Custom Date Inputs - spans 4 cols (wider for two inputs) */}
           <div className="xl:col-span-4 flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase shrink-0">Kustom:</span>
+            <span className="text-xs font-normal text-slate-400 uppercase shrink-0">Kustom:</span>
             <div className={`flex items-center gap-1.5 w-full rounded-xl px-2 py-1 border transition-all duration-150 ${
               filterType === 'custom'
                 ? 'border-emerald-500 bg-emerald-50/10'
@@ -464,9 +446,9 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                   setCustomStartDate(e.target.value);
                   setFilterType('custom');
                 }}
-                className="bg-transparent text-[11px] font-bold text-slate-600 focus:outline-none w-full cursor-pointer"
+                className="bg-transparent text-[11px] font-normal text-slate-600 focus:outline-none w-full cursor-pointer"
               />
-              <span className="text-[10px] text-slate-400 font-bold font-mono">s/d</span>
+              <span className="text-[10px] text-slate-400 font-normal font-mono">s/d</span>
               <input
                 type="date"
                 value={customEndDate}
@@ -474,7 +456,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                   setCustomEndDate(e.target.value);
                   setFilterType('custom');
                 }}
-                className="bg-transparent text-[11px] font-bold text-slate-600 focus:outline-none w-full cursor-pointer"
+                className="bg-transparent text-[11px] font-normal text-slate-600 focus:outline-none w-full cursor-pointer"
               />
             </div>
           </div>
@@ -490,7 +472,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all duration-500 pointer-events-none" />
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 text-xs font-semibold rounded-full border border-amber-200/60">
+              <span className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 text-xs font-normal rounded-full border border-amber-200/60">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-550 animate-pulse"></span>
                 Hari Ini ({today.getDate()} {['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][today.getMonth()]})
               </span>
@@ -501,8 +483,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] text-slate-400 font-extrabold tracking-wider uppercase block">Omset Bersih</span>
-                <span className="text-3xl font-black text-emerald-600 font-sans tracking-tight">
+                <span className="text-[10px] text-slate-400 font-normal tracking-wider uppercase block">Omset Bersih</span>
+                <span className="text-3xl font-normal text-emerald-600 font-sans tracking-tight">
                   {formatRp(todayStats.net)}
                 </span>
               </div>
@@ -511,12 +493,12 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
           <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-100/80 text-xs text-slate-600">
             <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
-              <span className="block text-[10px] text-slate-400 font-semibold uppercase">Total Pesanan</span>
-              <span className="text-sm font-bold text-slate-800 mt-0.5 block">{todayStats.count} Transaksi</span>
+              <span className="block text-[10px] text-slate-400 font-normal uppercase">Total Pesanan</span>
+              <span className="text-sm font-normal text-slate-800 mt-0.5 block">{todayStats.count} Transaksi</span>
             </div>
             <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
-              <span className="block text-[10px] text-slate-400 font-semibold uppercase">Total Terjual</span>
-              <span className="text-sm font-bold text-slate-800 mt-0.5 block">{todayStats.totalItems} Pcs</span>
+              <span className="block text-[10px] text-slate-400 font-normal uppercase">Total Terjual</span>
+              <span className="text-sm font-normal text-slate-800 mt-0.5 block">{todayStats.totalItems} Pcs</span>
             </div>
           </div>
         </div>
@@ -526,7 +508,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all duration-500 pointer-events-none" />
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs font-semibold rounded-full border border-emerald-200/60 font-medium">
+              <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-800 text-xs font-normal rounded-full border border-emerald-200/60 font-normal">
                 Ringkasan {filterLabel}
               </span>
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -536,8 +518,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
             <div className="space-y-4">
               <div>
-                <span className="text-[10px] text-slate-400 font-extrabold tracking-wider uppercase block">Omset Bersih Riil</span>
-                <span className="text-3xl font-black text-emerald-600 font-sans tracking-tight">
+                <span className="text-[10px] text-slate-400 font-normal tracking-wider uppercase block">Omset Bersih Riil</span>
+                <span className="text-3xl font-normal text-emerald-600 font-sans tracking-tight">
                   {formatRp(filteredStats.net)}
                 </span>
               </div>
@@ -546,16 +528,16 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
 
           <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-slate-100/80 text-xs text-slate-600">
             <div className="bg-emerald-50/30 p-2.5 rounded-2xl border border-emerald-100/50 transition-all duration-200">
-              <span className="block text-[9px] text-emerald-800 font-bold uppercase tracking-wider">Avg / Hari</span>
-              <span className="text-xs font-black text-emerald-600 mt-0.5 block truncate font-sans">{formatRp(avgNetPerDayFiltered || 0)}</span>
+              <span className="block text-[9px] text-emerald-800 font-normal uppercase tracking-wider">Avg / Hari</span>
+              <span className="text-xs font-normal text-emerald-600 mt-0.5 block truncate font-sans">{formatRp(avgNetPerDayFiltered || 0)}</span>
             </div>
             <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
-              <span className="block text-[9px] text-slate-400 font-semibold uppercase">Transaksi</span>
-              <span className="text-sm font-bold text-slate-800 mt-0.5 block">{filteredStats.count}</span>
+              <span className="block text-[9px] text-slate-400 font-normal uppercase">Transaksi</span>
+              <span className="text-sm font-normal text-slate-800 mt-0.5 block">{filteredStats.count}</span>
             </div>
             <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
-              <span className="block text-[9px] text-slate-400 font-semibold uppercase">Item</span>
-              <span className="text-sm font-bold text-slate-800 mt-0.5 block">{filteredStats.totalItems} Pcs</span>
+              <span className="block text-[9px] text-slate-400 font-normal uppercase">Item</span>
+              <span className="text-sm font-normal text-slate-800 mt-0.5 block">{filteredStats.totalItems} Pcs</span>
             </div>
           </div>
         </div>
@@ -565,7 +547,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/5 rounded-full blur-2xl group-hover:bg-sky-500/10 transition-all duration-500 pointer-events-none" />
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="inline-flex items-center gap-2 px-3 py-1 bg-sky-50 text-sky-800 text-xs font-semibold rounded-full border border-sky-200/60 font-medium">
+              <span className="inline-flex items-center gap-2 px-3 py-1 bg-sky-50 text-sky-800 text-xs font-normal rounded-full border border-sky-200/60 font-normal">
                 Kontribusi Omset Saluran
               </span>
               <div className="p-2 bg-sky-50 text-sky-600 rounded-xl">
@@ -576,14 +558,14 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             <div className="space-y-3">
               {channelContributionSorted.slice(0, 3).map((chan, idx) => (
                 <div key={chan.id} className="group/item">
-                  <div className="flex justify-between text-xs font-semibold mb-1">
+                  <div className="flex justify-between text-xs font-normal mb-1">
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] text-slate-400 font-mono">#{idx+1}</span>
-                      <span className="text-slate-700 font-sans font-bold truncate max-w-[100px]">{chan.name}</span>
-                      <span className="text-[9px] font-mono font-medium text-slate-400">({chan.qty} Pcs)</span>
+                      <span className="text-slate-700 font-sans font-normal truncate max-w-[100px]">{chan.name}</span>
+                      <span className="text-[9px] font-mono font-normal text-slate-400">({chan.qty} Pcs)</span>
                     </div>
                     <div className="text-right">
-                      <span className="text-slate-900 font-mono font-bold text-[11px]">{formatShortRp(chan.netRevenue)}</span>
+                      <span className="text-slate-900 font-mono font-normal text-[11px]">{formatShortRp(chan.netRevenue)}</span>
                     </div>
                   </div>
 
@@ -602,9 +584,9 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100/80 text-[10px] text-slate-400 font-semibold uppercase flex justify-between items-center">
+          <div className="mt-4 pt-3 border-t border-slate-100/80 text-[10px] text-slate-400 font-normal uppercase flex justify-between items-center">
             <span>Total Saluran</span>
-            <span className="text-xs font-bold text-sky-600 font-mono">{channelContributionSorted.length} Aktif</span>
+            <span className="text-xs font-normal text-sky-600 font-mono">{channelContributionSorted.length} Aktif</span>
           </div>
         </div>
 
@@ -617,7 +599,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             <h3 className="font-bold text-slate-900 text-lg">Tren Pendapatan Bulan Berjalan</h3>
             <p className="text-xs text-slate-400">Nilai omset bersih real-time per hari untuk bulan ini</p>
           </div>
-          <span className="text-[10px] font-mono font-extrabold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded-md">
+          <span className="text-[10px] font-mono font-normal text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded-md">
             GRAFIK BATANG INTERAKTIF
           </span>
         </div>
@@ -686,9 +668,9 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                           isHovered ? 'fill-emerald-800' : 'fill-slate-600'
                         }`}
                       >
-                        <tspan x={p.x} dy="0" className={isHovered ? 'font-black text-[12px]' : 'font-extrabold'}>{label.num}</tspan>
+                        <tspan x={p.x} dy="0" className={isHovered ? 'font-normal text-[12px]' : 'font-normal'}>{label.num}</tspan>
                         {label.unit && (
-                          <tspan x={p.x} dy="10" className={`font-bold ${isHovered ? 'text-[9.5px]' : 'text-[8.5px] opacity-90'}`}>{label.unit}</tspan>
+                          <tspan x={p.x} dy="10" className={`font-normal ${isHovered ? 'text-[9.5px]' : 'text-[8.5px] opacity-90'}`}>{label.unit}</tspan>
                         )}
                       </text>
                     );
@@ -699,8 +681,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
                     x={p.x}
                     y={containerHeight - 12}
                     textAnchor="middle"
-                    className={`text-[10.5px] font-bold font-mono transition-all duration-150 pointer-events-none ${
-                      isHovered ? 'fill-emerald-600 font-black text-[13px]' : 'fill-slate-500'
+                    className={`text-[10.5px] font-normal font-mono transition-all duration-150 pointer-events-none ${
+                      isHovered ? 'fill-emerald-600 font-normal text-[13px]' : 'fill-slate-500'
                     }`}
                   >
                     {p.dayNum}
@@ -713,10 +695,10 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
           {/* Interactive tooltip box displaying accurate details */}
           {hoveredPoint !== null && (
             <div className="absolute top-4 left-0 right-0 mx-auto w-fit bg-slate-900 text-white rounded-xl px-4 py-2 text-xs shadow-xl font-sans border border-slate-800 z-10 animate-fade-in text-center pointer-events-none">
-              <span className="font-semibold block text-[10px] text-slate-400 uppercase tracking-wider">
+              <span className="font-normal block text-[10px] text-slate-400 uppercase tracking-wider">
                 {trendData[hoveredPoint].dateLabel}
               </span>
-              <span className="font-mono text-emerald-400 font-extrabold block mt-0.5 text-sm">
+              <span className="font-mono text-emerald-400 font-normal block mt-0.5 text-sm">
                 {formatRp(trendData[hoveredPoint].netRevenue)}
               </span>
             </div>

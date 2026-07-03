@@ -903,7 +903,7 @@ export default function StockMatrix({
             <button
               type="button"
               onClick={() => setIsManualReordering(false)}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-lg text-[10px] transition-colors uppercase tracking-wider cursor-pointer"
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-normal rounded-lg text-[10px] transition-colors uppercase tracking-wider cursor-pointer"
             >
               Selesai Mengatur
             </button>
@@ -913,7 +913,7 @@ export default function StockMatrix({
         {sortedMatchingStocks.length === 0 ? (
           <div className="py-16 text-center text-slate-400 flex flex-col items-center justify-center space-y-3">
             <span className="text-4xl">🗃️</span>
-            <p className="text-sm font-semibold text-slate-700">
+            <p className="text-sm font-normal text-slate-700">
               {searchQuery.trim() 
                 ? `Tidak ada produk atau SKU yang cocok dengan pencarian "${searchQuery}".` 
                 : `Tidak ada produk terkait grup "${activeGroup}".`}
@@ -926,14 +926,14 @@ export default function StockMatrix({
           <div className="overflow-x-auto">
             <table className="w-full text-left col-auto border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-normal text-slate-400 uppercase tracking-wider">
                   {sortBy === 'default' && isManualReordering && (
-                    <th className="py-3 px-2 text-center w-16 bg-slate-150/40 font-black text-slate-600 border-r border-slate-150">Atur</th>
+                    <th className="py-3 px-2 text-center w-16 bg-slate-150/40 font-normal text-slate-600 border-r border-slate-150">Atur</th>
                   )}
                   <th className="py-3 px-4 w-32">Kode SKU</th>
                   <th className="py-3 px-4">Nama Produk Master</th>
                   {showColor && <th className="py-3 px-4">Warna</th>}
-                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-extrabold bg-rose-50/50">HPP</th>}
+                  {showHpp && <th className="py-3 px-4 text-right text-rose-800 font-normal bg-rose-50/50">HPP</th>}
                   <th className="py-3 px-4 text-right">Harga Jual</th>
                   
                   {/* Sizegroup columns S-4XL */}
@@ -942,8 +942,8 @@ export default function StockMatrix({
                       {size}
                     </th>
                   ))}
-                  <th className="py-3 px-4 text-center w-20 bg-slate-100/80 font-black text-slate-700 border-l border-slate-200">Total Qty</th>
-                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100/40 font-black text-rose-800 border-l border-slate-200">Total HPP</th>}
+                  <th className="py-3 px-4 text-center w-20 bg-slate-100/80 font-normal text-slate-700 border-l border-slate-200">Total Qty</th>
+                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-rose-100/40 font-normal text-rose-800 border-l border-slate-200">Total HPP</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs text-slate-750">
@@ -990,28 +990,28 @@ export default function StockMatrix({
                               </button>
                             </div>
                           ) : (
-                            <span className="text-slate-350 font-bold tracking-widest select-none">⋮</span>
+                            <span className="text-slate-350 font-normal tracking-widest select-none">⋮</span>
                           )}
                         </td>
                       )}
 
                       {/* Kode SKU Column */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-800/90 whitespace-nowrap">
+                      <td className="py-3.5 px-4 font-mono font-normal text-slate-800/90 whitespace-nowrap">
                         {product.sku ? (
                           <span className="bg-slate-100/80 px-2 py-1 rounded text-[11px] border border-slate-200">
                             {product.sku}
                           </span>
                         ) : (
-                          <span className="text-slate-350 italic font-medium text-[11px]">- none -</span>
+                          <span className="text-slate-350 italic font-normal text-[11px]">- none -</span>
                         )}
                       </td>
 
                       {/* Name */}
-                      <td className="py-3.5 px-4 font-bold text-slate-900 font-sans">
+                      <td className="py-3.5 px-4 font-normal text-slate-900 font-sans">
                         <div className="flex flex-col">
                           <span>{product.name}</span>
                           {searchQuery && (
-                            <span className="text-[9px] text-emerald-600 font-extrabold mt-0.5">
+                            <span className="text-[9px] text-emerald-600 font-normal mt-0.5">
                               Grup: {product.group}
                             </span>
                           )}
@@ -1020,20 +1020,20 @@ export default function StockMatrix({
 
                       {/* Optional Color */}
                       {showColor && (
-                        <td className="py-3.5 px-4 font-semibold text-slate-500">
+                        <td className="py-3.5 px-4 font-normal text-slate-500">
                           {stockItem.color}
                         </td>
                       )}
 
                       {/* Optional Protected HPP */}
                       {showHpp && (
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-700 bg-rose-50/40 select-none">
+                        <td className="py-3.5 px-4 text-right font-mono font-normal text-rose-700 bg-rose-50/40 select-none">
                           {formatRp(product.hpp)}
                         </td>
                       )}
 
                       {/* Value Price */}
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
+                      <td className="py-3.5 px-4 text-right font-mono font-normal text-slate-900">
                         {formatRp(product.price)}
                       </td>
 
@@ -1060,7 +1060,7 @@ export default function StockMatrix({
                           <td 
                             key={size} 
                             onClick={() => !isEditing && handleStartEditStock(stockItem.id, size, qtyVal)}
-                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-r border-slate-100/40 select-none ${isEditing ? 'bg-amber-100/50 font-black text-amber-950 scale-102 border-amber-300' : qtyVal === 0 ? 'bg-rose-50/40 text-rose-600/70 hover:bg-rose-100/80' : qtyVal < 5 ? 'bg-amber-50 hover:bg-amber-100/80 font-bold text-amber-600' : 'hover:bg-slate-100/60 font-semibold text-slate-800'}`}
+                            className={`py-3 px-1 text-center font-mono cursor-pointer transition-all relative border-l border-r border-slate-100/40 select-none ${isEditing ? 'bg-amber-100/50 font-normal text-amber-950 scale-102 border-amber-300' : qtyVal === 0 ? 'bg-rose-50/40 text-rose-600/70 hover:bg-rose-100/80' : qtyVal < 5 ? 'bg-amber-50 hover:bg-amber-100/80 font-normal text-amber-600' : 'hover:bg-slate-100/60 font-normal text-slate-800'}`}
                           >
                             {isEditing ? (
                               <input
@@ -1083,7 +1083,7 @@ export default function StockMatrix({
                                     e.preventDefault();
                                   }
                                 }}
-                                className="w-12 text-center text-xs font-bold font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-slate-300 rounded-md px-1 py-0.5 bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                className="w-12 text-center text-xs font-normal font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500 border border-slate-300 rounded-md px-1 py-0.5 bg-white text-slate-900 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             ) : (
                               <span>{qtyVal === 0 ? "" : qtyVal}</span>
@@ -1093,13 +1093,13 @@ export default function StockMatrix({
                       })}
 
                       {/* Total Qty column */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 bg-slate-100/20 text-center select-none border-l border-slate-200">
+                      <td className="py-3.5 px-4 font-mono font-normal text-slate-900 bg-slate-100/20 text-center select-none border-l border-slate-200">
                         {totalQty === 0 ? "" : totalQty}
                       </td>
 
                       {/* Total HPP column */}
                       {showHpp && (
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-rose-700 bg-rose-50/30 select-none border-l border-slate-200">
+                        <td className="py-3.5 px-4 text-right font-mono font-normal text-rose-700 bg-rose-50/30 select-none border-l border-slate-200">
                           {totalQty === 0 ? "" : formatRp(totalHpp)}
                         </td>
                       )}

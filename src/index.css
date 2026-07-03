@@ -4,6 +4,15 @@
 @theme {
   --font-sans: var(--app-font, "Inter"), sans-serif;
   --font-mono: var(--app-font, "Inter"), sans-serif;
+  --font-weight-normal: var(--app-font-weight, 400);
+}
+
+:root {
+  --app-font-weight: 400;
+}
+
+body, html, button, input, select, textarea {
+  font-weight: var(--app-font-weight, 400);
 }
 
 @layer utilities {

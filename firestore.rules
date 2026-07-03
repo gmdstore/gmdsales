@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Products collection rules
+    match /products/{productId} {
+      allow read: if true; // Public read allowed for product catalogs
+      allow write: if true; // Public write allowed for demo or if authenticated
+    }
+
+    // Stocks collection rules
+    match /stocks/{stockId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Channels collection rules
+    match /channels/{channelId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Auto Discounts collection rules
+    match /autoDiscounts/{discountId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Orders collection rules
+    match /orders/{orderId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Settings collection rules
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if true;
+    }
+  }
+}

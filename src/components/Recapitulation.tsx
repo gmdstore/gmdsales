@@ -180,13 +180,13 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         {/* Month Selection Input */}
         <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2 hover:border-slate-300 focus-within:ring-1 focus-within:ring-emerald-500 transition-all shadow-3xs">
-            <span className="text-slate-400 font-bold text-xs flex items-center gap-1.5">
+            <span className="text-slate-400 font-normal text-xs flex items-center gap-1.5">
               <Calendar className="h-4 w-4 text-emerald-500" /> Periode
             </span>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="bg-transparent border-none text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer"
+              className="bg-transparent border-none text-xs font-normal text-slate-800 focus:outline-none cursor-pointer"
             >
               {availableMonths.map(m => (
                 <option key={m} value={m}>{formatMonthLabel(m)}</option>
@@ -204,10 +204,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
             <ShoppingBag className="h-5 w-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Item Terjual</span>
+            <span className="block text-[10px] font-normal text-slate-400 uppercase tracking-wider">Total Item Terjual</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-black text-slate-900">{monthSummary.totalQty}</span>
-              <span className="text-[10px] text-slate-400 font-bold">pcs</span>
+              <span className="text-xl font-normal text-slate-900">{monthSummary.totalQty}</span>
+              <span className="text-[10px] text-slate-400 font-normal">pcs</span>
             </div>
           </div>
         </div>
@@ -218,8 +218,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
             <TrendingUp className="h-5 w-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Omset Bersih</span>
-            <span className="text-base font-black text-emerald-700 block mt-0.5">
+            <span className="block text-[10px] font-normal text-slate-400 uppercase tracking-wider">Total Omset Bersih</span>
+            <span className="text-base font-normal text-emerald-700 block mt-0.5">
               {formatRp(monthSummary.totalNetRevenue)}
             </span>
           </div>
@@ -231,8 +231,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
             <Coins className="h-5 w-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimasi Laba Bersih</span>
-            <span className={`text-base font-black block mt-0.5 ${monthSummary.totalNetProfit >= 0 ? 'text-rose-600' : 'text-red-600'}`}>
+            <span className="block text-[10px] font-normal text-slate-400 uppercase tracking-wider">Estimasi Laba Bersih</span>
+            <span className={`text-base font-normal block mt-0.5 ${monthSummary.totalNetProfit >= 0 ? 'text-rose-600' : 'text-red-600'}`}>
               {formatRp(monthSummary.totalNetProfit)}
             </span>
           </div>
@@ -244,10 +244,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
             <Layers className="h-5 w-5" />
           </div>
           <div>
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Transaksi</span>
+            <span className="block text-[10px] font-normal text-slate-400 uppercase tracking-wider">Total Transaksi</span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-black text-slate-800">{monthSummary.activeOrdersCount}</span>
-              <span className="text-[10px] text-slate-450 font-bold">pesanan</span>
+              <span className="text-xl font-normal text-slate-800">{monthSummary.activeOrdersCount}</span>
+              <span className="text-[10px] text-slate-450 font-normal">pesanan</span>
             </div>
           </div>
         </div>
@@ -265,24 +265,41 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-100/60 rounded-2xl relative">
           <table className="w-full text-left border-collapse text-xs select-none">
             <thead>
-              <tr className="bg-transparent font-extrabold text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-100">
-                <th className="py-3.5 px-4 w-32 font-bold bg-transparent">Tanggal</th>
+              <tr className="bg-transparent font-normal text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-100">
+                <th className="py-3.5 px-4 w-32 font-normal bg-transparent">Tanggal</th>
                 
                 {/* Dynamically List Channels as Columns */}
-                {channels.map(chan => (
-                  <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-100/80 sticky top-0 z-20 bg-transparent">
-                    <span className={`inline-block font-black rounded transition-all duration-300 ease-out ${
-                      isHeaderFloating 
-                        ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
-                        : 'px-2 py-0.5 text-[8px]'
-                    } ${chan.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
-                      {chan.name}
-                    </span>
-                  </th>
-                ))}
+                {channels.map(chan => {
+                  const hasPipe = chan.color && chan.color.includes('|');
+                  const [bg, text] = hasPipe ? chan.color.split('|') : ['', ''];
+                  return (
+                    <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-100/80 sticky top-0 z-20 bg-transparent">
+                      {hasPipe ? (
+                        <span 
+                          style={{ backgroundColor: bg, color: text }}
+                          className={`inline-block font-normal rounded border border-slate-200 transition-all duration-300 ease-out ${
+                            isHeaderFloating 
+                              ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
+                              : 'px-2 py-0.5 text-[8px]'
+                          }`}
+                        >
+                          {chan.name}
+                        </span>
+                      ) : (
+                        <span className={`inline-block font-normal rounded transition-all duration-300 ease-out ${
+                          isHeaderFloating 
+                            ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
+                            : 'px-2 py-0.5 text-[8px]'
+                        } ${chan.color.split(' ').filter(c => !c.startsWith('border-')).join(' ')}`}>
+                          {chan.name}
+                        </span>
+                      )}
+                    </th>
+                  );
+                })}
                 
-                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-black border-l border-slate-205 sticky top-0 z-20 bg-transparent">
-                  <span className={`inline-block font-black rounded bg-emerald-100 text-emerald-800 transition-all duration-300 ease-out ${
+                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-normal border-l border-slate-205 sticky top-0 z-20 bg-transparent">
+                  <span className={`inline-block font-normal rounded bg-emerald-100 text-emerald-800 transition-all duration-300 ease-out ${
                     isHeaderFloating 
                       ? 'px-3.5 py-1.5 text-[10px] shadow-sm scale-110' 
                       : 'px-2 py-0.5 text-[8px]'
@@ -303,9 +320,9 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                 return (
                   <tr key={date} className="hover:bg-slate-50/50 transition-colors">
                     {/* Date label column */}
-                    <td className="py-3 px-4 font-mono font-bold text-slate-700 bg-slate-50/30">
-                      <div className="text-slate-850 font-black">{dateMeta.dateNum}</div>
-                      <div className="text-[9px] text-slate-400 font-semibold">{dateMeta.dayName}</div>
+                    <td className="py-3 px-4 font-mono font-normal text-slate-700 bg-slate-50/30">
+                      <div className="text-slate-850 font-normal">{dateMeta.dateNum}</div>
+                      <div className="text-[9px] text-slate-400 font-normal">{dateMeta.dayName}</div>
                     </td>
 
                     {/* Channel Value cells */}
@@ -326,8 +343,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                         <td key={chan.id} className="py-2.5 px-4 text-center font-mono border-r border-slate-100/40">
                           {!isBlank ? (
                             <div className="space-y-0.5 leading-tight">
-                              <span className="block font-black text-slate-900 text-xs">{qty} <span className="text-[9px] text-slate-400 font-bold">pcs</span></span>
-                              <span className="block text-[10px] font-extrabold text-emerald-600">{formatRp(netRev)}</span>
+                              <span className="block font-normal text-slate-900 text-xs">{qty} <span className="text-[9px] text-slate-400 font-normal">pcs</span></span>
+                              <span className="block text-[10px] font-normal text-emerald-600">{formatRp(netRev)}</span>
                             </div>
                           ) : (
                             <span className="text-slate-300">-</span>
@@ -340,10 +357,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                     <td className="py-2.5 px-4 text-center font-mono bg-emerald-50/5 border-l border-slate-205">
                       {rowTotalQty > 0 || rowTotalNetRevenue > 0 ? (
                         <div className="space-y-0.5 leading-tight">
-                          <span className="block font-black text-slate-900 text-xs">
-                            {rowTotalQty} <span className="text-[9px] text-slate-450 font-bold">pcs</span>
+                          <span className="block font-normal text-slate-900 text-xs">
+                            {rowTotalQty} <span className="text-[9px] text-slate-450 font-normal">pcs</span>
                           </span>
-                          <span className="block text-[10px] font-black text-emerald-700">
+                          <span className="block text-[10px] font-normal text-emerald-700">
                             {formatRp(rowTotalNetRevenue)}
                           </span>
                         </div>
@@ -356,8 +373,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
               })}
 
               {/* Monthly totals per channel - Footer Column */}
-              <tr className="bg-slate-100/50 font-extrabold text-[10px] border-t-2 border-slate-200">
-                <td className="py-4 px-4 font-bold text-slate-800 bg-slate-100">
+              <tr className="bg-slate-100/50 font-normal text-[10px] border-t-2 border-slate-200">
+                <td className="py-4 px-4 font-normal text-slate-800 bg-slate-100">
                   Total Bulanan
                 </td>
                 
@@ -377,8 +394,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                   return (
                     <td key={chan.id} className="py-4 px-4 text-center font-mono">
                       <div className="space-y-0.5">
-                        <span className="block font-black text-slate-900 text-xs">{chanTotalQty > 0 ? `${chanTotalQty} pcs` : '-'}</span>
-                        <span className="block text-[10px] font-black text-emerald-700">{chanTotalNetRevenue > 0 ? formatRp(chanTotalNetRevenue) : '-'}</span>
+                        <span className="block font-normal text-slate-900 text-xs">{chanTotalQty > 0 ? `${chanTotalQty} pcs` : '-'}</span>
+                        <span className="block text-[10px] font-normal text-emerald-700">{chanTotalNetRevenue > 0 ? formatRp(chanTotalNetRevenue) : '-'}</span>
                       </div>
                     </td>
                   );
@@ -386,10 +403,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
 
                 <td className="py-4 px-4 text-center font-mono bg-emerald-100/10">
                   <div className="space-y-0.5 leading-tight">
-                    <span className="block font-black text-slate-900 text-xs">
+                    <span className="block font-normal text-slate-900 text-xs">
                       {monthSummary.totalQty > 0 ? `${monthSummary.totalQty} pcs` : '-'}
                     </span>
-                    <span className="block text-xs font-black text-emerald-800">
+                    <span className="block text-xs font-normal text-emerald-800">
                       {monthSummary.totalNetRevenue > 0 ? formatRp(monthSummary.totalNetRevenue) : '-'}
                     </span>
                   </div>
@@ -397,8 +414,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
               </tr>
 
               {/* Daily Average per channel - Footer Column */}
-              <tr className="bg-slate-50/75 font-extrabold text-[10px] border-t border-slate-200">
-                <td className="py-4 px-4 font-bold text-slate-700 bg-slate-50">
+              <tr className="bg-slate-50/75 font-normal text-[10px] border-t border-slate-200">
+                <td className="py-4 px-4 font-normal text-slate-700 bg-slate-50">
                   Rata-rata Harian
                 </td>
                 
@@ -422,10 +439,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                   return (
                     <td key={chan.id} className="py-4 px-4 text-center font-mono text-slate-600">
                       <div className="space-y-0.5">
-                        <span className="block font-black text-slate-700 text-xs">
+                        <span className="block font-normal text-slate-700 text-xs">
                           {chanTotalQty > 0 ? `${avgQty.toFixed(1)} pcs` : '-'}
                         </span>
-                        <span className="block text-[10px] font-semibold text-emerald-600">
+                        <span className="block text-[10px] font-normal text-emerald-600">
                           {chanTotalNetRevenue > 0 ? `${formatRp(avgNetRev)}` : '-'}
                         </span>
                       </div>
@@ -435,10 +452,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
 
                 <td className="py-4 px-4 text-center font-mono bg-emerald-50/5">
                   <div className="space-y-0.5 leading-tight">
-                    <span className="block font-black text-slate-800 text-xs">
+                    <span className="block font-normal text-slate-800 text-xs">
                       {monthSummary.totalQty > 0 ? `${(monthSummary.totalQty / datesInMonth.length).toFixed(1)} pcs` : '-'}
                     </span>
-                    <span className="block text-[10px] font-black text-emerald-600">
+                    <span className="block text-[10px] font-normal text-emerald-600">
                       {monthSummary.totalNetRevenue > 0 ? `${formatRp(monthSummary.totalNetRevenue / datesInMonth.length)}` : '-'}
                     </span>
                   </div>
