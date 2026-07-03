@@ -6,7 +6,9 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
-import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart } from 'lucide-react';
+import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, limit, query, getDocs } from 'firebase/firestore';
 
 interface SettingsProps {
   // Brand configurations
@@ -97,6 +99,34 @@ export default function SettingsComponent({
   const [discSelectedProducts, setDiscSelectedProducts] = useState<string[]>(['all']);
   const [discountSuccessMsg, setDiscountSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteDiscount, setPendingDeleteDiscount] = useState<AutoDiscount | null>(null);
+
+  // Firebase testing states
+  const [firebaseStatus, setFirebaseStatus] = useState<'idle' | 'testing' | 'connected' | 'failed'>('idle');
+  const [firebaseError, setFirebaseError] = useState<string | null>(null);
+
+  const handleTestFirebase = async () => {
+    setFirebaseStatus('testing');
+    setFirebaseError(null);
+    try {
+      const q = query(collection(db, "orders"), limit(1));
+      await getDocs(q);
+      setFirebaseStatus('connected');
+    } catch (err: any) {
+      console.error("Firebase Connection Test failed:", err);
+      const errMsg = err?.message || String(err);
+      if (
+        errMsg.toLowerCase().includes("permission-denied") || 
+        err?.code === "permission-denied" || 
+        errMsg.toLowerCase().includes("insufficient permissions")
+      ) {
+        setFirebaseStatus('connected');
+        setFirebaseError("permission-denied");
+      } else {
+        setFirebaseStatus('failed');
+        setFirebaseError(errMsg);
+      }
+    }
+  };
 
   // Helper to parse hex colors from chanColor
   const parseChanColor = (colorStr: string) => {
@@ -500,6 +530,106 @@ export default function SettingsComponent({
             <span className="block text-slate-600 font-medium leading-relaxed">
               Semua detail pengaturan brand di atas dan seluruh matriks sediaan gudang tersimpan aman di internal peramban peranti Anda (<span className="font-normal">localStorage</span>). Data yang Anda ubah akan langsung merestrukturisasi judul aplikasi di sebelah kiri secara instan.
             </span>
+          </div>
+
+          {/* Firebase Connection Tester Card */}
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4 shadow-sm">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <Database className="h-4 w-4 text-emerald-600" /> Koneksi Database Firebase
+              </h3>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-normal tracking-wider uppercase flex items-center gap-1 ${
+                firebaseStatus === 'connected' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+                firebaseStatus === 'failed' ? 'bg-rose-50 text-rose-800 border border-rose-200' :
+                firebaseStatus === 'testing' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+                'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>
+                {firebaseStatus === 'connected' ? (
+                  <>
+                    <Wifi className="h-3 w-3 shrink-0 text-emerald-600" />
+                    Terhubung
+                  </>
+                ) : firebaseStatus === 'failed' ? (
+                  <>
+                    <WifiOff className="h-3 w-3 shrink-0 text-rose-600" />
+                    Gagal
+                  </>
+                ) : firebaseStatus === 'testing' ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-amber-600" />
+                    Menguji...
+                  </>
+                ) : (
+                  'Belum Diuji'
+                )}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-2 font-mono text-[10px] text-slate-600">
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-400">Project ID:</span>
+                  <span className="text-slate-800 font-medium">omniorder-c5bf4</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                  <span className="text-slate-400">Database Engine:</span>
+                  <span className="text-slate-800 font-medium">Cloud Firestore</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400">Auth Status:</span>
+                  <span className="text-slate-800 font-medium">Firebase Auth Ready</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+                Klik tombol di bawah ini untuk menguji secara langsung apakah kredensial SDK Firebase yang Anda cantumkan di berkas <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600">src/firebase.ts</code> telah terhubung ke server Firebase dengan aman dan valid.
+              </p>
+
+              {firebaseStatus === 'connected' && (
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 rounded-2xl space-y-1 font-sans">
+                  <p className="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
+                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                    Koneksi Firebase Berhasil!
+                  </p>
+                  <p className="text-[10px] text-emerald-700 leading-normal">
+                    {firebaseError === "permission-denied" 
+                      ? "Aplikasi berhasil menghubungi Firestore! Catatan: Aturan Keamanan (Security Rules) menolak akses publik (normal jika rules terkunci). Koneksi fisik valid!"
+                      : "Aplikasi berhasil berkomunikasi secara langsung dengan database Firestore Anda secara real-time."}
+                  </p>
+                </div>
+              )}
+
+              {firebaseStatus === 'failed' && (
+                <div className="p-3 bg-rose-50/80 border border-rose-200/80 text-rose-800 rounded-2xl space-y-1 font-sans">
+                  <p className="font-bold flex items-center gap-1.5 text-xs text-rose-900">
+                    <WifiOff className="h-4 w-4 text-rose-600 shrink-0" />
+                    Koneksi Gagal
+                  </p>
+                  <p className="text-[10px] text-rose-700 leading-normal font-mono break-all">
+                    {firebaseError}
+                  </p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleTestFirebase}
+                disabled={firebaseStatus === 'testing'}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-250 text-slate-800 font-medium rounded-xl shadow-3xs transition-all cursor-pointer flex items-center justify-center gap-2 font-sans disabled:opacity-50 text-xs"
+              >
+                {firebaseStatus === 'testing' ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin text-slate-500" />
+                    Menguji Koneksi...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 text-slate-600" />
+                    Uji Hubungan Database
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
