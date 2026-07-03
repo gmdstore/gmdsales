@@ -19,28 +19,6 @@ import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
 import Recapitulation from './components/Recapitulation';
 
-// Firebase integrations
-import { 
-  getSavedFirebaseConfig, 
-  saveFirebaseConfig, 
-  getFirebaseServices 
-} from './firebase';
-import { 
-  uploadAllToFirestore, 
-  downloadAllFromFirestore,
-  isFirestoreEmpty,
-  saveOrderToFirestore,
-  deleteOrderFromFirestore,
-  saveProductToFirestore,
-  deleteProductFromFirestore,
-  saveStockToFirestore,
-  deleteStockFromFirestore,
-  saveChannelToFirestore,
-  deleteChannelFromFirestore,
-  saveAutoDiscountToFirestore,
-  saveSettingsToFirestore
-} from './firebaseSync';
-
 import { 
   Plus, 
   LayoutDashboard, 
@@ -249,216 +227,30 @@ export default function App() {
   }, [orders]);
 
 
-  // Firebase synchronization states and handlers
-  const [isFirebaseEnabled, setIsFirebaseEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('omni_firebase_enabled') === 'true';
-  });
-  const [isFirebaseLoading, setIsFirebaseLoading] = useState<boolean>(false);
-  const [firebaseError, setFirebaseError] = useState<string | null>(null);
-
-  const handleSaveFirebaseConfig = async (config: any | null): Promise<boolean> => {
-    setIsFirebaseLoading(true);
-    setFirebaseError(null);
-    try {
-      if (config === null) {
-        saveFirebaseConfig(null);
-        setIsFirebaseEnabled(false);
-        localStorage.setItem('omni_firebase_enabled', 'false');
-        return true;
-      }
-
-      saveFirebaseConfig(config);
-      
-      const { db } = getFirebaseServices();
-      if (!db) {
-        throw new Error("Gagal menginisialisasi Firestore dengan konfigurasi tersebut.");
-      }
-
-      // Test connection
-      await isFirestoreEmpty();
-
-      setIsFirebaseEnabled(true);
-      localStorage.setItem('omni_firebase_enabled', 'true');
-      return true;
-    } catch (e: any) {
-      console.error("Firebase connection test failed:", e);
-      setFirebaseError(e?.message || String(e));
-      saveFirebaseConfig(null);
-      setIsFirebaseEnabled(false);
-      localStorage.setItem('omni_firebase_enabled', 'false');
-      return false;
-    } finally {
-      setIsFirebaseLoading(false);
-    }
-  };
-
-  const handleToggleFirebase = (enabled: boolean) => {
-    setIsFirebaseEnabled(enabled);
-    localStorage.setItem('omni_firebase_enabled', enabled ? 'true' : 'false');
-  };
-
-  const handleUploadAllToFirebase = async () => {
-    setIsFirebaseLoading(true);
-    setFirebaseError(null);
-    try {
-      await uploadAllToFirestore({
-        products,
-        stocks,
-        channels,
-        autoDiscounts,
-        orders,
-        brandName,
-        brandLogo,
-        brandProfile,
-        brandFooter,
-        appFont,
-        appFontWeight,
-        paymentMethods,
-        pencatatList,
-      });
-      alert('Berhasil mengunggah semua data lokal ke Firebase Firestore!');
-    } catch (e: any) {
-      setFirebaseError(`Gagal mengekspor data: ${e?.message || String(e)}`);
-    } finally {
-      setIsFirebaseLoading(false);
-    }
-  };
-
-  const handleDownloadAllFromFirebase = async () => {
-    setIsFirebaseLoading(true);
-    setFirebaseError(null);
-    try {
-      const data = await downloadAllFromFirestore();
-      if (data) {
-        if (data.products && data.products.length > 0) setProducts(data.products);
-        if (data.stocks && data.stocks.length > 0) setStocks(data.stocks);
-        if (data.channels && data.channels.length > 0) setChannels(data.channels);
-        if (data.autoDiscounts && data.autoDiscounts.length > 0) setAutoDiscounts(data.autoDiscounts);
-        if (data.orders && data.orders.length > 0) setOrders(data.orders);
-        if (data.settings) {
-          if (data.settings.brandName) setBrandName(data.settings.brandName);
-          if (data.settings.brandLogo) setBrandLogo(data.settings.brandLogo);
-          if (data.settings.brandProfile) setBrandProfile(data.settings.brandProfile);
-          if (data.settings.brandFooter) setBrandFooter(data.settings.brandFooter);
-          if (data.settings.appFont) setAppFont(data.settings.appFont);
-          if (data.settings.appFontWeight) setAppFontWeight(data.settings.appFontWeight);
-          if (data.settings.paymentMethods) setPaymentMethods(data.settings.paymentMethods);
-          if (data.settings.pencatatList) setPencatatList(data.settings.pencatatList);
-        }
-        alert('Berhasil mengunduh semua data dari Firebase Firestore ke sistem lokal!');
-      } else {
-        alert('Tidak ada data yang ditemukan di database Firestore Anda.');
-      }
-    } catch (e: any) {
-      setFirebaseError(`Gagal mengimpor data: ${e?.message || String(e)}`);
-    } finally {
-      setIsFirebaseLoading(false);
-    }
-  };
-
-  // Sync settings when they change
-  useEffect(() => {
-    if (isFirebaseEnabled) {
-      saveSettingsToFirestore({
-        brandName,
-        brandLogo,
-        brandProfile,
-        brandFooter,
-        appFont,
-        appFontWeight,
-        paymentMethods,
-        pencatatList,
-      }).catch(err => console.error("Error syncing settings to Firestore:", err));
-    }
-  }, [
-    isFirebaseEnabled,
-    brandName,
-    brandLogo,
-    brandProfile,
-    brandFooter,
-    appFont,
-    appFontWeight,
-    paymentMethods,
-    pencatatList,
-  ]);
-
-  // Sync discounts when they change
-  useEffect(() => {
-    if (isFirebaseEnabled) {
-      autoDiscounts.forEach(ad => {
-        saveAutoDiscountToFirestore(ad).catch(err => console.error("Error syncing discount:", err));
-      });
-    }
-  }, [isFirebaseEnabled, autoDiscounts]);
-
-  // Load Firestore data on mount if enabled
-  useEffect(() => {
-    if (isFirebaseEnabled) {
-      const loadInitialFirebaseData = async () => {
-        setIsFirebaseLoading(true);
-        try {
-          const data = await downloadAllFromFirestore();
-          if (data) {
-            if (data.products && data.products.length > 0) setProducts(data.products);
-            if (data.stocks && data.stocks.length > 0) setStocks(data.stocks);
-            if (data.channels && data.channels.length > 0) setChannels(data.channels);
-            if (data.autoDiscounts && data.autoDiscounts.length > 0) setAutoDiscounts(data.autoDiscounts);
-            if (data.orders && data.orders.length > 0) setOrders(data.orders);
-            if (data.settings) {
-              if (data.settings.brandName) setBrandName(data.settings.brandName);
-              if (data.settings.brandLogo) setBrandLogo(data.settings.brandLogo);
-              if (data.settings.brandProfile) setBrandProfile(data.settings.brandProfile);
-              if (data.settings.brandFooter) setBrandFooter(data.settings.brandFooter);
-              if (data.settings.appFont) setAppFont(data.settings.appFont);
-              if (data.settings.appFontWeight) setAppFontWeight(data.settings.appFontWeight);
-              if (data.settings.paymentMethods) setPaymentMethods(data.settings.paymentMethods);
-              if (data.settings.pencatatList) setPencatatList(data.settings.pencatatList);
-            }
-          }
-        } catch (e: any) {
-          console.error("Gagal melakukan sinkronisasi awal Firebase:", e);
-          setFirebaseError(`Sinkronisasi awal gagal: ${e?.message || String(e)}`);
-        } finally {
-          setIsFirebaseLoading(false);
-        }
-      };
-      loadInitialFirebaseData();
-    }
-  }, [isFirebaseEnabled]);
-
-
   // Business Operations implementation
 
   // F-01: Update specific stock level inline (Excel-like matrix edit)
   const handleUpdateStock = (stockItemId: string, size: string, newQty: number) => {
-    setStocks(prev => {
-      const updated = prev.map(item => {
+    setStocks(prev => 
+      prev.map(item => {
         if (item.id === stockItemId) {
-          const updatedItem = {
+          return {
             ...item,
             stocks: {
               ...item.stocks,
               [size]: newQty
             }
           };
-          if (isFirebaseEnabled) {
-            saveStockToFirestore(updatedItem).catch(err => console.error("Error saving stock:", err));
-          }
-          return updatedItem;
         }
         return item;
-      });
-      return updated;
-    });
+      })
+    );
   };
 
   // F-03/F-04: Save Order and subtract warehouse matrix stock dynamically!
   const handleSaveOrder = (newOrder: Order) => {
     // 1. Add order to state
     setOrders(prev => [newOrder, ...prev]);
-    if (isFirebaseEnabled) {
-      saveOrderToFirestore(newOrder).catch(err => console.error("Error saving order:", err));
-    }
 
     // 2. Subtract stocks from warehouse metrics
     setStocks(prevStocks => {
@@ -474,14 +266,10 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          const updatedStockItem = {
+          return {
             ...stockItem,
             stocks: updatedSizeStocks
           };
-          if (isFirebaseEnabled) {
-            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
-          }
-          return updatedStockItem;
         }
 
         return stockItem;
@@ -496,9 +284,6 @@ export default function App() {
 
     // 1. Remove order from list
     setOrders(prev => prev.filter(o => o.id !== orderId));
-    if (isFirebaseEnabled) {
-      deleteOrderFromFirestore(orderId).catch(err => console.error("Error deleting order:", err));
-    }
 
     // 2. Return items back to stocks
     setStocks(prevStocks => {
@@ -514,14 +299,10 @@ export default function App() {
             updatedSizeStocks[purchased.size] = currentStockVal + purchased.qty;
           });
 
-          const updatedStockItem = {
+          return {
             ...stockItem,
             stocks: updatedSizeStocks
           };
-          if (isFirebaseEnabled) {
-            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
-          }
-          return updatedStockItem;
         }
 
         return stockItem;
@@ -533,9 +314,6 @@ export default function App() {
   const handleUpdateOrder = (updatedOrder: Order, oldOrder: Order) => {
     // 1. Update order metadata in state list
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-    if (isFirebaseEnabled) {
-      saveOrderToFirestore(updatedOrder).catch(err => console.error("Error saving order:", err));
-    }
 
     // 2. Adjust warehouse stocks by adding back old bought items, then subtracting updated bought items
     setStocks(prevStocks => {
@@ -564,14 +342,10 @@ export default function App() {
             updatedSizeStocks[purchased.size] = Math.max(0, currentStockVal - purchased.qty);
           });
 
-          const updatedStockItem = {
+          return {
             ...stockItem,
             stocks: updatedSizeStocks
           };
-          if (isFirebaseEnabled) {
-            saveStockToFirestore(updatedStockItem).catch(err => console.error("Error saving stock:", err));
-          }
-          return updatedStockItem;
         }
 
         return stockItem;
@@ -595,11 +369,7 @@ export default function App() {
     setProducts(prev => 
       prev.map(p => {
         if (p.group === groupName) {
-          const updated = { ...p, group: fallbackGroup };
-          if (isFirebaseEnabled) {
-            saveProductToFirestore(updated).catch(err => console.error("Error saving product group relocation:", err));
-          }
-          return updated;
+          return { ...p, group: fallbackGroup };
         }
         return p;
       })
@@ -611,11 +381,7 @@ export default function App() {
     setProducts(prev => 
       prev.map(p => {
         if (p.id === productId) {
-          const updated = { ...p, group: newGroup };
-          if (isFirebaseEnabled) {
-            saveProductToFirestore(updated).catch(err => console.error("Error saving product group relocation:", err));
-          }
-          return updated;
+          return { ...p, group: newGroup };
         }
         return p;
       })
@@ -625,9 +391,6 @@ export default function App() {
   // F-01 Product Master mutations: Add, Edit, Delete
   const handleAddProduct = (newProduct: Product) => {
     setProducts(prev => [...prev, newProduct]);
-    if (isFirebaseEnabled) {
-      saveProductToFirestore(newProduct).catch(err => console.error("Error saving product:", err));
-    }
 
     const newStockObjects: StockItem[] = newProduct.colors.map(color => {
       const initialStocks: { [size: string]: number } = {};
@@ -639,26 +402,19 @@ export default function App() {
         initialStocks[sz] = 0;
       });
 
-      const newStock = {
+      return {
         id: `${newProduct.id}_${color}`,
         productId: newProduct.id,
         productName: newProduct.name,
         color: color,
         stocks: initialStocks
       };
-      if (isFirebaseEnabled) {
-        saveStockToFirestore(newStock).catch(err => console.error("Error saving stock:", err));
-      }
-      return newStock;
     });
     setStocks(prev => [...prev, ...newStockObjects]);
   };
 
   const handleUpdateProduct = (updatedProduct: Product) => {
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-    if (isFirebaseEnabled) {
-      saveProductToFirestore(updatedProduct).catch(err => console.error("Error saving product:", err));
-    }
 
     setStocks(prevStocks => {
       const otherStocks = prevStocks.filter(s => s.productId !== updatedProduct.id);
@@ -676,15 +432,14 @@ export default function App() {
           alignedSizeStocks[sz] = existing?.stocks?.[sz] ?? 0;
         });
 
-        let updatedStock: StockItem;
         if (existing) {
-          updatedStock = {
+          return {
             ...existing,
             productName: updatedProduct.name,
             stocks: alignedSizeStocks
           };
         } else {
-          updatedStock = {
+          return {
             id: `${updatedProduct.id}_${color}`,
             productId: updatedProduct.id,
             productName: updatedProduct.name,
@@ -692,10 +447,6 @@ export default function App() {
             stocks: alignedSizeStocks
           };
         }
-        if (isFirebaseEnabled) {
-          saveStockToFirestore(updatedStock).catch(err => console.error("Error saving stock:", err));
-        }
-        return updatedStock;
       });
 
       return [...otherStocks, ...alignedStocks];
@@ -704,19 +455,7 @@ export default function App() {
 
   const handleDeleteProduct = (productId: string) => {
     setProducts(prev => prev.filter(p => p.id !== productId));
-    if (isFirebaseEnabled) {
-      deleteProductFromFirestore(productId).catch(err => console.error("Error deleting product:", err));
-    }
-
-    setStocks(prev => {
-      const toDelete = prev.filter(s => s.productId === productId);
-      if (isFirebaseEnabled) {
-        toDelete.forEach(s => {
-          deleteStockFromFirestore(s.id).catch(err => console.error("Error deleting stock:", err));
-        });
-      }
-      return prev.filter(s => s.productId !== productId);
-    });
+    setStocks(prev => prev.filter(s => s.productId !== productId));
   };
 
   // Brand Info and Channels management handlers
@@ -734,29 +473,16 @@ export default function App() {
 
   const handleAddChannel = (newChannel: Channel) => {
     setChannels(prev => [...prev, newChannel]);
-    if (isFirebaseEnabled) {
-      saveChannelToFirestore(newChannel).catch(err => console.error("Error saving channel:", err));
-    }
   };
 
   const handleUpdateChannel = (updatedChannel: Channel) => {
-    setChannels(prev => {
-      const updated = prev.map(c => c.id === updatedChannel.id ? updatedChannel : c);
-      if (isFirebaseEnabled) {
-        saveChannelToFirestore(updatedChannel).catch(err => console.error("Error saving channel:", err));
-      }
-      return updated;
-    });
+    setChannels(prev => 
+      prev.map(c => c.id === updatedChannel.id ? updatedChannel : c)
+    );
   };
 
   const handleDeleteChannel = (channelId: string) => {
-    setChannels(prev => {
-      const updated = prev.filter(c => c.id !== channelId);
-      if (isFirebaseEnabled) {
-        deleteChannelFromFirestore(channelId).catch(err => console.error("Error deleting channel:", err));
-      }
-      return updated;
-    });
+    setChannels(prev => prev.filter(c => c.id !== channelId));
   };
 
   // Full hard factory settings reset to restore original mock template
@@ -1030,14 +756,6 @@ export default function App() {
               autoDiscounts={autoDiscounts}
               onUpdateAutoDiscounts={setAutoDiscounts}
               products={products}
-              
-              isFirebaseEnabled={isFirebaseEnabled}
-              onToggleFirebase={handleToggleFirebase}
-              isFirebaseLoading={isFirebaseLoading}
-              onSaveFirebaseConfig={handleSaveFirebaseConfig}
-              firebaseError={firebaseError}
-              onUploadAllToFirebase={handleUploadAllToFirebase}
-              onDownloadAllFromFirebase={handleDownloadAllFromFirebase}
             />
           )}
         </div>

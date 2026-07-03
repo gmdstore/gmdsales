@@ -6,26 +6,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
-import { 
-  Percent, 
-  Edit3, 
-  Settings, 
-  Save, 
-  Trash2, 
-  PlusCircle, 
-  CheckCircle, 
-  Info, 
-  Heart,
-  Database,
-  Wifi,
-  WifiOff,
-  CloudUpload,
-  CloudDownload,
-  Loader2,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
-import { getSavedFirebaseConfig, FirebaseConfig } from '../firebase';
+import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart } from 'lucide-react';
 
 interface SettingsProps {
   // Brand configurations
@@ -61,15 +42,6 @@ interface SettingsProps {
   autoDiscounts: AutoDiscount[];
   onUpdateAutoDiscounts: (discounts: AutoDiscount[]) => void;
   products: Product[];
-
-  // Firebase configurations
-  isFirebaseEnabled: boolean;
-  onToggleFirebase: (enabled: boolean) => void;
-  isFirebaseLoading: boolean;
-  onSaveFirebaseConfig: (config: FirebaseConfig | null) => Promise<boolean>;
-  firebaseError: string | null;
-  onUploadAllToFirebase: () => Promise<void>;
-  onDownloadAllFromFirebase: () => Promise<void>;
 }
 
 export default function SettingsComponent({
@@ -92,16 +64,7 @@ export default function SettingsComponent({
   onUpdatePencatatList,
   autoDiscounts,
   onUpdateAutoDiscounts,
-  products,
-  
-  // Firebase props
-  isFirebaseEnabled,
-  onToggleFirebase,
-  isFirebaseLoading,
-  onSaveFirebaseConfig,
-  firebaseError,
-  onUploadAllToFirebase,
-  onDownloadAllFromFirebase
+  products
 }: SettingsProps) {
   // Brand identity edit states
   const [inputBrandName, setInputBrandName] = useState(brandName);
@@ -109,36 +72,6 @@ export default function SettingsComponent({
   const [inputBrandProfile, setInputBrandProfile] = useState(brandProfile);
   const [inputBrandFooter, setInputBrandFooter] = useState(brandFooter);
   const [brandSuccessMsg, setBrandSuccessMsg] = useState(false);
-
-  // Firebase configuration form states
-  const [fbApiKey, setFbApiKey] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.apiKey || '';
-  });
-  const [fbAuthDomain, setFbAuthDomain] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.authDomain || '';
-  });
-  const [fbProjectId, setFbProjectId] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.projectId || '';
-  });
-  const [fbStorageBucket, setFbStorageBucket] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.storageBucket || '';
-  });
-  const [fbMessagingSenderId, setFbMessagingSenderId] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.messagingSenderId || '';
-  });
-  const [fbAppId, setFbAppId] = useState(() => {
-    const saved = getSavedFirebaseConfig();
-    return saved?.appId || '';
-  });
-
-  const [fbShowInstructions, setFbShowInstructions] = useState(false);
-  const [fbSuccessMsg, setFbSuccessMsg] = useState<string | null>(null);
-  const [fbLocalError, setFbLocalError] = useState<string | null>(null);
 
   // Sales Channel form states
   const [editingChanId, setEditingChanId] = useState<string | null>(null);
@@ -214,48 +147,6 @@ export default function SettingsComponent({
     });
     setBrandSuccessMsg(true);
     setTimeout(() => setBrandSuccessMsg(false), 3000);
-  };
-
-  const handleConnectFirebase = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFbLocalError(null);
-    setFbSuccessMsg(null);
-
-    const apiKey = fbApiKey.trim();
-    const authDomain = fbAuthDomain.trim();
-    const projectId = fbProjectId.trim();
-    const storageBucket = fbStorageBucket.trim();
-    const messagingSenderId = fbMessagingSenderId.trim();
-    const appId = fbAppId.trim();
-
-    if (!apiKey || !projectId || !appId) {
-      setFbLocalError('API Key, Project ID, dan App ID wajib diisi!');
-      return;
-    }
-
-    const config: FirebaseConfig = {
-      apiKey,
-      authDomain,
-      projectId,
-      storageBucket,
-      messagingSenderId,
-      appId
-    };
-
-    const success = await onSaveFirebaseConfig(config);
-    if (success) {
-      setFbSuccessMsg('Koneksi Firebase berhasil disimpan dan dihubungkan!');
-    } else {
-      setFbLocalError('Gagal menghubungkan ke Firebase Firestore. Silakan periksa kredensial Anda dan pastikan Firestore rules mengizinkan akses.');
-    }
-  };
-
-  const handleDisconnectFirebase = () => {
-    if (confirm('Apakah Anda yakin ingin memutuskan hubungan dengan Firebase Firestore? Kredensial akan dihapus dari sistem ini.')) {
-      onSaveFirebaseConfig(null);
-      setFbSuccessMsg('Hubungan Firebase diputuskan.');
-      setTimeout(() => setFbSuccessMsg(null), 3000);
-    }
   };
 
   const handleStartEditChannel = (chan: Channel) => {
@@ -354,223 +245,6 @@ export default function SettingsComponent({
           <p className="text-sm text-slate-500 mt-1.5">
             Kustomisasi visual toko, identitas brand, deskripsi profil operasional, footer, serta skema potongan komisi finansial per kanal penjualan.
           </p>
-        </div>
-      </div>
-
-      {/* Firebase Firestore Connection Panel */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-              <Database className="h-5 w-5" />
-            </span>
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                Hubungkan dengan Firebase Firestore Anda
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Sinkronisasi data multi-perangkat dan kolaborasi tim secara real-time</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {isFirebaseEnabled ? (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-semibold uppercase tracking-wider">
-                <Wifi className="h-3 w-3 animate-pulse" /> Aktif
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-500 border border-slate-200 rounded-full text-[10px] font-semibold uppercase tracking-wider">
-                <WifiOff className="h-3 w-3" /> Nonaktif
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Info messages */}
-        {fbSuccessMsg && (
-          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
-            <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-            <span>{fbSuccessMsg}</span>
-          </div>
-        )}
-        {(fbLocalError || firebaseError) && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center gap-2 animate-fade-in font-normal text-xs">
-            <span className="text-rose-600 font-bold shrink-0">⚠️</span>
-            <span>{fbLocalError || firebaseError}</span>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <button
-            type="button"
-            onClick={() => setFbShowInstructions(!fbShowInstructions)}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 focus:outline-none cursor-pointer"
-          >
-            {fbShowInstructions ? (
-              <>Sembunyikan Panduan Hubungkan <ChevronUp className="h-4 w-4" /></>
-            ) : (
-              <>Tampilkan Panduan Hubungkan <ChevronDown className="h-4 w-4" /></>
-            )}
-          </button>
-
-          {fbShowInstructions && (
-            <div className="p-4.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5 text-[11px] text-slate-600 leading-relaxed">
-              <h4 className="font-bold text-slate-800 flex items-center gap-1">
-                <span>📋</span> Langkah-Langkah Menghubungkan Firebase Firestore:
-              </h4>
-              <ol className="list-decimal pl-4 space-y-2 font-normal">
-                <li>Buka console Firebase Anda di <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">https://console.firebase.google.com/</a>.</li>
-                <li>Buat proyek Firebase baru atau gunakan proyek yang sudah ada.</li>
-                <li>Buka menu <strong>Build &gt; Firestore Database</strong> dan klik <strong>Create Database</strong>. Pastikan rules mengizinkan akses tulis/baca (direkomendasikan dalam <i>test mode</i> untuk kemudahan setup pertama kali).</li>
-                <li>Pergi ke <strong>Project Settings</strong> (ikon roda gigi di pojok kiri atas).</li>
-                <li>Scroll ke bawah ke bagian <strong>Your Apps</strong>, tambahkan aplikasi berbasis Web (klik ikon <strong>&lt;/&gt;</strong>).</li>
-                <li>Salin data objek konfigurasi <code>firebaseConfig</code> yang tampil (berisi <i>apiKey</i>, <i>authDomain</i>, <i>projectId</i>, dst).</li>
-                <li>Masukkan nilai-nilai tersebut ke formulir di bawah ini, lalu klik <strong>Simpan & Sinkronkan</strong>.</li>
-              </ol>
-              <div className="bg-amber-50 border border-amber-200 text-amber-850 p-3 rounded-xl flex gap-2 font-normal">
-                <span className="text-amber-600">💡</span>
-                <span><strong>Tips Keamanan:</strong> Gunakan aturan Firestore Security Rules yang sesuai untuk mengamankan data Anda di lingkungan produksi.</span>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleConnectFirebase} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block font-medium text-slate-750 mb-1">API Key:</label>
-              <input
-                type="text"
-                required
-                placeholder="AIzaSy..."
-                value={fbApiKey}
-                onChange={(e) => setFbApiKey(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-slate-755 mb-1">Auth Domain (Opsional):</label>
-              <input
-                type="text"
-                placeholder="project-id.firebaseapp.com"
-                value={fbAuthDomain}
-                onChange={(e) => setFbAuthDomain(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-slate-755 mb-1">Project ID:</label>
-              <input
-                type="text"
-                required
-                placeholder="my-firebase-project-id"
-                value={fbProjectId}
-                onChange={(e) => setFbProjectId(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-slate-755 mb-1">Storage Bucket (Opsional):</label>
-              <input
-                type="text"
-                placeholder="project-id.appspot.com"
-                value={fbStorageBucket}
-                onChange={(e) => setFbStorageBucket(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-slate-755 mb-1">Messaging Sender ID (Opsional):</label>
-              <input
-                type="text"
-                placeholder="123456789012"
-                value={fbMessagingSenderId}
-                onChange={(e) => setFbMessagingSenderId(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-            <div>
-              <label className="block font-medium text-slate-755 mb-1">App ID:</label>
-              <input
-                type="text"
-                required
-                placeholder="1:12345:web:abcd"
-                value={fbAppId}
-                onChange={(e) => setFbAppId(e.target.value)}
-                disabled={isFirebaseLoading}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none disabled:opacity-60"
-              />
-            </div>
-
-            <div className="md:col-span-2 lg:col-span-3 flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-slate-100">
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="submit"
-                  disabled={isFirebaseLoading}
-                  className="px-4 py-2 bg-indigo-650 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold cursor-pointer transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {isFirebaseLoading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Database className="h-3.5 w-3.5" />
-                  )}
-                  Simpan & Sinkronkan
-                </button>
-
-                {getSavedFirebaseConfig() && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => onToggleFirebase(!isFirebaseEnabled)}
-                      disabled={isFirebaseLoading}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition-colors border ${
-                        isFirebaseEnabled
-                          ? 'bg-amber-50 border-amber-250 text-amber-700 hover:bg-amber-100'
-                          : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
-                      }`}
-                    >
-                      {isFirebaseEnabled ? 'Nonaktifkan Sinkronisasi' : 'Aktifkan Sinkronisasi'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleDisconnectFirebase}
-                      disabled={isFirebaseLoading}
-                      className="px-4 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-250 text-rose-650 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-                    >
-                      Hapus Hubungan
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {isFirebaseEnabled && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={onUploadAllToFirebase}
-                    disabled={isFirebaseLoading}
-                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-750 rounded-lg text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
-                    title="Unggah data lokal Anda yang ada saat ini ke Firestore"
-                  >
-                    <CloudUpload className="h-3.5 w-3.5 text-indigo-500" />
-                    Ekspor ke Firestore
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onDownloadAllFromFirebase}
-                    disabled={isFirebaseLoading}
-                    className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-750 rounded-lg text-[11px] font-medium cursor-pointer transition-colors flex items-center gap-1 disabled:opacity-50"
-                    title="Unduh seluruh data yang tersimpan di Firestore ke sistem lokal"
-                  >
-                    <CloudDownload className="h-3.5 w-3.5 text-emerald-500" />
-                    Impor dari Firestore
-                  </button>
-                </div>
-              )}
-            </div>
-          </form>
         </div>
       </div>
 
