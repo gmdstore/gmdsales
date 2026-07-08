@@ -122,7 +122,7 @@ export default function OrdersList({
     };
 
     return matchSearch && matchChannel && matchPayment && matchDate();
-  });
+  }).sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
   // Calculate summary metrics for filtered orders
   const metrics = useMemo(() => {
@@ -386,9 +386,9 @@ export default function OrdersList({
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {filteredOrders.map((ord) => {
-                  const channel = channels.find(c => c.id === ord.channelId) || {
+                  const channel = channels.find(c => c.id.toLowerCase() === ord.channelId.toLowerCase() || c.name.toLowerCase() === ord.channelId.toLowerCase()) || {
                     id: ord.channelId,
-                    name: 'Unknown',
+                    name: ord.channelId && ord.channelId !== 'unknown' ? ord.channelId : 'Unknown',
                     color: 'bg-slate-100 text-slate-700 border-slate-200'
                   };
 

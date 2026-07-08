@@ -285,8 +285,8 @@ export default function App() {
           channelsSnap.forEach(doc => {
             loadedChannels.push({ id: doc.id, ...doc.data() } as Channel);
           });
-        } else if (isFirstTimeInit) {
-          // Seed INITIAL_CHANNELS if empty on first run
+        } else {
+          // Seed INITIAL_CHANNELS if empty on first run or missing
           const batch = writeBatch(db);
           INITIAL_CHANNELS.forEach(c => {
             batch.set(doc(db, "channels", c.id), c);
