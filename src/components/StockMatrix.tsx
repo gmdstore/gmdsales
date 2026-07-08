@@ -62,6 +62,7 @@ export default function StockMatrix({
   const [isManagingProducts, setIsManagingProducts] = useState<boolean>(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [prodName, setProdName] = useState<string>('');
+  const [prodSku, setProdSku] = useState<string>('');
   const [prodGroup, setProdGroup] = useState<string>(groups[0] || 'Best Seller');
   const [prodHpp, setProdHpp] = useState<number>(100000);
   const [prodPrice, setProdPrice] = useState<number>(250000);
@@ -72,7 +73,8 @@ export default function StockMatrix({
   // Column Visibility state
   const [showPhoto, setShowPhoto] = useState<boolean>(false);
   const [showColor, setShowColor] = useState<boolean>(true);
-  const [showHpp, setShowHpp] = useState<boolean>(true);
+  const [showHpp, setShowHpp] = useState<boolean>(false);
+  const [showSku, setShowSku] = useState<boolean>(false);
   const [showConfig, setShowConfig] = useState<boolean>(false);
 
   // Excel-like Inline Stock Edit State
@@ -300,6 +302,7 @@ export default function StockMatrix({
   const handleStartEditProduct = (p: Product) => {
     setEditingProductId(p.id);
     setProdName(p.name);
+    setProdSku(p.sku || '');
     setProdGroup(p.group);
     setProdHpp(p.hpp);
     setProdPrice(p.price);
@@ -312,6 +315,7 @@ export default function StockMatrix({
   const handleCancelEditProduct = () => {
     setEditingProductId(null);
     setProdName('');
+    setProdSku('');
     setProdGroup(groups[0] || 'Best Seller');
     setProdHpp(100000);
     setProdPrice(250000);
@@ -335,6 +339,7 @@ export default function StockMatrix({
       const updatedProduct: Product = {
         id: editingProductId,
         name: trimmedName,
+        sku: prodSku,
         group: prodGroup,
         hpp: prodHpp,
         price: prodPrice,
@@ -348,6 +353,7 @@ export default function StockMatrix({
       const newProduct: Product = {
         id: `p_${Date.now()}`,
         name: trimmedName,
+        sku: prodSku,
         group: prodGroup,
         hpp: prodHpp,
         price: prodPrice,
@@ -457,7 +463,17 @@ export default function StockMatrix({
                 onChange={(e) => setShowHpp(e.target.checked)}
                 className="h-5 w-5 rounded-lg text-emerald-600 focus:ring-emerald-500 border-slate-300 transition-colors"
               />
-              <span className="group-hover:text-slate-900">Tampilkan HPP (Harga Pokok Penjualan)</span>
+              <span className="group-hover:text-slate-900">Tampilkan HPP (Di Bawah Nama Produk)</span>
+            </label>
+
+            <label className="flex items-center gap-2.5 cursor-pointer font-bold select-none group">
+              <input
+                type="checkbox"
+                checked={showSku}
+                onChange={(e) => setShowSku(e.target.checked)}
+                className="h-5 w-5 rounded-lg text-emerald-600 focus:ring-emerald-500 border-slate-300 transition-colors"
+              />
+              <span className="group-hover:text-slate-900">Tampilkan SKU Induk</span>
             </label>
           </div>
         )}
@@ -738,9 +754,9 @@ export default function StockMatrix({
               </div>
 
               <div className="space-y-3">
-                <div>
+                <div className="flex flex-col sm:flex-row gap-3">
                   {/* Nama Produk */}
-                  <div>
+                  <div className="flex-1">
                     <label className="block font-bold text-slate-700 mb-1">Nama Produk:</label>
                     <input
                       type="text"
@@ -748,6 +764,18 @@ export default function StockMatrix({
                       placeholder="Contoh: Premium Cotton Tee..."
                       value={prodName}
                       onChange={(e) => setProdName(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                    />
+                  </div>
+                  
+                  {/* SKU Induk */}
+                  <div className="w-full sm:w-1/3">
+                    <label className="block font-bold text-slate-700 mb-1">SKU Induk:</label>
+                    <input
+                      type="text"
+                      placeholder="Opsional: TEE-001"
+                      value={prodSku}
+                      onChange={(e) => setProdSku(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                   </div>
@@ -961,7 +989,7 @@ export default function StockMatrix({
                     </th>
                   ))}
                   <th className="py-3 px-4 text-center w-20 bg-slate-100 font-semibold text-black border-l border-slate-300 sticky top-0 z-20">Total Qty</th>
-                  {showHpp && <th className="py-3 px-4 text-right w-28 bg-slate-100 font-semibold text-black border-l border-slate-300 sticky top-0 z-20">Total HPP</th>}
+                  <th className="py-3 px-4 text-right w-28 bg-slate-100 font-semibold text-black border-l border-slate-300 sticky top-0 z-20">Total HPP</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300 text-xs text-slate-750">
@@ -1052,6 +1080,11 @@ export default function StockMatrix({
                                 HPP: {formatRp(product.hpp)}
                               </span>
                             )}
+                            {showSku && product.sku && (
+                              <span className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                SKU: {product.sku}
+                              </span>
+                            )}
                             {searchQuery && (
                               <span className="text-[9px] text-emerald-600 font-normal mt-0.5">
                                 Grup: {product.group}
@@ -1131,11 +1164,9 @@ export default function StockMatrix({
                       </td>
 
                       {/* Total HPP column */}
-                      {showHpp && (
-                        <td className="py-3.5 px-4 text-right font-mono font-normal text-black bg-white select-none border-l border-slate-300">
-                          {totalQty === 0 ? "" : formatRp(totalHpp)}
-                        </td>
-                      )}
+                      <td className="py-3.5 px-4 text-right font-mono font-normal text-black bg-white select-none border-l border-slate-300">
+                        {totalQty === 0 ? "" : formatRp(totalHpp)}
+                      </td>
                     </tr>
                     {isConsecutiveLastRow && (
                       <tr className="bg-slate-100 font-medium text-black">
@@ -1145,11 +1176,9 @@ export default function StockMatrix({
                         <td className="py-2 px-4 text-center font-mono text-black border-l border-t border-b border-slate-300 bg-slate-100">
                           {productOverallQty}
                         </td>
-                        {showHpp && (
-                          <td className="py-2 px-4 text-right font-mono text-black border-l border-t border-b border-slate-300 bg-slate-100">
-                            {formatRp(productOverallHpp)}
-                          </td>
-                        )}
+                        <td className="py-2 px-4 text-right font-mono text-black border-l border-t border-b border-slate-300 bg-slate-100">
+                          {formatRp(productOverallHpp)}
+                        </td>
                       </tr>
                     )}
                     </React.Fragment>
