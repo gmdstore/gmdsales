@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Channel, Product, AutoDiscount } from '../types';
-import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Percent, Edit3, Settings, Save, Trash2, PlusCircle, CheckCircle, Info, Heart, Database, Wifi, WifiOff, RefreshCw, Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { collection, limit, query, getDocs, updateDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 import { User, signOut, updateProfile, updatePassword } from 'firebase/auth';
@@ -37,6 +37,8 @@ interface SettingsProps {
   onUpdateFont: (fontValue: string) => void;
   appFontWeight: string;
   onUpdateFontWeight: (weightValue: string) => void;
+  appFontSize?: string;
+  onUpdateFontSize?: (sizeValue: string) => void;
   // Payment Method configurations
   paymentMethods: string[];
   onUpdatePaymentMethods: (methods: string[]) => void;
@@ -65,6 +67,8 @@ export default function SettingsComponent({
   onUpdateFont,
   appFontWeight,
   onUpdateFontWeight,
+  appFontSize = '14px',
+  onUpdateFontSize,
   paymentMethods,
   onUpdatePaymentMethods,
   pencatatList,
@@ -90,6 +94,7 @@ export default function SettingsComponent({
   const [chanShippingMax, setChanShippingMax] = useState<number>(0);
   const [chanColor, setChanColor] = useState('#f1f5f9|#334155');
   const [chanPaymentMethods, setChanPaymentMethods] = useState<string[]>([]);
+  const [showChanForm, setShowChanForm] = useState(false);
 
   const [channelSuccessMsg, setChannelSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteChannel, setPendingDeleteChannel] = useState<Channel | null>(null);
@@ -102,8 +107,18 @@ export default function SettingsComponent({
   const [discValue, setDiscValue] = useState<number>(0);
   const [discSelectedChannels, setDiscSelectedChannels] = useState<string[]>(['all']);
   const [discSelectedProducts, setDiscSelectedProducts] = useState<string[]>(['all']);
+  const [showDiscForm, setShowDiscForm] = useState(false);
   const [discountSuccessMsg, setDiscountSuccessMsg] = useState<string | null>(null);
   const [pendingDeleteDiscount, setPendingDeleteDiscount] = useState<AutoDiscount | null>(null);
+
+  // Payment methods and PIC list inline editing / confirmation states
+  const [editingPaymentIndex, setEditingPaymentIndex] = useState<number | null>(null);
+  const [editingPaymentValue, setEditingPaymentValue] = useState<string>('');
+  const [confirmDeletePaymentIndex, setConfirmDeletePaymentIndex] = useState<number | null>(null);
+
+  const [editingPicIndex, setEditingPicIndex] = useState<number | null>(null);
+  const [editingPicValue, setEditingPicValue] = useState<string>('');
+  const [confirmDeletePicIndex, setConfirmDeletePicIndex] = useState<number | null>(null);
 
   // User Auth & Settings states
   const [userNameInput, setUserNameInput] = useState(currentUser?.displayName || "");
@@ -276,18 +291,6 @@ export default function SettingsComponent({
 
   const { bg: currentBg, text: currentText } = parseChanColor(chanColor);
 
-  // Colors preset options in Hex values
-  const colorPresets = [
-    { label: 'Orange (Shopee)', value: '#ffedd5|#ea580c' },
-    { label: 'Emerald (Tokopedia)', value: '#d1fae5|#059669' },
-    { label: 'Teal (WhatsApp)', value: '#ccfbf1|#0d9488' },
-    { label: 'Midnight (TikTok)', value: '#0f172a|#ffffff' },
-    { label: 'Indigo (Expo)', value: '#e0e7ff|#4f46e5' },
-    { label: 'Violet (Store)', value: '#f3e8ff|#7c3aed' },
-    { label: 'Rose (Promo)', value: '#ffe4e6|#e11d48' },
-    { label: 'Amber (Market)', value: '#fef3c7|#d97706' }
-  ];
-
   const handleSaveBrandInfo = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateBrand({
@@ -380,6 +383,7 @@ export default function SettingsComponent({
     setChanShippingMax(chan.freeShippingMaxCap);
     setChanColor(chan.color);
     setChanPaymentMethods(chan.paymentMethods || []);
+    setShowChanForm(true);
   };
 
   const handleCancelChannelEdit = () => {
@@ -392,6 +396,7 @@ export default function SettingsComponent({
     setChanShippingMax(0);
     setChanColor('#f1f5f9|#334155');
     setChanPaymentMethods([]);
+    setShowChanForm(false);
   };
 
   const handleSaveChannel = () => {
@@ -461,24 +466,20 @@ export default function SettingsComponent({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
-            <span>⚙️</span> Pengaturan Brand & Saluran Omnichannel
+            <span>⚙️</span> Pengaturan
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Kustomisasi visual toko, identitas brand, deskripsi profil operasional, footer, serta skema potongan komisi finansial per kanal penjualan.
-          </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+      <div className="space-y-8 w-full max-w-4xl mx-auto">
         
-        {/* Left Column: Brand Customization Form & Footer Setup (xl:col-span-5) */}
-        <div className="xl:col-span-5 space-y-6">
+        {/* Left Column: Brand Customization Form & Footer Setup */}
+        <div className="space-y-6">
           <form onSubmit={handleSaveBrandInfo} className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm">
             <div className="border-b border-slate-100 pb-3">
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                🏠 Identitas Brand & Profil Toko
+                🏠 Identitas Brand & Profil
               </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Berpengaruh pada header sidebar utama, judul, deskripsi profil dan global footer</p>
             </div>
 
             {/* Success feedback message */}
@@ -546,161 +547,99 @@ export default function SettingsComponent({
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">Teks ini akan dirender di bagian bawah sidebar menu secara terus menerus.</span>
               </div>
 
-              {/* CRUD Payment Methods */}
-              <div className="border-t border-slate-100/80 pt-4 mt-2">
-                <label className="block font-normal text-slate-800 mb-1.5 text-xs">💳 Atur Metode Pembayaran:</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {paymentMethods.map((m, idx) => (
-                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-[10px] font-normal border border-slate-200">
-                      {m}
-                      <button type="button" onClick={() => {
-                        const newName = prompt('Ubah Metode Pembayaran:', m);
-                        if (newName && newName.trim() !== m) {
-                          const updated = [...paymentMethods];
-                          updated[idx] = newName.trim();
-                          onUpdatePaymentMethods(updated);
-                        }
-                      }} className="text-slate-400 hover:text-emerald-600"><Edit3 className="h-3 w-3"/></button>
-                      <button type="button" onClick={() => onUpdatePaymentMethods(paymentMethods.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-rose-600"><Trash2 className="h-3 w-3"/></button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    id="new_method_input"
-                    placeholder="Contoh: Bank BCA"
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = e.currentTarget.value.trim();
-                        if (val && !paymentMethods.includes(val)) {
-                          onUpdatePaymentMethods([...paymentMethods, val]);
-                          e.currentTarget.value = '';
-                        }
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* CRUD Pencatat / Operator / PIC */}
-              <div className="border-t border-slate-100/80 pt-4 mt-2">
-                <label className="block font-normal text-slate-800 mb-1.5 text-xs">👤 Atur Daftar Pencatat / Operator / PIC:</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {pencatatList.map((p, idx) => (
-                    <span key={idx} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-normal border border-slate-200">
-                      {p}
-                      <button type="button" onClick={() => {
-                        const newName = prompt('Ubah Nama Pencatat:', p);
-                        if (newName && newName.trim() !== p) {
-                          const updated = [...pencatatList];
-                          updated[idx] = newName.trim();
-                          onUpdatePencatatList(updated);
-                        }
-                      }} className="text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"><Edit3 className="h-3 w-3"/></button>
-                      <button type="button" onClick={() => onUpdatePencatatList(pencatatList.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"><Trash2 className="h-3 w-3"/></button>
-                    </span>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    id="new_pencatat_input"
-                    placeholder="Contoh: Admin Susi"
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const val = e.currentTarget.value.trim();
-                        if (val && !pencatatList.includes(val)) {
-                          onUpdatePencatatList([...pencatatList, val]);
-                          e.currentTarget.value = '';
-                        }
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.getElementById('new_pencatat_input') as HTMLInputElement;
-                      const val = input?.value.trim();
-                      if (val && !pencatatList.includes(val)) {
-                        onUpdatePencatatList([...pencatatList, val]);
-                        input.value = '';
-                      }
-                    }}
-                    className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors"
-                  >
-                    Tambah
-                  </button>
-                </div>
-              </div>
-
               {/* Dynamic Font Selector option */}
               <div className="border-t border-slate-100/80 pt-4 mt-2 space-y-3.5">
-                <div>
-                  <label className="block font-normal text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
-                    <span>🔤</span> Pilih Gaya Font (Tipografi):
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {[
-                      { name: 'Inter (Sleek/Clean)', value: 'Inter' },
-                      { name: 'Plus Jakarta Sans', value: 'Plus Jakarta Sans' },
-                      { name: 'Outfit (Geometric)', value: 'Outfit' },
-                      { name: 'JetBrains Mono', value: 'JetBrains Mono' },
-                      { name: 'Playfair Display (Elegant Serif)', value: 'Playfair Display' }
-                    ].map((fontItem) => (
-                      <button
-                        key={fontItem.value}
-                        type="button"
-                        onClick={() => onUpdateFont(fontItem.value)}
-                        className={`px-3 py-2 text-xs font-normal rounded-xl border text-left transition-all cursor-pointer ${
-                          appFont === fontItem.value
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs'
-                            : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
-                        }`}
-                        style={{ fontFamily: fontItem.value }}
-                      >
-                        {fontItem.name}
-                      </button>
-                    ))}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label htmlFor="select_font_style" className="block font-normal text-slate-700 mb-1.5 flex items-center gap-1.5 text-xs">
+                      <span>🔤</span> Gaya Font (Tipografi):
+                    </label>
+                    <select
+                      id="select_font_style"
+                      value={appFont}
+                      onChange={(e) => onUpdateFont(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
+                      style={{ fontFamily: appFont }}
+                    >
+                      {[
+                        { name: 'Inter (Sleek/Clean)', value: 'Inter' },
+                        { name: 'Plus Jakarta Sans', value: 'Plus Jakarta Sans' },
+                        { name: 'Outfit (Geometric)', value: 'Outfit' },
+                        { name: 'JetBrains Mono', value: 'JetBrains Mono' },
+                        { name: 'Playfair Display (Elegant Serif)', value: 'Playfair Display' }
+                      ].map((fontItem) => (
+                        <option
+                          key={fontItem.value}
+                          value={fontItem.value}
+                          style={{ fontFamily: fontItem.value }}
+                        >
+                          {fontItem.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block font-normal text-slate-800 mb-1.5 flex items-center gap-1.5 text-xs">
-                    <span>⚖️</span> Pilih Ketebalan Font Utama:
-                  </label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { label: 'Tipis (300)', value: '300' },
-                      { label: 'Normal (400)', value: '400' },
-                      { label: 'Medium (500)', value: '500' },
-                      { label: 'Semi-Tebal (600)', value: '600' },
-                      { label: 'Tebal (700)', value: '700' },
-                      { label: 'Sangat Tebal (800)', value: '800' }
-                    ].map((weightItem) => (
-                      <button
-                        key={weightItem.value}
-                        type="button"
-                        onClick={() => onUpdateFontWeight(weightItem.value)}
-                        className={`px-3 py-1.5 text-[11px] rounded-lg border transition-all cursor-pointer ${
-                          appFontWeight === weightItem.value
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-850 ring-2 ring-emerald-500/10 shadow-xs font-normal'
-                            : 'bg-slate-50 border-slate-250 text-slate-700 hover:bg-slate-100'
-                        }`}
-                        style={{ fontFamily: appFont, fontWeight: weightItem.value }}
-                      >
-                        {weightItem.label}
-                      </button>
-                    ))}
+                  <div>
+                    <label htmlFor="select_font_weight" className="block font-normal text-slate-700 mb-1.5 flex items-center gap-1.5 text-xs">
+                      <span>⚖️</span> Ketebalan Font Utama:
+                    </label>
+                    <select
+                      id="select_font_weight"
+                      value={appFontWeight}
+                      onChange={(e) => onUpdateFontWeight(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
+                      style={{ fontFamily: appFont, fontWeight: appFontWeight }}
+                    >
+                      {[
+                        { label: 'Tipis (300)', value: '300' },
+                        { label: 'Normal (400)', value: '400' },
+                        { label: 'Medium (500)', value: '500' },
+                        { label: 'Semi-Tebal (600)', value: '600' },
+                        { label: 'Tebal (700)', value: '700' },
+                        { label: 'Sangat Tebal (800)', value: '800' }
+                      ].map((weightItem) => (
+                        <option
+                          key={weightItem.value}
+                          value={weightItem.value}
+                          style={{ fontFamily: appFont, fontWeight: weightItem.value }}
+                        >
+                          {weightItem.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="select_font_size" className="block font-normal text-slate-700 mb-1.5 flex items-center gap-1.5 text-xs">
+                      <span>📏</span> Ukuran Huruf Sistem:
+                    </label>
+                    <select
+                      id="select_font_size"
+                      value={appFontSize}
+                      onChange={(e) => onUpdateFontSize && onUpdateFontSize(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:ring-1 focus:ring-emerald-500 outline-none cursor-pointer"
+                    >
+                      {[
+                        { label: 'Sangat Kecil (12px)', value: '12px' },
+                        { label: 'Kecil (13px)', value: '13px' },
+                        { label: 'Normal (14px)', value: '14px' },
+                        { label: 'Sedang (15px)', value: '15px' },
+                        { label: 'Besar (16px)', value: '16px' },
+                        { label: 'Sangat Besar (17px)', value: '17px' }
+                      ].map((sizeItem) => (
+                        <option
+                          key={sizeItem.value}
+                          value={sizeItem.value}
+                        >
+                          {sizeItem.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
                 <span className="text-[10px] text-slate-400 block mt-1 leading-normal">
-                  Mengubah seluruh font tampilan Dashboard, detail, nominal angka, tombol input, dan halaman pesanan secara merata beserta tingkat ketebalannya.
+                  Mengubah seluruh font tampilan Dashboard, detail, nominal angka, tombol input, dan halaman pesanan secara merata beserta tingkat ketebalan dan ukurannya.
                 </span>
               </div>
 
@@ -713,342 +652,35 @@ export default function SettingsComponent({
             </div>
           </form>
 
-          {/* Firebase Connection Tester Card */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4 shadow-sm">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                <Database className="h-4 w-4 text-emerald-600" /> Koneksi Database Firebase
-              </h3>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-normal tracking-wider uppercase flex items-center gap-1 ${
-                firebaseStatus === 'connected' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
-                firebaseStatus === 'failed' ? 'bg-rose-50 text-rose-800 border border-rose-200' :
-                firebaseStatus === 'testing' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
-                'bg-slate-100 text-slate-600 border border-slate-200'
-              }`}>
-                {firebaseStatus === 'connected' ? (
-                  <>
-                    <Wifi className="h-3 w-3 shrink-0 text-emerald-600" />
-                    Terhubung
-                  </>
-                ) : firebaseStatus === 'failed' ? (
-                  <>
-                    <WifiOff className="h-3 w-3 shrink-0 text-rose-600" />
-                    Gagal
-                  </>
-                ) : firebaseStatus === 'testing' ? (
-                  <>
-                    <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-amber-600" />
-                    Menguji...
-                  </>
-                ) : (
-                  'Belum Diuji'
-                )}
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-2 font-mono text-[10px] text-slate-600">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Project ID:</span>
-                  <span className="text-slate-800 font-medium">omniorder-c5bf4</span>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Database Engine:</span>
-                  <span className="text-slate-800 font-medium">Cloud Firestore</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">Auth Status:</span>
-                  <span className="text-slate-800 font-medium">Firebase Auth Ready</span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
-                Klik tombol di bawah ini untuk menguji secara langsung apakah kredensial SDK Firebase yang Anda cantumkan di berkas <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600">src/firebase.ts</code> telah terhubung ke server Firebase dengan aman dan valid.
-              </p>
-
-              {firebaseStatus === 'connected' && (
-                <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 rounded-2xl space-y-1 font-sans">
-                  <p className="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
-                    <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-                    Koneksi Firebase Berhasil!
-                  </p>
-                  <p className="text-[10px] text-emerald-700 leading-normal">
-                    {firebaseError === "permission-denied" 
-                      ? "Aplikasi berhasil menghubungi Firestore! Catatan: Aturan Keamanan (Security Rules) menolak akses publik (normal jika rules terkunci). Koneksi fisik valid!"
-                      : "Aplikasi berhasil berkomunikasi secara langsung dengan database Firestore Anda secara real-time."}
-                  </p>
-                </div>
-              )}
-
-              {firebaseStatus === 'failed' && (
-                <div className="p-3 bg-rose-50/80 border border-rose-200/80 text-rose-800 rounded-2xl space-y-1 font-sans">
-                  <p className="font-bold flex items-center gap-1.5 text-xs text-rose-900">
-                    <WifiOff className="h-4 w-4 text-rose-600 shrink-0" />
-                    Koneksi Gagal
-                  </p>
-                  <p className="text-[10px] text-rose-700 leading-normal font-mono break-all">
-                    {firebaseError}
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleTestFirebase}
-                disabled={firebaseStatus === 'testing'}
-                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-250 text-slate-800 font-medium rounded-xl shadow-3xs transition-all cursor-pointer flex items-center justify-center gap-2 font-sans disabled:opacity-50 text-xs"
-              >
-                {firebaseStatus === 'testing' ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin text-slate-500" />
-                    Menguji Koneksi...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 text-slate-600" />
-                    Uji Hubungan Database
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* User Settings & Account Card */}
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm animate-fade-in">
-            <div className="border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                👤 Pengaturan Akun & Keamanan Sesi
-              </h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Kelola nama profil, perbarui kata sandi, dan akhiri sesi masuk Anda</p>
-            </div>
-
-            {userSuccessMsg && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-850 rounded-2xl text-[11px] font-normal flex items-center gap-2 animate-fade-in">
-                <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>{userSuccessMsg}</span>
-              </div>
-            )}
-
-            {userErrorMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-[11px] font-normal flex items-center gap-2 animate-fade-in">
-                <Info className="h-4 w-4 text-rose-600 shrink-0" />
-                <span>{userErrorMsg}</span>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {/* Account details readonly info */}
-              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-1.5 font-sans text-[11px]">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span className="text-slate-400">Email Akun:</span>
-                  <span className="text-slate-800 font-medium">{currentUser?.email}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400">User ID (UID):</span>
-                  <span className="text-slate-500 font-mono text-[9px] truncate max-w-[150px]">{currentUser?.uid}</span>
-                </div>
-              </div>
-
-              {/* Form 1: Profile Name Update */}
-              <form onSubmit={handleUpdateUserProfile} className="space-y-2 pt-2 border-t border-slate-100">
-                <label className="block font-normal text-slate-800 text-xs">Ubah Nama Profil:</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={userNameInput}
-                    onChange={(e) => setUserNameInput(e.target.value)}
-                    placeholder="Nama lengkap pengguna"
-                    disabled={isSavingUser}
-                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSavingUser}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-50"
-                  >
-                    Simpan
-                  </button>
-                </div>
-              </form>
-
-              {/* Form 2: Password Update */}
-              <form onSubmit={handleUpdateUserPassword} className="space-y-2.5 pt-3 border-t border-slate-100">
-                <label className="block font-normal text-slate-800 text-xs">Ubah Kata Sandi:</label>
-                <div className="space-y-2">
-                  <input
-                    type="password"
-                    value={newPasswordInput}
-                    onChange={(e) => setNewPasswordInput(e.target.value)}
-                    placeholder="Kata sandi baru (min 6 karakter)"
-                    disabled={isSavingUser}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                  <input
-                    type="password"
-                    value={confirmPasswordInput}
-                    onChange={(e) => setConfirmPasswordInput(e.target.value)}
-                    placeholder="Ketik ulang kata sandi baru"
-                    disabled={isSavingUser}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={isSavingUser}
-                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold rounded-xl text-xs cursor-pointer transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
-                >
-                  Ganti Kata Sandi
-                </button>
-              </form>
-
-              {/* Log Out Session Button */}
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="w-full py-2.5 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                >
-                  🚪 Keluar dari Sistem
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Admin User Management Card */}
-          {(currentUserProfile?.role === 'admin' || currentUser?.email?.toLowerCase() === 'gomudastore@gmail.com') && (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm animate-fade-in">
-              <div className="border-b border-slate-100 pb-3">
-                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  👥 Manajemen Pengguna & Otorisasi Akses
-                </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Setujui pengguna baru, atur peran jabatan, atau hapus izin sistem secara instan</p>
-              </div>
-
-              {usersLoading && (
-                <div className="text-center py-4 space-y-2">
-                  <RefreshCw className="h-5 w-5 animate-spin mx-auto text-emerald-500" />
-                  <p className="text-[10px] text-slate-400">Memuat daftar pengguna...</p>
-                </div>
-              )}
-
-              {usersError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-[11px] font-normal">
-                  {usersError}
-                </div>
-              )}
-
-              {!usersLoading && !usersError && usersList.length === 0 && (
-                <p className="text-[11px] text-slate-400 text-center py-4">Belum ada pengguna lain yang terdaftar.</p>
-              )}
-
-              {!usersLoading && !usersError && usersList.length > 0 && (
-                <div className="space-y-4 max-h-[380px] overflow-y-auto pr-1">
-                  {usersList.map((usr) => {
-                    const isSelf = usr.uid === currentUser?.uid;
-                    return (
-                      <div key={usr.id} className="border border-slate-100 rounded-2xl p-3 space-y-3 bg-slate-50/50 hover:bg-slate-50 transition-colors">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                              {usr.displayName || 'Tanpa Nama'}
-                              {isSelf && <span className="text-[9px] bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-md font-normal">Anda</span>}
-                            </div>
-                            <div className="text-[10px] text-slate-400 font-normal">{usr.email}</div>
-                          </div>
-
-                          <div className="flex flex-col items-end gap-1">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              usr.status === 'approved' 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                : usr.status === 'pending'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}>
-                              {usr.status === 'approved' ? '✓ Aktif' : usr.status === 'pending' ? '⏳ Menunggu' : '✕ Ditolak'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-mono">
-                              Role: <span className="font-bold text-slate-600">{usr.role === 'admin' ? 'ADMIN' : 'STAFF'}</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action buttons (only if not self) */}
-                        {!isSelf && (
-                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                            {/* Change status actions */}
-                            <div className="flex items-center gap-1">
-                              {usr.status !== 'approved' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateUserStatus(usr.uid, 'approved')}
-                                  className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                                >
-                                  Setujui Akses
-                                </button>
-                              )}
-                              {usr.status !== 'rejected' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateUserStatus(usr.uid, 'rejected')}
-                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                                >
-                                  Tolak / Blokir
-                                </button>
-                              )}
-                              {usr.status !== 'pending' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateUserStatus(usr.uid, 'pending')}
-                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-[10px] font-bold cursor-pointer transition-colors"
-                                >
-                                  Tinjau Kembali
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Change role action */}
-                            <div className="flex items-center gap-1">
-                              <button
-                                type="button"
-                                onClick={() => handleUpdateUserRole(usr.uid, usr.role === 'admin' ? 'staff' : 'admin')}
-                                className="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-[10px] font-normal cursor-pointer transition-colors"
-                              >
-                                {usr.role === 'admin' ? 'Jadikan Staff' : 'Jadikan Admin'}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteUserDoc(usr.uid)}
-                                className="p-1.5 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer transition-all"
-                                title="Hapus Akses"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Removed User Settings & Admin User Management Cards (moved to Akun.tsx) */}
         </div>
 
-        {/* Right Column: Channels Configuration Manager CRUD (xl:col-span-7) */}
-        <div className="xl:col-span-7 space-y-6">
+        {/* Right Column: Channels Configuration Manager CRUD */}
+        <div className="space-y-6">
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
               <div>
                 <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                  <span>📈</span> Manajemen Saluran & Biaya Komisi Omnichannel
+                  <span>📈</span> Saluran & Komisi Omnichannel
                 </h3>
-                <p className="text-[10px] text-slate-400 mt-0.5">Sesuaikan parameter diskon, gratis ongkir, atau tambahkan kanal baru secara otonom</p>
               </div>
-              <span className="text-[10px] bg-indigo-50 text-indigo-800 border-indigo-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
-                {channels.length} Aktif
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] bg-indigo-50 text-indigo-800 border-indigo-200 px-2.5 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono mr-1">
+                  {channels.length} Aktif
+                </span>
+                {!showChanForm && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleCancelChannelEdit();
+                      setShowChanForm(true);
+                    }}
+                    className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-[10px] cursor-pointer transition-colors shadow-xs"
+                  >
+                    ➕ Tambah Saluran
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Notifications */}
@@ -1059,10 +691,10 @@ export default function SettingsComponent({
               </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div className="space-y-6">
               
-              {/* Operational Active Channel List (lg:col-span-6) */}
-              <div className="lg:col-span-6 space-y-3">
+              {/* Operational Active Channel List */}
+              <div className="space-y-3">
                 <span className="block font-normal text-slate-800 pb-1 border-b border-slate-50">Daftar Saluran Penjual:</span>
                 
                 <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto pr-1">
@@ -1122,245 +754,222 @@ export default function SettingsComponent({
                 </div>
               </div>
 
-              {/* Add/Edit Channel form (lg:col-span-6) */}
-              <div className="lg:col-span-6 bg-slate-50/70 border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-3xs">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                  <span className="font-normal text-slate-900 text-[11px] uppercase tracking-wider flex items-center gap-1">
-                    {editingChanId ? '📝 Edit Skema Saluran' : '✨ Tambah Saluran Baru'}
-                  </span>
-                  {editingChanId && (
-                    <button
-                      type="button"
-                      onClick={handleCancelChannelEdit}
-                      className="text-rose-600 hover:text-rose-800 font-normal hover:underline"
-                    >
-                      Batal
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-2 text-[11px]">
-                  {/* Channel Name */}
-                  <div>
-                    <label className="block font-normal text-slate-700 mb-0.5">Nama Saluran:</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Contoh: Shopee Premium, TikTok Mall, Ekspor"
-                      value={chanName}
-                      onChange={(e) => setChanName(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
+              {/* Add/Edit Channel form */}
+              {showChanForm && (
+                <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-3xs">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                    <span className="font-normal text-slate-900 text-[11px] uppercase tracking-wider flex items-center gap-1">
+                      {editingChanId ? '📝 Edit Skema Saluran' : '✨ Tambah Saluran Baru'}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Platform Commission Percent */}
+                  <div className="space-y-2 text-[11px]">
+                    {/* Channel Name */}
                     <div>
-                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Komisi (%):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Nama Saluran:</label>
                       <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        placeholder="5"
-                        value={chanCommission}
-                        onChange={(e) => setChanCommission(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        type="text"
+                        required
+                        placeholder="Contoh: Shopee Premium, TikTok Mall, Ekspor"
+                        value={chanName}
+                        onChange={(e) => setChanName(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-normal text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                     </div>
 
-                    {/* Payment Gateway Fee Percent */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Platform Commission Percent */}
+                      <div>
+                        <label className="block font-normal text-slate-700 mb-0.5">Biaya Komisi (%):</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          placeholder="5"
+                          value={chanCommission}
+                          onChange={(e) => setChanCommission(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        />
+                      </div>
+
+                      {/* Payment Gateway Fee Percent */}
+                      <div>
+                        <label className="block font-normal text-slate-700 mb-0.5">Biaya Payment (%):</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          placeholder="2"
+                          value={chanPayment}
+                          onChange={(e) => setChanPayment(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Flat processing fee */}
+                      <div>
+                        <label className="block font-normal text-slate-700 mb-0.5">Biaya Proses (Rp):</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="500"
+                          placeholder="1000"
+                          value={chanFlat}
+                          onChange={(e) => setChanFlat(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        />
+                      </div>
+
+                      {/* Free shipping subsidy percent */}
+                      <div>
+                        <label className="block font-normal text-slate-700 mb-0.5">Subsidi Ongkir (%):</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          placeholder="4"
+                          value={chanShipping}
+                          onChange={(e) => setChanShipping(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Free shipping maximum limit cap */}
                     <div>
-                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Payment (%):</label>
+                      <label className="block font-normal text-slate-700 mb-0.5">Batas Maks Subs Ongkir (Rp):</label>
                       <input
                         type="number"
-                        step="0.1"
                         min="0"
-                        max="100"
-                        placeholder="2"
-                        value={chanPayment}
-                        onChange={(e) => setChanPayment(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
+                        step="1000"
+                        placeholder="10000"
+                        value={chanShippingMax}
+                        onChange={(e) => setChanShippingMax(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-slate-800"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Flat processing fee */}
+
+                    {/* Payment Methods Checkboxes */}
+                    <div className="py-2">
+                      <label className="block font-normal text-slate-700 mb-1.5">Metode Pembayaran:</label>
+                      <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 border border-slate-200 rounded-2xl">
+                        {paymentMethods.map((m) => (
+                          <label key={m} className="flex items-center gap-1.5 cursor-pointer text-slate-800 text-[11px] font-normal">
+                            <input
+                              type="checkbox"
+                              checked={(chanPaymentMethods || []).includes(m)}
+                              onChange={(e) => {
+                                const safeMethods = chanPaymentMethods || [];
+                                if (e.target.checked) setChanPaymentMethods([...safeMethods, m]);
+                                else setChanPaymentMethods(safeMethods.filter(i => i !== m));
+                              }}
+                              className="h-3 w-3 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                            />
+                            {m}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Channel Color Theme Badge Previewer Grid */}
                     <div>
-                      <label className="block font-normal text-slate-700 mb-0.5">Biaya Proses (Rp):</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="500"
-                        placeholder="1000"
-                        value={chanFlat}
-                        onChange={(e) => setChanFlat(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
-                      />
-                    </div>
+                      <div className="space-y-2.5 bg-white p-3 border border-slate-200 rounded-2xl">
+                        <span className="block font-normal text-[10px] text-slate-500 uppercase tracking-wider">Kustom Kode Hex Warna Badge:</span>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Background Color Picker & Hex Code */}
+                          <div>
+                            <label className="block text-[10px] font-normal text-slate-600 mb-1">Background:</label>
+                            <div className="flex gap-1.5">
+                              <input
+                                 type="color"
+                                 value={currentBg}
+                                 onChange={(e) => setChanColor(`${e.target.value}|${currentText}`)}
+                                 className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
+                              />
+                              <input
+                                type="text"
+                                maxLength={7}
+                                value={currentBg}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val.startsWith('#') && val.length <= 7) {
+                                    setChanColor(`${val}|${currentText}`);
+                                  }
+                                }}
+                                placeholder="#ffffff"
+                                className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                              />
+                            </div>
+                          </div>
 
-                    {/* Free shipping subsidy percent */}
-                    <div>
-                      <label className="block font-normal text-slate-700 mb-0.5">Subsidi Ongkir (%):</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        placeholder="4"
-                        value={chanShipping}
-                        onChange={(e) => setChanShipping(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-center text-slate-800"
-                      />
-                    </div>
-                  </div>
+                          {/* Text Color Picker & Hex Code */}
+                          <div>
+                            <label className="block text-[10px] font-normal text-slate-600 mb-1">Warna Huruf:</label>
+                            <div className="flex gap-1.5">
+                              <input
+                                 type="color"
+                                 value={currentText}
+                                 onChange={(e) => setChanColor(`${currentBg}|${e.target.value}`)}
+                                 className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
+                              />
+                              <input
+                                type="text"
+                                maxLength={7}
+                                value={currentText}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val.startsWith('#') && val.length <= 7) {
+                                    setChanColor(`${currentBg}|${val}`);
+                                  }
+                                }}
+                                placeholder="#000000"
+                                className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                  {/* Free shipping maximum limit cap */}
-                  <div>
-                    <label className="block font-normal text-slate-700 mb-0.5">Batas Maks Subs Ongkir (Rp):</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      placeholder="10000"
-                      value={chanShippingMax}
-                      onChange={(e) => setChanShippingMax(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                      className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-normal text-slate-800"
-                    />
-                  </div>
-
-
-                  {/* Payment Methods Checkboxes */}
-                  <div className="py-2">
-                    <label className="block font-normal text-slate-700 mb-1.5">Metode Pembayaran:</label>
-                    <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 border border-slate-200 rounded-2xl">
-                      {paymentMethods.map((m) => (
-                        <label key={m} className="flex items-center gap-1.5 cursor-pointer text-slate-800 text-[11px] font-normal">
-                          <input
-                            type="checkbox"
-                            checked={(chanPaymentMethods || []).includes(m)}
-                            onChange={(e) => {
-                              const safeMethods = chanPaymentMethods || [];
-                              if (e.target.checked) setChanPaymentMethods([...safeMethods, m]);
-                              else setChanPaymentMethods(safeMethods.filter(i => i !== m));
-                            }}
-                            className="h-3 w-3 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
-                          />
-                          {m}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Channel Color Theme Badge Previewer Grid */}
-                  <div>
-                    <span className="block font-normal text-slate-700 mb-1 leading-normal">Tema Warna Badge:</span>
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {colorPresets.map((preset, pIdx) => {
-                        const hasPipe = preset.value && preset.value.includes('|');
-                        const [bg, text] = hasPipe ? preset.value.split('|') : ['', ''];
-                        const isSelected = chanColor === preset.value;
-                        return (
-                          <button
-                            key={pIdx}
-                            type="button"
-                            onClick={() => setChanColor(preset.value)}
-                            style={hasPipe ? { backgroundColor: bg, color: text } : {}}
-                            className={`p-1.5 text-[8px] rounded border font-normal text-center truncate transition-all duration-150 cursor-pointer ${
-                              isSelected 
-                                ? 'ring-2 ring-emerald-500 scale-105 border-slate-400 font-normal' 
-                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
-                            }`}
-                            title={preset.label}
+                        {/* Live Preview of the Badge */}
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                          <span className="text-[9px] font-normal text-slate-400 uppercase">Preview Badge:</span>
+                          <span 
+                            style={{ backgroundColor: currentBg, color: currentText }}
+                            className="inline-block px-2.5 py-1 text-[10px] font-normal rounded-lg border border-slate-200 tracking-wide uppercase"
                           >
-                            {preset.label.split(' ')[0]}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-3.5 space-y-2.5 bg-white p-3 border border-slate-200 rounded-2xl">
-                      <span className="block font-normal text-[10px] text-slate-500 uppercase tracking-wider">Kustom Kode Hex Warna:</span>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Background Color Picker & Hex Code */}
-                        <div>
-                          <label className="block text-[10px] font-normal text-slate-600 mb-1">Background:</label>
-                          <div className="flex gap-1.5">
-                            <input
-                               type="color"
-                               value={currentBg}
-                               onChange={(e) => setChanColor(`${e.target.value}|${currentText}`)}
-                               className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
-                            />
-                            <input
-                              type="text"
-                              maxLength={7}
-                              value={currentBg}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val.startsWith('#') && val.length <= 7) {
-                                  setChanColor(`${val}|${currentText}`);
-                                }
-                              }}
-                              placeholder="#ffffff"
-                              className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Text Color Picker & Hex Code */}
-                        <div>
-                          <label className="block text-[10px] font-normal text-slate-600 mb-1">Warna Huruf:</label>
-                          <div className="flex gap-1.5">
-                            <input
-                               type="color"
-                               value={currentText}
-                               onChange={(e) => setChanColor(`${currentBg}|${e.target.value}`)}
-                               className="w-7 h-7 p-0 bg-transparent border-0 rounded-md cursor-pointer shrink-0"
-                            />
-                            <input
-                              type="text"
-                              maxLength={7}
-                              value={currentText}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val.startsWith('#') && val.length <= 7) {
-                                  setChanColor(`${currentBg}|${val}`);
-                                }
-                              }}
-                              placeholder="#000000"
-                              className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
-                            />
-                          </div>
+                            {chanName || 'PREVIEW'}
+                          </span>
                         </div>
                       </div>
-
-                      {/* Live Preview of the Badge */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-[9px] font-normal text-slate-400 uppercase">Preview Badge:</span>
-                        <span 
-                          style={{ backgroundColor: currentBg, color: currentText }}
-                          className="inline-block px-2.5 py-1 text-[10px] font-normal rounded-lg border border-slate-200 tracking-wide uppercase"
-                        >
-                          {chanName || 'PREVIEW'}
-                        </span>
-                      </div>
                     </div>
+
+                    {/* Actions for Form */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleCancelChannelEdit}
+                        className="flex-1 py-2 text-xs font-normal bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors cursor-pointer text-center"
+                      >
+                        Batal / Sembunyikan
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!chanName.trim()}
+                        onClick={handleSaveChannel}
+                        className="flex-1 py-2 text-xs font-normal bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-500/10 transition-colors disabled:opacity-40 cursor-pointer text-center"
+                      >
+                        {editingChanId ? '💾 Simpan Perubahan' : '➕ Tambah Saluran'}
+                      </button>
+                    </div>
+
                   </div>
-
-                  {/* Submit operational button */}
-                  <button
-                    type="button"
-                    disabled={!chanName.trim()}
-                    onClick={handleSaveChannel}
-                    className="w-full py-2 bg-slate-900 border border-slate-950 text-white font-normal rounded-xl hover:bg-slate-800 transition-all cursor-pointer disabled:opacity-40"
-                  >
-                    {editingChanId ? '💾 Update Saluran' : '✨ Daftarkan Saluran'}
-                  </button>
-
                 </div>
-              </div>
+              )}
 
 
             </div>
@@ -1370,13 +979,12 @@ export default function SettingsComponent({
       </div>
 
       {/* SECTION: automatic discounts settings */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 mt-8 space-y-6 shadow-sm">
+      <div className="w-full max-w-4xl mx-auto bg-white border border-slate-200/80 rounded-3xl p-6 mt-8 space-y-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
           <div>
             <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-              <span>🏷️</span> Pengaturan Diskon Otomatis Produk (Auto Discounts)
+              <span>🏷️</span> Diskon Otomatis Produk
             </h3>
-            <p className="text-[10px] text-slate-400 mt-0.5">Konfigurasikan diskon otomatis (persentase atau nominal rupiah) yang berlaku per saluran dan per produk</p>
           </div>
           <div className="flex items-center gap-2">
             {hasUnsavedDiscounts && (
@@ -1384,9 +992,26 @@ export default function SettingsComponent({
                 ⚠️ Ada Perubahan Draf
               </span>
             )}
-            <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono">
+            <span className="text-[10px] bg-rose-50 text-rose-800 border-rose-200 px-2 py-0.5 rounded-full font-normal tracking-wider uppercase font-mono mr-1">
               {localAutoDiscounts.length} Skema Aktif
             </span>
+            {!showDiscForm && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingDiscId(null);
+                  setDiscName('');
+                  setDiscType('percent');
+                  setDiscValue(0);
+                  setDiscSelectedChannels(['all']);
+                  setDiscSelectedProducts(['all']);
+                  setShowDiscForm(true);
+                }}
+                className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-[10px] cursor-pointer transition-colors shadow-xs"
+              >
+                ➕ Tambah Diskon
+              </button>
+            )}
           </div>
         </div>
 
@@ -1423,57 +1048,292 @@ export default function SettingsComponent({
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Form (lg:col-span-5) */}
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (!discName.trim()) {
-              alert("Masukkan nama aturan diskon.");
-              return;
-            }
-            if (discValue <= 0) {
-              alert("Masukkan nilai diskon yang valid (lebih besar dari 0).");
-              return;
-            }
-            if (discSelectedChannels.length === 0) {
-              alert("Pilih setidaknya satu saluran.");
-              return;
-            }
-            if (discSelectedProducts.length === 0) {
-              alert("Pilih setidaknya satu produk.");
-              return;
-            }
+        <div className="space-y-8 w-full max-w-4xl mx-auto">
+          {/* Active Rules List (On Top) */}
+          <div className="space-y-4">
+            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center justify-between">
+              <span>📋 Daftar Aturan Diskon Terdaftar</span>
+              <span className="text-[10px] text-slate-400 font-normal uppercase font-sans">Sistem Prioritas Auto-Match</span>
+            </h4>
 
-            const newDiscount = {
-              id: editingDiscId || `disc_${Date.now()}`,
-              name: discName.trim(),
-              type: discType,
-              value: Number(discValue),
-              channelIds: discSelectedChannels,
-              productIds: discSelectedProducts,
-              isActive: editingDiscId ? (localAutoDiscounts.find(d => d.id === editingDiscId)?.isActive ?? true) : true
-            };
+            {localAutoDiscounts.length === 0 ? (
+              <div className="p-8 border border-dashed border-slate-200 rounded-2xl text-center space-y-2">
+                <span className="text-2xl block">🏷️</span>
+                <p className="text-xs font-normal text-slate-500">Belum ada aturan diskon otomatis.</p>
+                <p className="text-[10px] text-slate-400 max-w-xs mx-auto">Gunakan form di bawah untuk membuat aturan diskon otomatis pertama Anda.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                {localAutoDiscounts.map((discount, index) => {
+                  return (
+                    <div
+                      key={discount.id}
+                      className={`p-4 border rounded-2xl transition-all relative overflow-hidden flex flex-col justify-between md:flex-row md:items-center gap-4 ${
+                        discount.isActive
+                          ? 'bg-white border-slate-200 shadow-3xs'
+                          : 'bg-slate-50/55 border-slate-150 opacity-65'
+                      }`}
+                    >
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 rounded-md w-5 h-5 flex items-center justify-center border border-slate-200">
+                            {index + 1}
+                          </span>
+                          <h5 className="font-normal text-slate-900 text-xs">
+                            {discount.name}
+                          </h5>
+                          <span className={`text-[9px] font-normal px-1.5 py-0.2 rounded-full border uppercase leading-tight ${
+                            discount.isActive
+                              ? 'bg-emerald-50 border-emerald-250 text-emerald-700'
+                              : 'bg-slate-100 border-slate-200 text-slate-500'
+                          }`}>
+                            {discount.isActive ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                        </div>
 
-            let nextDiscounts: AutoDiscount[];
-            if (editingDiscId) {
-              nextDiscounts = localAutoDiscounts.map(d => d.id === editingDiscId ? newDiscount : d);
-              setDiscountSuccessMsg("Draf skema diskon berhasil diperbarui! Jangan lupa simpan perubahan.");
-            } else {
-              nextDiscounts = [...localAutoDiscounts, newDiscount];
-              setDiscountSuccessMsg("Draf skema diskon baru berhasil ditambahkan! Jangan lupa simpan perubahan.");
-            }
-            setLocalAutoDiscounts(nextDiscounts);
+                        <div className="text-[11px] text-slate-500 font-normal">
+                          Besar Potongan: <strong className="text-rose-600 font-normal">{discount.type === 'percent' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`}</strong>
+                        </div>
 
-            // Reset form
-            setEditingDiscId(null);
-            setDiscName('');
-            setDiscType('percent');
-            setDiscValue(0);
-            setDiscSelectedChannels(['all']);
-            setDiscSelectedProducts(['all']);
+                        {/* Applied channels list */}
+                        <div className="space-y-1">
+                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Saluran Terpilih:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {discount.channelIds.includes('all') ? (
+                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Saluran (Global)</span>
+                            ) : (
+                              discount.channelIds.map(chanId => {
+                                const chan = channels.find(c => c.id === chanId);
+                                return (
+                                  <span key={chanId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-0.5">
+                                    <span>{'🛍️'}</span>
+                                    <span>{chan?.name || chanId}</span>
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
 
-            setTimeout(() => setDiscountSuccessMsg(null), 3000);
-          }} className="lg:col-span-5 space-y-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-150">
+                        {/* Applied products list */}
+                        <div className="space-y-1">
+                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Produk Terpilih:</span>
+                          <div className="flex flex-wrap gap-1">
+                            {discount.productIds.includes('all') ? (
+                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Produk Master</span>
+                            ) : (
+                              discount.productIds.map(prodId => {
+                                const prod = products.find(p => p.id === prodId);
+                                return (
+                                  <span key={prodId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-1">
+                                    {prod?.imageUrl ? (
+                                      <img src={prod.imageUrl} alt="" className="w-3 h-3 rounded object-cover" referrerPolicy="no-referrer" />
+                                    ) : (
+                                      <span>📦</span>
+                                    )}
+                                    <span>{prod?.name || prodId}</span>
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Controls */}
+                      <div className="flex flex-row md:flex-col items-center justify-end gap-2 shrink-0 border-t md:border-t-0 border-slate-100 pt-2.5 md:pt-0">
+                        {/* Toggle active switch */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = localAutoDiscounts.map(d => d.id === discount.id ? { ...d, isActive: !d.isActive } : d);
+                            setLocalAutoDiscounts(updated);
+                          }}
+                          className={`px-3 py-1 text-[9.5px] font-normal rounded-lg border transition-all cursor-pointer ${
+                            discount.isActive
+                              ? 'bg-rose-50 border-rose-250 text-rose-700 hover:bg-rose-100'
+                              : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {discount.isActive ? '⛔ Nonaktifkan' : '⚡ Aktifkan'}
+                        </button>
+
+                        <div className="flex gap-1.5 w-full md:w-auto">
+                          {/* Move Up */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (index > 0) {
+                                const newDiscounts = [...localAutoDiscounts];
+                                const temp = newDiscounts[index - 1];
+                                newDiscounts[index - 1] = newDiscounts[index];
+                                newDiscounts[index] = temp;
+                                const orderedDiscounts = newDiscounts.map((d, i) => ({ ...d, order: i }));
+                                setLocalAutoDiscounts(orderedDiscounts);
+                              }
+                            }}
+                            disabled={index === 0}
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                            title="Naikkan Prioritas"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5 mx-auto" />
+                          </button>
+
+                          {/* Move Down */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (index < localAutoDiscounts.length - 1) {
+                                const newDiscounts = [...localAutoDiscounts];
+                                const temp = newDiscounts[index + 1];
+                                newDiscounts[index + 1] = newDiscounts[index];
+                                newDiscounts[index] = temp;
+                                const orderedDiscounts = newDiscounts.map((d, i) => ({ ...d, order: i }));
+                                setLocalAutoDiscounts(orderedDiscounts);
+                              }
+                            }}
+                            disabled={index === localAutoDiscounts.length - 1}
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                            title="Turunkan Prioritas"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5 mx-auto" />
+                          </button>
+
+                          {/* Edit Rule */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingDiscId(discount.id);
+                              setDiscName(discount.name);
+                              setDiscType(discount.type);
+                              setDiscValue(discount.value);
+                              setDiscSelectedChannels(discount.channelIds);
+                              setDiscSelectedProducts(discount.productIds);
+                              setShowDiscForm(true);
+                              // Smooth scroll to form on mobile
+                              window.scrollTo({ top: 350, behavior: 'smooth' });
+                            }}
+                            className="flex-1 md:flex-initial p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/60 rounded-lg cursor-pointer transition-colors"
+                            title="Edit"
+                          >
+                            <Edit3 className="h-3.5 w-3.5 mx-auto" />
+                          </button>
+
+                          {/* Delete Rule */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingDeleteDiscount(discount);
+                            }}
+                            className="flex-1 md:flex-initial p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-250/60 rounded-lg cursor-pointer transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mx-auto" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Save & Confirm Button Section */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="text-[11px] text-slate-500 font-normal">
+                {hasUnsavedDiscounts ? (
+                  <span className="text-amber-600 flex items-center gap-1.5 font-bold">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    Ada perubahan draf diskon belum disimpan!
+                  </span>
+                ) : (
+                  <span className="text-emerald-600 flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-505 bg-emerald-500"></span>
+                    Pengaturan sinkron dengan database Firestore.
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveDiscountsToDatabase}
+                disabled={isSavingDiscounts}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  hasUnsavedDiscounts
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/25 active:scale-95 hover:-translate-y-0.5'
+                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                }`}
+              >
+                {isSavingDiscounts ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Sedang Menyimpan ke Database...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Simpan & Konfirmasi Aturan Diskon
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Form (Below the list) */}
+          {showDiscForm && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!discName.trim()) {
+                alert("Masukkan nama aturan diskon.");
+                return;
+              }
+              if (discValue <= 0) {
+                alert("Masukkan nilai diskon yang valid (lebih besar dari 0).");
+                return;
+              }
+              if (discSelectedChannels.length === 0) {
+                alert("Pilih setidaknya satu saluran.");
+                return;
+              }
+              if (discSelectedProducts.length === 0) {
+                alert("Pilih setidaknya satu produk.");
+                return;
+              }
+
+              const newDiscount = {
+                id: editingDiscId || `disc_${Date.now()}`,
+                name: discName.trim(),
+                type: discType,
+                value: Number(discValue),
+                channelIds: discSelectedChannels,
+                productIds: discSelectedProducts,
+                isActive: editingDiscId ? (localAutoDiscounts.find(d => d.id === editingDiscId)?.isActive ?? true) : true,
+                order: editingDiscId ? (localAutoDiscounts.find(d => d.id === editingDiscId)?.order ?? localAutoDiscounts.length) : localAutoDiscounts.length
+              };
+
+              let nextDiscounts: AutoDiscount[];
+              if (editingDiscId) {
+                nextDiscounts = localAutoDiscounts.map(d => d.id === editingDiscId ? newDiscount : d);
+                setDiscountSuccessMsg("Draf skema diskon berhasil diperbarui! Jangan lupa simpan perubahan.");
+              } else {
+                nextDiscounts = [...localAutoDiscounts, newDiscount];
+                setDiscountSuccessMsg("Draf skema diskon baru berhasil ditambahkan! Jangan lupa simpan perubahan.");
+              }
+              setLocalAutoDiscounts(nextDiscounts);
+
+              // Reset form
+              setEditingDiscId(null);
+              setDiscName('');
+              setDiscType('percent');
+              setDiscValue(0);
+              setDiscSelectedChannels(['all']);
+              setDiscSelectedProducts(['all']);
+              setShowDiscForm(false);
+
+              setTimeout(() => setDiscountSuccessMsg(null), 3000);
+            }} className="space-y-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-150">
             <h4 className="font-normal text-xs text-slate-800 uppercase tracking-wider">
               {editingDiscId ? '📝 Edit Aturan Diskon' : '✨ Buat Aturan Diskon Baru'}
             </h4>
@@ -1648,217 +1508,473 @@ export default function SettingsComponent({
 
             {/* Actions for Form */}
             <div className="flex gap-2 pt-2">
-              {editingDiscId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingDiscId(null);
-                    setDiscName('');
-                    setDiscType('percent');
-                    setDiscValue(0);
-                    setDiscSelectedChannels(['all']);
-                    setDiscSelectedProducts(['all']);
-                  }}
-                  className="flex-1 py-2 text-xs font-normal bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors"
-                >
-                  Batal
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingDiscId(null);
+                  setDiscName('');
+                  setDiscType('percent');
+                  setDiscValue(0);
+                  setDiscSelectedChannels(['all']);
+                  setDiscSelectedProducts(['all']);
+                  setShowDiscForm(false);
+                }}
+                className="flex-1 py-2 text-xs font-normal bg-slate-200 text-slate-700 rounded-xl hover:bg-slate-300 transition-colors cursor-pointer text-center"
+              >
+                Batal / Sembunyikan
+              </button>
               <button
                 type="submit"
-                className="flex-1 py-2 text-xs font-normal bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-500/10 transition-colors"
+                className="flex-1 py-2 text-xs font-normal bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md shadow-emerald-500/10 transition-colors cursor-pointer text-center"
               >
                 {editingDiscId ? '💾 Simpan Perubahan' : '➕ Tambah Aturan Diskon'}
               </button>
             </div>
           </form>
+          )}
+        </div>
+      </div>
 
-          {/* Right Column: Active Rules List (lg:col-span-7) */}
-          <div className="lg:col-span-7 space-y-4">
-            <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider flex items-center justify-between">
-              <span>📋 Daftar Aturan Diskon Terdaftar</span>
-              <span className="text-[10px] text-slate-400 font-normal uppercase font-sans">Sistem Prioritas Auto-Match</span>
-            </h4>
+      {/* SECTION: Payment Methods & PIC Operator Settings */}
+      <div className="w-full max-w-4xl mx-auto bg-white border border-slate-200/80 rounded-3xl p-6 mt-8 space-y-6 shadow-sm">
+        <div className="border-b border-slate-100 pb-3">
+          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+            <span>💳</span> Metode Pembayaran & PIC Operator
+          </h3>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Konfigurasi pilihan metode bayar dan personel pencatat (PIC) yang dapat dipilih ketika membuat pesanan baru.
+          </p>
+        </div>
 
-            {localAutoDiscounts.length === 0 ? (
-              <div className="p-8 border border-dashed border-slate-200 rounded-2xl text-center space-y-2">
-                <span className="text-2xl block">🏷️</span>
-                <p className="text-xs font-normal text-slate-500">Belum ada aturan diskon otomatis.</p>
-                <p className="text-[10px] text-slate-400 max-w-xs mx-auto">Gunakan form di sebelah kiri untuk membuat aturan diskon otomatis pertama Anda.</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-                {localAutoDiscounts.map((discount) => {
-                  return (
-                    <div
-                      key={discount.id}
-                      className={`p-4 border rounded-2xl transition-all relative overflow-hidden flex flex-col justify-between md:flex-row md:items-center gap-4 ${
-                        discount.isActive
-                          ? 'bg-white border-slate-200 shadow-3xs'
-                          : 'bg-slate-50/55 border-slate-150 opacity-65'
-                      }`}
-                    >
-                      <div className="space-y-1.5 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h5 className="font-normal text-slate-900 text-xs">
-                            {discount.name}
-                          </h5>
-                          <span className={`text-[9px] font-normal px-1.5 py-0.2 rounded-full border uppercase leading-tight ${
-                            discount.isActive
-                              ? 'bg-emerald-50 border-emerald-250 text-emerald-700'
-                              : 'bg-slate-100 border-slate-200 text-slate-500'
-                          }`}>
-                            {discount.isActive ? 'Aktif' : 'Nonaktif'}
-                          </span>
-                        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Card 1: Metode Pembayaran */}
+          <div className="bg-slate-50/55 border border-slate-150/70 rounded-2xl p-4.5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                💳 Pilihan Metode Pembayaran
+              </span>
+              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono font-medium">
+                {paymentMethods.length} Pilihan
+              </span>
+            </div>
 
-                        <div className="text-[11px] text-slate-500 font-normal">
-                          Besar Potongan: <strong className="text-rose-600 font-normal">{discount.type === 'percent' ? `${discount.value}%` : `Rp ${discount.value.toLocaleString('id-ID')}`}</strong>
-                        </div>
+            <div className="flex flex-wrap gap-1.5 min-h-[48px] content-start">
+              {paymentMethods.length === 0 ? (
+                <span className="text-[10px] text-slate-400 italic">Belum ada metode pembayaran yang terdaftar.</span>
+              ) : (
+                paymentMethods.map((m, idx) => {
+                  const isEditing = editingPaymentIndex === idx;
+                  const isConfirmingDelete = confirmDeletePaymentIndex === idx;
 
-                        {/* Applied channels list */}
-                        <div className="space-y-1">
-                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Saluran Terpilih:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {discount.channelIds.includes('all') ? (
-                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Saluran (Global)</span>
-                            ) : (
-                              discount.channelIds.map(chanId => {
-                                const chan = channels.find(c => c.id === chanId);
-                                return (
-                                  <span key={chanId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-0.5">
-                                    <span>{'🛍️'}</span>
-                                    <span>{chan?.name || chanId}</span>
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Applied products list */}
-                        <div className="space-y-1">
-                          <span className="text-[9.5px] font-normal text-slate-400 block uppercase">Produk Terpilih:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {discount.productIds.includes('all') ? (
-                              <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal">Semua Produk Master</span>
-                            ) : (
-                              discount.productIds.map(prodId => {
-                                const prod = products.find(p => p.id === prodId);
-                                return (
-                                  <span key={prodId} className="text-[9px] bg-slate-50 text-slate-700 border border-slate-200 px-1.5 py-0.5 rounded font-normal flex items-center gap-1">
-                                    {prod?.imageUrl ? (
-                                      <img src={prod.imageUrl} alt="" className="w-3 h-3 rounded object-cover" referrerPolicy="no-referrer" />
-                                    ) : (
-                                      <span>📦</span>
-                                    )}
-                                    <span>{prod?.name || prodId}</span>
-                                  </span>
-                                );
-                              })
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Controls */}
-                      <div className="flex flex-row md:flex-col items-center justify-end gap-2 shrink-0 border-t md:border-t-0 border-slate-100 pt-2.5 md:pt-0">
-                        {/* Toggle active switch */}
+                  if (isEditing) {
+                    return (
+                      <span key={idx} className="flex items-center gap-1 bg-emerald-50 border border-emerald-300 rounded-lg p-1 text-[10px] shadow-3xs">
+                        <input
+                          type="text"
+                          value={editingPaymentValue}
+                          onChange={(e) => setEditingPaymentValue(e.target.value)}
+                          className="px-1.5 py-0.5 bg-white border border-emerald-300 rounded-md text-[10px] text-slate-800 font-medium outline-none focus:ring-1 focus:ring-emerald-500 w-24"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = editingPaymentValue.trim();
+                              if (val) {
+                                const updated = [...paymentMethods];
+                                updated[idx] = val;
+                                onUpdatePaymentMethods(updated);
+                                setEditingPaymentIndex(null);
+                              }
+                            } else if (e.key === 'Escape') {
+                              setEditingPaymentIndex(null);
+                            }
+                          }}
+                        />
                         <button
                           type="button"
                           onClick={() => {
-                            const updated = localAutoDiscounts.map(d => d.id === discount.id ? { ...d, isActive: !d.isActive } : d);
-                            setLocalAutoDiscounts(updated);
+                            const val = editingPaymentValue.trim();
+                            if (val) {
+                              const updated = [...paymentMethods];
+                              updated[idx] = val;
+                              onUpdatePaymentMethods(updated);
+                              setEditingPaymentIndex(null);
+                            }
                           }}
-                          className={`px-3 py-1 text-[9.5px] font-normal rounded-lg border transition-all cursor-pointer ${
-                            discount.isActive
-                              ? 'bg-rose-50 border-rose-250 text-rose-700 hover:bg-rose-100'
-                              : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
-                          }`}
+                          className="text-emerald-600 hover:text-emerald-800 p-0.5 hover:bg-emerald-100 rounded transition-colors cursor-pointer"
+                          title="Simpan"
                         >
-                          {discount.isActive ? '⛔ Nonaktifkan' : '⚡ Aktifkan'}
+                          <Check className="h-3 w-3" />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPaymentIndex(null)}
+                          className="text-slate-400 hover:text-slate-600 p-0.5 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                          title="Batal"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  }
 
-                        <div className="flex gap-1.5 w-full md:w-auto">
-                          {/* Edit Rule */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingDiscId(discount.id);
-                              setDiscName(discount.name);
-                              setDiscType(discount.type);
-                              setDiscValue(discount.value);
-                              setDiscSelectedChannels(discount.channelIds);
-                              setDiscSelectedProducts(discount.productIds);
-                              // Smooth scroll to form on mobile
-                              window.scrollTo({ top: 350, behavior: 'smooth' });
-                            }}
-                            className="flex-1 md:flex-initial p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300/60 rounded-lg cursor-pointer transition-colors"
-                            title="Edit"
-                          >
-                            <Edit3 className="h-3.5 w-3.5 mx-auto" />
-                          </button>
+                  if (isConfirmingDelete) {
+                    return (
+                      <span key={idx} className="flex items-center gap-1 bg-rose-50 border border-rose-200 rounded-lg p-1 text-[10px] shadow-3xs animate-pulse">
+                        <span className="font-semibold text-rose-700 px-1">Hapus?</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdatePaymentMethods(paymentMethods.filter((_, i) => i !== idx));
+                            setConfirmDeletePaymentIndex(null);
+                          }}
+                          className="bg-rose-500 hover:bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold transition-colors cursor-pointer"
+                        >
+                          Ya
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeletePaymentIndex(null)}
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-1.5 py-0.5 rounded text-[9px] transition-colors cursor-pointer"
+                        >
+                          No
+                        </button>
+                      </span>
+                    );
+                  }
 
-                          {/* Delete Rule */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingDeleteDiscount(discount);
-                            }}
-                            className="flex-1 md:flex-initial p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-250/60 rounded-lg cursor-pointer transition-colors"
-                            title="Hapus"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mx-auto" />
-                          </button>
-                        </div>
+                  return (
+                    <span key={idx} className="flex items-center gap-1.5 bg-white text-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-normal border border-slate-200/80 hover:border-emerald-200 hover:bg-emerald-50/20 transition-colors shadow-3xs group">
+                      <span className="font-medium">{m}</span>
+                      <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setEditingPaymentIndex(idx);
+                            setEditingPaymentValue(m);
+                            setConfirmDeletePaymentIndex(null);
+                          }} 
+                          className="text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit3 className="h-3 w-3"/>
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setConfirmDeletePaymentIndex(idx);
+                            setEditingPaymentIndex(null);
+                          }} 
+                          className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-3 w-3"/>
+                        </button>
                       </div>
-                    </div>
+                    </span>
                   );
-                })}
+                })
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="new_method_input_card"
+                placeholder="Contoh: Bank BCA, Tunai, ShopeePay"
+                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = e.currentTarget.value.trim();
+                    if (val && !paymentMethods.includes(val)) {
+                      onUpdatePaymentMethods([...paymentMethods, val]);
+                      e.currentTarget.value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById('new_method_input_card') as HTMLInputElement;
+                  const val = input?.value.trim();
+                  if (val && !paymentMethods.includes(val)) {
+                    onUpdatePaymentMethods([...paymentMethods, val]);
+                    input.value = '';
+                  }
+                }}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
+              >
+                Tambah
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: PIC / Operator / Pencatat */}
+          <div className="bg-slate-50/55 border border-slate-150/70 rounded-2xl p-4.5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                👤 Daftar PIC & Operator
+              </span>
+              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono font-medium">
+                {pencatatList.length} Personel
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 min-h-[48px] content-start">
+              {pencatatList.length === 0 ? (
+                <span className="text-[10px] text-slate-400 italic">Belum ada PIC/Pencatat yang terdaftar.</span>
+              ) : (
+                pencatatList.map((p, idx) => {
+                  const isEditing = editingPicIndex === idx;
+                  const isConfirmingDelete = confirmDeletePicIndex === idx;
+
+                  if (isEditing) {
+                    return (
+                      <span key={idx} className="flex items-center gap-1 bg-emerald-50 border border-emerald-300 rounded-lg p-1 text-[10px] shadow-3xs">
+                        <input
+                          type="text"
+                          value={editingPicValue}
+                          onChange={(e) => setEditingPicValue(e.target.value)}
+                          className="px-1.5 py-0.5 bg-white border border-emerald-300 rounded-md text-[10px] text-slate-800 font-medium outline-none focus:ring-1 focus:ring-emerald-500 w-24"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const val = editingPicValue.trim();
+                              if (val) {
+                                const updated = [...pencatatList];
+                                updated[idx] = val;
+                                onUpdatePencatatList(updated);
+                                setEditingPicIndex(null);
+                              }
+                            } else if (e.key === 'Escape') {
+                              setEditingPicIndex(null);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = editingPicValue.trim();
+                            if (val) {
+                              const updated = [...pencatatList];
+                              updated[idx] = val;
+                              onUpdatePencatatList(updated);
+                              setEditingPicIndex(null);
+                            }
+                          }}
+                          className="text-emerald-600 hover:text-emerald-800 p-0.5 hover:bg-emerald-100 rounded transition-colors cursor-pointer"
+                          title="Simpan"
+                        >
+                          <Check className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPicIndex(null)}
+                          className="text-slate-400 hover:text-slate-600 p-0.5 hover:bg-slate-100 rounded transition-colors cursor-pointer"
+                          title="Batal"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  }
+
+                  if (isConfirmingDelete) {
+                    return (
+                      <span key={idx} className="flex items-center gap-1 bg-rose-50 border border-rose-200 rounded-lg p-1 text-[10px] shadow-3xs animate-pulse">
+                        <span className="font-semibold text-rose-700 px-1">Hapus?</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdatePencatatList(pencatatList.filter((_, i) => i !== idx));
+                            setConfirmDeletePicIndex(null);
+                          }}
+                          className="bg-rose-500 hover:bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold transition-colors cursor-pointer"
+                        >
+                          Ya
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeletePicIndex(null)}
+                          className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-1.5 py-0.5 rounded text-[9px] transition-colors cursor-pointer"
+                        >
+                          No
+                        </button>
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <span key={idx} className="flex items-center gap-1.5 bg-white text-slate-700 px-2.5 py-1.5 rounded-lg text-[10px] font-normal border border-slate-200/80 hover:border-emerald-200 hover:bg-emerald-50/20 transition-colors shadow-3xs group">
+                      <span className="font-medium">{p}</span>
+                      <div className="flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setEditingPicIndex(idx);
+                            setEditingPicValue(p);
+                            setConfirmDeletePicIndex(null);
+                          }} 
+                          className="text-slate-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                          title="Edit"
+                        >
+                          <Edit3 className="h-3 w-3"/>
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setConfirmDeletePicIndex(idx);
+                            setEditingPicIndex(null);
+                          }} 
+                          className="text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Hapus"
+                        >
+                          <Trash2 className="h-3 w-3"/>
+                        </button>
+                      </div>
+                    </span>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="new_pencatat_input_card"
+                placeholder="Contoh: Admin Susi, Admin Joni"
+                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-normal focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const val = e.currentTarget.value.trim();
+                    if (val && !pencatatList.includes(val)) {
+                      onUpdatePencatatList([...pencatatList, val]);
+                      e.currentTarget.value = '';
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById('new_pencatat_input_card') as HTMLInputElement;
+                  const val = input?.value.trim();
+                  if (val && !pencatatList.includes(val)) {
+                    onUpdatePencatatList([...pencatatList, val]);
+                    input.value = '';
+                  }
+                }}
+                className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-normal rounded-xl text-xs cursor-pointer transition-colors flex items-center gap-1 shadow-xs"
+              >
+                Tambah
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Firebase Connection Tester Card */}
+      <div className="w-full max-w-4xl mx-auto mt-8">
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-4 shadow-sm">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+              <Database className="h-4 w-4 text-emerald-600" /> Koneksi Database Firebase
+            </h3>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-normal tracking-wider uppercase flex items-center gap-1 ${
+              firebaseStatus === 'connected' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' :
+              firebaseStatus === 'failed' ? 'bg-rose-50 text-rose-800 border border-rose-200' :
+              firebaseStatus === 'testing' ? 'bg-amber-50 text-amber-800 border border-amber-200' :
+              'bg-slate-100 text-slate-600 border border-slate-200'
+            }`}>
+              {firebaseStatus === 'connected' ? (
+                <>
+                  <Wifi className="h-3 w-3 shrink-0 text-emerald-600" />
+                  Terhubung
+                </>
+              ) : firebaseStatus === 'failed' ? (
+                <>
+                  <WifiOff className="h-3 w-3 shrink-0 text-rose-600" />
+                  Gagal
+                </>
+              ) : firebaseStatus === 'testing' ? (
+                <>
+                  <RefreshCw className="h-3 w-3 shrink-0 animate-spin text-amber-600" />
+                  Menguji...
+                </>
+              ) : (
+                'Belum Diuji'
+              )}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-2 font-mono text-[10px] text-slate-600">
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-slate-400">Project ID:</span>
+                <span className="text-slate-800 font-medium">omniorder-c5bf4</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span className="text-slate-400">Database Engine:</span>
+                <span className="text-slate-800 font-medium">Cloud Firestore</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Auth Status:</span>
+                <span className="text-slate-800 font-medium">Firebase Auth Ready</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+              Klik tombol di bawah ini untuk menguji secara langsung apakah kredensial SDK Firebase yang Anda cantumkan di berkas <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-600">src/firebase.ts</code> telah terhubung ke server Firebase dengan aman dan valid.
+            </p>
+
+            {firebaseStatus === 'connected' && (
+              <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 text-emerald-800 rounded-2xl space-y-1 font-sans">
+                <p className="font-bold flex items-center gap-1.5 text-xs text-emerald-900">
+                  <CheckCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+                  Koneksi Firebase Berhasil!
+                </p>
+                <p className="text-[10px] text-emerald-700 leading-normal">
+                  {firebaseError === "permission-denied" 
+                    ? "Aplikasi berhasil menghubungi Firestore! Catatan: Aturan Keamanan (Security Rules) menolak akses publik (normal jika rules terkunci). Koneksi fisik valid!"
+                    : "Aplikasi berhasil berkomunikasi secara langsung dengan database Firestore Anda secara real-time."}
+                </p>
               </div>
             )}
 
-            {/* Save & Confirm Button Section */}
-            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="text-[11px] text-slate-500 font-normal">
-                {hasUnsavedDiscounts ? (
-                  <span className="text-amber-600 flex items-center gap-1.5 font-bold">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                    </span>
-                    Ada perubahan draf diskon belum disimpan!
-                  </span>
-                ) : (
-                  <span className="text-emerald-600 flex items-center gap-1.5">
-                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-505 bg-emerald-500"></span>
-                    Pengaturan sinkron dengan database Firestore.
-                  </span>
-                )}
+            {firebaseStatus === 'failed' && (
+              <div className="p-3 bg-rose-50/80 border border-rose-200/80 text-rose-800 rounded-2xl space-y-1 font-sans">
+                <p className="font-bold flex items-center gap-1.5 text-xs text-rose-900">
+                  <WifiOff className="h-4 w-4 text-rose-600 shrink-0" />
+                  Koneksi Gagal
+                </p>
+                <p className="text-[10px] text-rose-700 leading-normal font-mono break-all">
+                  {firebaseError}
+                </p>
               </div>
-              <button
-                type="button"
-                onClick={handleSaveDiscountsToDatabase}
-                disabled={isSavingDiscounts}
-                className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  hasUnsavedDiscounts
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/25 active:scale-95 hover:-translate-y-0.5'
-                    : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
-                }`}
-              >
-                {isSavingDiscounts ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Sedang Menyimpan ke Database...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Simpan & Konfirmasi Aturan Diskon
-                  </>
-                )}
-              </button>
-            </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleTestFirebase}
+              disabled={firebaseStatus === 'testing'}
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-250 text-slate-800 font-medium rounded-xl shadow-3xs transition-all cursor-pointer flex items-center justify-center gap-2 font-sans disabled:opacity-50 text-xs"
+            >
+              {firebaseStatus === 'testing' ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin text-slate-500" />
+                  Menguji Koneksi...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 text-slate-600" />
+                  Uji Hubungan Database
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -182,11 +182,8 @@ export default function OrdersList({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
-            <span>📋</span> Daftar Pesanan & Pengelolaan Transaksi
+            <span>📋</span> Pesanan
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Pantau semua data pesanan dari berbagai saluran penjualan. Anda bisa mengubah detail produk, jumlah barang, diskon, atau menghapus pesanan untuk mengembalikan stok.
-          </p>
         </div>
       </div>
 

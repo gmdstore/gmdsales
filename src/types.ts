@@ -59,6 +59,7 @@ export interface AutoDiscount {
   channelIds: string[]; // channels this discount applies to, or ['all'] for all channels
   productIds: string[]; // products this discount applies to, or ['all'] for all products
   isActive: boolean;
+  order?: number; // Priority order
 }
 
 export interface Order {

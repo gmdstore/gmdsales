@@ -359,11 +359,8 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
-            <span>📈</span> Dashboard Performa Finansial
+            <span>📈</span> Beranda
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Data Terkonsolidasi Omnichannel per tanggal <span className="font-normal text-slate-800">{getFormattedToday()}</span>
-          </p>
         </div>
         
         {/* Current selected range summary badge - Moved outside to the top-right corner */}

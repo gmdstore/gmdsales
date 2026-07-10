@@ -170,11 +170,8 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 pb-5">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
-            <span>📊</span> Rekapitulasi Penjualan Harian
+            <span>📊</span> Data Penjualan
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Ringkasan harian distribusi jumlah pesanan item (pcs) dan pendapatan bersih (omset terpotong beban) berdasarkan opsi saluran.
-          </p>
         </div>
 
         {/* Month Selection Input */}

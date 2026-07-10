@@ -18,6 +18,7 @@ import OrderModal from './components/OrderModal';
 import SettingsComponent from './components/Settings';
 import OrdersList from './components/OrdersList';
 import Recapitulation from './components/Recapitulation';
+import AkunComponent from './components/Akun';
 
 import { db, auth } from './firebase';
 import { 
@@ -43,7 +44,8 @@ import {
   X,
   Heart,
   ClipboardList,
-  Calendar
+  Calendar,
+  User as UserIcon
 } from 'lucide-react';
 
 export default function App() {
@@ -117,7 +119,7 @@ export default function App() {
   }, [currentUser]);
 
   // Navigation active tab
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'settings' | 'recapitulation'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stocks' | 'akun' | 'settings' | 'recapitulation'>('dashboard');
   
   // Mobile sidebar visibility toggle state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -135,6 +137,7 @@ export default function App() {
   const [brandFooter, setBrandFooter] = useState<string>('OmniOrder – All rights reserved © 2026.');
   const [appFont, setAppFont] = useState<string>('Inter');
   const [appFontWeight, setAppFontWeight] = useState<string>('400');
+  const [appFontSize, setAppFontSize] = useState<string>('14px');
   const [paymentMethods, setPaymentMethods] = useState<string[]>(['Transfer', 'COD', 'E-Wallet', 'Lainnya']);
   const [pencatatList, setPencatatList] = useState<string[]>(['Admin 1', 'Admin 2', 'Owner']);
   const [groups, setGroups] = useState<string[]>(INITIAL_GROUPS);
@@ -192,6 +195,7 @@ export default function App() {
         let loadedBrandFooter = 'OmniOrder – All rights reserved © 2026.';
         let loadedAppFont = 'Inter';
         let loadedAppFontWeight = '400';
+        let loadedAppFontSize = '14px';
         let loadedPaymentMethods = ['Transfer', 'COD', 'E-Wallet', 'Lainnya'];
         let loadedPencatatList = ['Admin 1', 'Admin 2', 'Owner'];
         let loadedGroups = INITIAL_GROUPS;
@@ -207,6 +211,7 @@ export default function App() {
           if (data.brandFooter) loadedBrandFooter = data.brandFooter;
           if (data.appFont) loadedAppFont = data.appFont;
           if (data.appFontWeight) loadedAppFontWeight = data.appFontWeight;
+          if (data.appFontSize) loadedAppFontSize = data.appFontSize;
           if (data.paymentMethods) loadedPaymentMethods = data.paymentMethods;
           if (data.pencatatList) loadedPencatatList = data.pencatatList;
           if (data.groups) loadedGroups = data.groups;
@@ -220,6 +225,7 @@ export default function App() {
             brandFooter: loadedBrandFooter,
             appFont: loadedAppFont,
             appFontWeight: loadedAppFontWeight,
+            appFontSize: loadedAppFontSize,
             paymentMethods: loadedPaymentMethods,
             pencatatList: loadedPencatatList,
             groups: loadedGroups,
@@ -339,6 +345,7 @@ export default function App() {
           discountSnap.forEach(doc => {
             loadedDiscounts.push({ id: doc.id, ...doc.data() } as AutoDiscount);
           });
+          loadedDiscounts.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         } else if (isFirstTimeInit) {
           const defaultDiscounts: AutoDiscount[] = [
             {
@@ -348,7 +355,8 @@ export default function App() {
               value: 10,
               channelIds: ['shopee', 'tokopedia'],
               productIds: ['all'],
-              isActive: true
+              isActive: true,
+              order: 0
             },
             {
               id: 'disc_default_2',
@@ -357,7 +365,8 @@ export default function App() {
               value: 5000,
               channelIds: ['all'],
               productIds: ['all'],
-              isActive: true
+              isActive: true,
+              order: 1
             }
           ];
           const batch = writeBatch(db);
@@ -375,6 +384,7 @@ export default function App() {
         setBrandFooter(loadedBrandFooter);
         setAppFont(loadedAppFont);
         setAppFontWeight(loadedAppFontWeight);
+        setAppFontSize(loadedAppFontSize);
         setPaymentMethods(loadedPaymentMethods);
         setPencatatList(loadedPencatatList);
         setGroups(loadedGroups);
@@ -415,6 +425,11 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.setProperty('--app-font-weight', appFontWeight);
   }, [appFontWeight]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-font-size', appFontSize);
+    document.documentElement.style.fontSize = appFontSize;
+  }, [appFontSize]);
 
 
   // Business Operations implementation
@@ -887,6 +902,15 @@ export default function App() {
     }
   };
 
+  const handleUpdateFontSize = async (size: string) => {
+    setAppFontSize(size);
+    try {
+      await setDoc(doc(db, "settings", "app_settings"), { appFontSize: size }, { merge: true });
+    } catch (err) {
+      console.error("Error saving font size settings in Firestore:", err);
+    }
+  };
+
   // Full Firestore database resets restoring defaults
   const handleResetFactoryDefaults = async () => {
     if (confirm("Apakah Anda yakin ingin menyetel ulang data? Ini akan mengosongkan transaksi order & produk, mengembalikan parameter brand ke setelan default di server Firestore.")) {
@@ -931,6 +955,7 @@ export default function App() {
           brandFooter: 'OmniOrder – All rights reserved © 2026.',
           appFont: 'Inter',
           appFontWeight: '400',
+          appFontSize: '14px',
           paymentMethods: ['Transfer', 'COD', 'E-Wallet', 'Lainnya'],
           pencatatList: ['Admin 1', 'Admin 2', 'Owner'],
           groups: INITIAL_GROUPS,
@@ -984,7 +1009,8 @@ export default function App() {
             value: 10,
             channelIds: ['shopee', 'tokopedia'],
             productIds: ['all'],
-            isActive: true
+            isActive: true,
+            order: 0
           },
           {
             id: 'disc_default_2',
@@ -993,7 +1019,8 @@ export default function App() {
             value: 5000,
             channelIds: ['all'],
             productIds: ['all'],
-            isActive: true
+            isActive: true,
+            order: 1
           }
         ];
         const dBatch = writeBatch(db);
@@ -1007,6 +1034,7 @@ export default function App() {
         setBrandFooter(defaultSettings.brandFooter);
         setAppFont(defaultSettings.appFont);
         setAppFontWeight(defaultSettings.appFontWeight);
+        setAppFontSize(defaultSettings.appFontSize);
         setPaymentMethods(defaultSettings.paymentMethods);
         setPencatatList(defaultSettings.pencatatList);
         setGroups(defaultSettings.groups);
@@ -1196,9 +1224,6 @@ export default function App() {
 
         {/* Navigation List Item Section */}
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          <span className="block px-3 text-[9px] font-normal text-slate-400 tracking-wider uppercase mb-2 font-mono">
-            Menu Operasional
-          </span>
 
           <button
             onClick={() => {
@@ -1208,7 +1233,7 @@ export default function App() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'dashboard' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <LayoutDashboard className="h-4 w-4" />
-            Dashboard Finansial
+            Beranda
           </button>
 
           <button
@@ -1219,7 +1244,7 @@ export default function App() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'orders' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <ClipboardList className="h-4 w-4" />
-            Daftar Pesanan & Detail
+            Pesanan
           </button>
 
           <button
@@ -1241,7 +1266,18 @@ export default function App() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'recapitulation' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Calendar className="h-4 w-4" />
-            Rekapitulasi Penjualan
+            Data Penjualan
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('akun');
+              setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'akun' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
+          >
+            <UserIcon className="h-4 w-4" />
+            Akun
           </button>
 
           <button
@@ -1252,7 +1288,7 @@ export default function App() {
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-normal font-sans cursor-pointer transition-all ${activeTab === 'settings' ? 'bg-emerald-500 text-white font-normal shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white hover:bg-slate-900/60'}`}
           >
             <Settings2 className="h-4 w-4" />
-            Pengaturan Brand & Kanal
+            Pengaturan
           </button>
 
           <div className="pt-4 border-t border-slate-900">
@@ -1266,7 +1302,7 @@ export default function App() {
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-normal rounded-xl text-xs transition-transform transform active:scale-95 cursor-pointer shadow-sm"
             >
               <Plus className="h-3.5 w-3.5 text-slate-950 strike-2" />
-              Pencatatan Order Baru
+              Pesanan Baru
             </button>
           </div>
         </nav>
@@ -1356,6 +1392,13 @@ export default function App() {
             />
           )}
 
+          {activeTab === 'akun' && (
+            <AkunComponent
+              currentUser={currentUser}
+              currentUserProfile={userProfile}
+            />
+          )}
+
           {activeTab === 'settings' && (
             <SettingsComponent
               currentUser={currentUser}
@@ -1373,6 +1416,8 @@ export default function App() {
               onUpdateFont={handleUpdateFont}
               appFontWeight={appFontWeight}
               onUpdateFontWeight={handleUpdateFontWeight}
+              appFontSize={appFontSize}
+              onUpdateFontSize={handleUpdateFontSize}
               paymentMethods={paymentMethods}
               onUpdatePaymentMethods={updatePaymentMethods}
               pencatatList={pencatatList}

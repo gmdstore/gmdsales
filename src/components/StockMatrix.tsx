@@ -376,9 +376,6 @@ export default function StockMatrix({
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 font-sans flex items-center gap-2.5">
             <span>📦</span> Katalog Produk & Stok Sediaan
           </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Pusat komando pengelolaan produk, sediaan, harga pokok (HPP), variasi warna, dan klasifikasi grup.
-          </p>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-2.5 self-start sm:self-auto shrink-0">

@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, StockItem, Channel, Order, SIZES, AutoDiscount } from '../types';
 import { calculateOrderMetrics } from '../data';
-import { AlertTriangle, Plus, Trash2, Calendar, Clipboard, HelpCircle, AlertCircle, Check } from 'lucide-react';
+import { AlertTriangle, Plus, Trash2, Calendar, Clipboard, HelpCircle, AlertCircle, Check, Edit2, X } from 'lucide-react';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -37,6 +37,9 @@ interface CartItem {
   originalPrice?: number;
   discountAmount?: number;
   discountName?: string;
+  discountInputStr?: string;
+  isManualDiscount?: boolean;
+  isEditingDiscount?: boolean;
 }
 
 export default function OrderModal({
@@ -56,11 +59,11 @@ export default function OrderModal({
   // Basic properties
   const [orderNumber, setOrderNumber] = useState<string>('');
   const [channelId, setChannelId] = useState<string>('shopee');
-  const [paymentMethod, setPaymentMethod] = useState<string>(paymentMethods[0] || '');
+  const [paymentMethod, setPaymentMethod] = useState<string>('');
   const [discounts, setDiscounts] = useState<number>(0);
   const [showDiscountCalculator, setShowDiscountCalculator] = useState<boolean>(false);
   const [dateTime, setDateTime] = useState<string>('');
-  const [pencatat, setPencatat] = useState<string>('');
+  const [pencatat, setPencatat] = useState<string>(() => localStorage.getItem('lastPencatat') || '');
 
   // Shopping list cart state (start with 1 empty row)
   const [cart, setCart] = useState<CartItem[]>([
@@ -190,9 +193,9 @@ export default function OrderModal({
         // Reset values
         setOrderNumber('');
         setChannelId('shopee');
-        setPaymentMethod(paymentMethods[0] || '');
+        setPaymentMethod(''); // Will be auto-set by the effect below based on availablePaymentMethods frequency
         setDiscounts(0);
-        setPencatat(pencatatList[0] || '');
+        setPencatat(localStorage.getItem('lastPencatat') || pencatatList[0] || '');
         setStockError(null);
         setOrderNumberError(null);
         setCart([
@@ -266,7 +269,62 @@ export default function OrderModal({
     freeShippingMaxCap: 0,
     paymentMethods: ['Transfer']
   };
-  const availablePaymentMethods = selectedChannel.paymentMethods || [];
+  const baseAvailablePaymentMethods = selectedChannel.paymentMethods || [];
+
+  // Pre-calculate product sales frequency for the last 30 days across all channels
+  const productSalesFrequency = React.useMemo(() => {
+    const frequency: Record<string, number> = {};
+    if (!orders || orders.length === 0) return frequency;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    orders.forEach(o => {
+      try {
+        const orderDate = new Date(o.dateTime);
+        if (orderDate >= thirtyDaysAgo && o.products) {
+          o.products.forEach(item => {
+            if (item.productId) {
+              frequency[item.productId] = (frequency[item.productId] || 0) + (item.qty || 1);
+            }
+          });
+        }
+      } catch {
+        // ignore invalid dates
+      }
+    });
+    return frequency;
+  }, [orders]);
+
+  // Sort payment methods by frequency of use in the last 30 days
+  const availablePaymentMethods = React.useMemo(() => {
+    if (!orders || orders.length === 0) return baseAvailablePaymentMethods;
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentOrders = orders.filter(o => {
+      try {
+        const orderDate = new Date(o.dateTime);
+        return orderDate >= thirtyDaysAgo;
+      } catch {
+        return false;
+      }
+    });
+
+    const frequency: Record<string, number> = {};
+    recentOrders.forEach(o => {
+      if (o.paymentMethod) {
+        frequency[o.paymentMethod] = (frequency[o.paymentMethod] || 0) + 1;
+      }
+    });
+
+    return [...baseAvailablePaymentMethods].sort((a, b) => {
+      const freqA = frequency[a] || 0;
+      const freqB = frequency[b] || 0;
+      return freqB - freqA; // descending order
+    });
+  }, [baseAvailablePaymentMethods, orders]);
 
   // Sync payment method when channel changes
   useEffect(() => {
@@ -325,11 +383,11 @@ export default function OrderModal({
     setCart(next);
   };
 
-  // Search product change handler (Min 1 character trigger)
+  // Search product change handler
   const handleProductSearchTextChange = (index: number, val: string) => {
     const next = [...cart];
     next[index].searchQuery = val;
-    next[index].showDropdown = val.trim().length >= 1;
+    next[index].showDropdown = true;
     setCart(next);
   };
 
@@ -343,6 +401,8 @@ export default function OrderModal({
     next[index].imageUrl = product.imageUrl;
     next[index].searchQuery = product.name;
     next[index].showDropdown = false;
+    next[index].isManualDiscount = false;
+    next[index].discountInputStr = undefined;
     
     // Choose the first available size for this product
     const productSizes = product.sizes && product.sizes.length > 0 
@@ -364,6 +424,41 @@ export default function OrderModal({
       next[index].size = '';
     }
     
+    setCart(applyAutoDiscountsToCart(next, channelId));
+  };
+
+  const handleToggleEditDiscount = (index: number, isEditing: boolean) => {
+    const next = [...cart];
+    next[index].isEditingDiscount = isEditing;
+    // If we're closing the edit mode and the input is empty or just '%', revert to auto discount
+    if (!isEditing && (!next[index].discountInputStr || next[index].discountInputStr === '%')) {
+      next[index].isManualDiscount = false;
+      next[index].discountInputStr = '';
+    }
+    setCart(applyAutoDiscountsToCart(next, channelId));
+  };
+
+  const handleUpdateDiscountInput = (index: number, value: string) => {
+    const next = [...cart];
+    
+    // Auto-format the input value with thousand separators
+    let formattedValue = value;
+    const hasPercent = value.includes('%');
+    const numericOnly = value.replace(/[^0-9]/g, '');
+    
+    if (numericOnly) {
+      formattedValue = new Intl.NumberFormat('id-ID').format(parseInt(numericOnly, 10));
+      if (hasPercent) {
+        formattedValue += '%';
+      }
+    } else if (hasPercent) {
+      formattedValue = '%';
+    } else {
+      formattedValue = '';
+    }
+
+    next[index].discountInputStr = formattedValue;
+    next[index].isManualDiscount = true;
     setCart(applyAutoDiscountsToCart(next, channelId));
   };
 
@@ -424,36 +519,57 @@ export default function OrderModal({
       const matchedProduct = products.find(p => p.id === item.productId);
       if (!matchedProduct) return item;
 
-      // Find first matching active automatic discount rule
-      const discount = autoDiscounts.find(d => 
-        d.isActive &&
-        (d.channelIds.includes('all') || d.channelIds.includes(chanId)) &&
-        (d.productIds.includes('all') || d.productIds.includes(item.productId))
-      );
-
       const basePrice = matchedProduct.price; // original product master price
       let finalPrice = basePrice;
       let discountAmount = 0;
       let discountName = '';
+      let discountInputStr = item.discountInputStr;
 
-      if (discount) {
-        if (discount.type === 'percent') {
-          discountAmount = Math.round((basePrice * discount.value) / 100);
+      if (!item.isManualDiscount) {
+        // Find first matching active automatic discount rule
+        const discount = autoDiscounts?.find(d => 
+          d.isActive &&
+          (d.channelIds.includes('all') || d.channelIds.includes(chanId)) &&
+          (d.productIds.includes('all') || d.productIds.includes(item.productId))
+        );
+
+        if (discount) {
+          if (discount.type === 'percent') {
+            discountAmount = Math.round((basePrice * discount.value) / 100);
+            discountInputStr = discount.value + '%';
+          } else {
+            discountAmount = discount.value;
+            discountInputStr = discount.value.toString();
+          }
+          discountName = discount.name;
         } else {
-          discountAmount = discount.value;
+          discountInputStr = '';
         }
-        // Ensure discount doesn't make price negative
-        discountAmount = Math.min(discountAmount, basePrice);
-        finalPrice = basePrice - discountAmount;
-        discountName = discount.name;
+      } else {
+        // Calculate based on manual input
+        const str = item.discountInputStr || '';
+        if (str.endsWith('%')) {
+          const val = parseFloat(str.replace(/[^0-9]/g, ''));
+          if (!isNaN(val)) discountAmount = Math.round((basePrice * val) / 100);
+        } else {
+          const val = parseFloat(str.replace(/[^0-9]/g, ''));
+          if (!isNaN(val)) discountAmount = val;
+        }
+        discountName = 'Manual';
       }
+
+      // Ensure discount doesn't make price negative
+      if (isNaN(discountAmount) || discountAmount < 0) discountAmount = 0;
+      discountAmount = Math.min(discountAmount, basePrice);
+      finalPrice = basePrice - discountAmount;
 
       return {
         ...item,
         price: finalPrice,
         originalPrice: basePrice,
         discountAmount: discountAmount,
-        discountName: discountName
+        discountName: discountName,
+        discountInputStr: discountInputStr
       };
     });
   };
@@ -604,7 +720,7 @@ export default function OrderModal({
       />
 
       {/* Modal Surface Body Wrapper */}
-      <div className={`bg-white rounded-3xl w-full max-w-4xl shadow-xl border border-gray-100 z-10 transition-all duration-300 ${showSuccess ? 'max-h-fit overflow-hidden' : 'max-h-[88vh] overflow-y-auto'} flex flex-col scale-in relative`}>
+      <div className={`bg-white rounded-3xl w-full max-w-6xl shadow-xl border border-gray-100 z-10 transition-all duration-300 ${showSuccess ? 'max-h-fit overflow-hidden' : 'max-h-[88vh] overflow-y-auto'} flex flex-col scale-in relative`}>
         
         {/* Modal Header */}
         {!showSuccess && (
@@ -621,7 +737,7 @@ export default function OrderModal({
                 </>
               )}
             </h2>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               {editingOrder 
                 ? `Mengubah rincian transaksi #${editingOrder.orderNumber} dan memulihkan/menyesuaikan alokasi produk di gudang secara otomatis.`
                 : 'Formulir omnichannel cepat untuk mengurangi sediaan gudang instan.'}
@@ -650,7 +766,7 @@ export default function OrderModal({
 
         {/* Input Form Body */}
         {!showSuccess && (
-          <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-xs">
+          <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-sm">
           
           {/* Section 1: Transaction Coordinates info */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-start shadow-3xs">
@@ -659,13 +775,13 @@ export default function OrderModal({
             <div className="space-y-1.5 col-span-1">
               <label className="font-bold text-slate-700 block flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                Tanggal & Jam Entry
+                Tanggal & Jam
               </label>
               <input
                 type="datetime-local"
                 value={getDatetimeInputValue(dateTime)}
                 onChange={(e) => handleDateTimeChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
               />
             </div>
 
@@ -675,7 +791,7 @@ export default function OrderModal({
                 No. Pesanan ID
                 <span className="text-rose-500 font-extrabold">*</span>
                 {orderNumberError && (
-                  <span className="text-[9px] text-rose-500 font-extrabold block bg-rose-50 px-2 py-0.5 rounded border border-rose-100/80 animate-pulse">
+                  <span className="text-sm text-rose-500 font-extrabold block bg-rose-50 px-2.5 py-0.5 rounded border border-rose-100/80 animate-pulse">
                     Spasi/ID Ganda Terdeteksi!
                   </span>
                 )}
@@ -693,12 +809,12 @@ export default function OrderModal({
                   })()}-XYZ`}
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
-                  className={`flex-1 px-3 py-2 bg-white border rounded-xl text-xs font-mono font-black focus:outline-none focus:ring-1 focus:ring-emerald-500 tracking-wider transition-all ${orderNumberError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800' : 'border-slate-200 text-slate-800'}`}
+                  className={`flex-1 px-3 py-2 bg-white border rounded-xl text-sm font-mono font-black focus:outline-none focus:ring-1 focus:ring-emerald-500 tracking-wider transition-all ${orderNumberError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800' : 'border-slate-200 text-slate-800'}`}
                 />
                 <button
                   type="button"
                   onClick={handlePasteOrderNumber}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-[10px] font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-sm font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
                   title="Salin No Pesanan otomatis dari clipboard (atau klik untuk buat dummy id)"
                 >
                   <Clipboard className="h-3.5 w-3.5 text-slate-500" />
@@ -717,7 +833,7 @@ export default function OrderModal({
                   setChannelId(nextChan);
                   setCart(prev => applyAutoDiscountsToCart(prev, nextChan));
                 }}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 shadow-3xs cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-extrabold text-slate-800 shadow-3xs cursor-pointer"
               >
                 {channels.map(chan => (
                   <option key={chan.id} value={chan.id}>{chan.name}</option>
@@ -730,8 +846,11 @@ export default function OrderModal({
               <label className="font-bold text-slate-700 block">Pencatat / PIC</label>
               <select
                 value={pencatat}
-                onChange={(e) => setPencatat(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 shadow-3xs cursor-pointer"
+                onChange={(e) => {
+                  setPencatat(e.target.value);
+                  localStorage.setItem('lastPencatat', e.target.value);
+                }}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-extrabold text-slate-800 shadow-3xs cursor-pointer"
               >
                 <option value="">-- Pilih PIC --</option>
                 {pencatatList.map(p => (
@@ -755,6 +874,10 @@ export default function OrderModal({
                   const nameMatch = p.name.toLowerCase().includes(q);
                   const skuMatch = p.sku ? p.sku.toLowerCase().includes(q) : false;
                   return nameMatch || skuMatch;
+                }).sort((a, b) => {
+                  const freqA = productSalesFrequency[a.id] || 0;
+                  const freqB = productSalesFrequency[b.id] || 0;
+                  return freqB - freqA; // descending order
                 });
 
                 // Calculate remaining stock
@@ -804,33 +927,53 @@ export default function OrderModal({
                   >
                     
                     {/* Column 1: Autocomplete Product name */}
-                    <div className="flex-1 min-w-[210px] relative">
+                    <div className="flex-1 min-w-[280px] relative">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Nama Produk</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Nama Produk</label>
                       )}
                       <input
                         type="text"
                         placeholder="Ketik nama produk..."
                         value={item.searchQuery}
+                        onFocus={() => {
+                          setCart(prev => {
+                            const next = [...prev];
+                            if (next[idx]) {
+                              next[idx].showDropdown = true;
+                            }
+                            return next;
+                          });
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => {
+                            setCart(prev => {
+                              const next = [...prev];
+                              if (next[idx]) {
+                                 next[idx].showDropdown = false;
+                              }
+                              return next;
+                            });
+                          }, 200);
+                        }}
                         onChange={(e) => handleProductSearchTextChange(idx, e.target.value)}
-                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
 
                       {/* Floating Autocomplete Dropdown List */}
                       {item.showDropdown && filteredSearchProducts.length > 0 && (
-                        <div className={`absolute left-0 right-0 ${idx === 0 ? 'top-12' : 'top-9'} bg-white rounded-xl shadow-lg border border-slate-200 z-30 max-h-36 overflow-y-auto py-1 text-left animate-fade-in`}>
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-30 max-h-64 overflow-y-auto py-1 text-left animate-fade-in">
                           {filteredSearchProducts.map(p => (
                             <button
                               key={p.id}
                               type="button"
                               onClick={() => handleSelectProduct(idx, p)}
-                              className="w-full px-3 py-1.5 text-left text-[11px] font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
+                              className="w-full px-3 py-2 text-left text-sm font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {p.name}
                               </span>
                               {p.sku && (
-                                <span className="text-[9px] font-mono font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
+                                <span className="text-sm font-mono font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
                                   {p.sku}
                                 </span>
                               )}
@@ -841,15 +984,15 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 2: Color selection */}
-                    <div className="w-[110px]">
+                    <div className="w-[130px]">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Warna</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Warna</label>
                       )}
                       <select
                         disabled={!isProductSelected}
                         value={item.color}
                         onChange={(e) => handleUpdateColor(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                       >
                         {!isProductSelected && <option value="">Pilih Produk</option>}
                         {isProductSelected && !item.color && <option value="">Pilih Warna</option>}
@@ -860,15 +1003,15 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 3: Sizes dropdown */}
-                    <div className="w-[75px]">
+                    <div className="w-[90px]">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Ukuran</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Ukuran</label>
                       )}
                       <select
                         disabled={!isProductSelected}
                         value={item.size}
                         onChange={(e) => handleUpdateSize(idx, e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 cursor-pointer"
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 cursor-pointer"
                       >
                         {!isProductSelected && <option value="">-</option>}
                         {isProductSelected && !item.size && <option value="">Pilih</option>}
@@ -889,9 +1032,9 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 4: Qty Input */}
-                    <div className="w-[65px]">
+                    <div className="w-[100px]">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Qty</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Qty</label>
                       )}
                       <input
                         type="number"
@@ -908,16 +1051,16 @@ export default function OrderModal({
                             e.preventDefault();
                           }
                         }}
-                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
 
                     {/* Column 4.5: Available Stock Info */}
-                    <div className="w-[80px] text-center">
+                    <div className="w-[100px] text-center">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2">Sisa Stok</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Sisa Stok</label>
                       )}
-                      <span className={`inline-block w-full py-1.5 px-2 rounded-xl text-xs font-mono font-extrabold text-center border ${
+                      <span className={`inline-block w-full py-2 px-2.5 rounded-xl text-sm font-mono font-extrabold text-center border ${
                         !isProductSelected 
                           ? 'bg-slate-100 text-slate-500 border-slate-205'
                           : availableStockStr === '0 pcs' 
@@ -931,43 +1074,69 @@ export default function OrderModal({
                     </div>
 
                     {/* Column 4.6: Automatic Discount Column */}
-                    <div className="w-[125px] text-center flex flex-col justify-center items-center">
+                    <div className="w-[150px] relative">
                       {idx === 0 && (
-                        <label className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide mb-2 leading-none text-center">Diskon Auto</label>
+                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2 text-center">Diskon</label>
                       )}
-                      {isProductSelected && item.discountAmount && item.discountAmount > 0 ? (
-                        <div className="flex flex-col items-center justify-center leading-none">
-                          <span className="text-[8.5px] text-rose-600 bg-rose-50 border border-rose-100 font-black px-1.5 py-1 rounded-md max-w-[120px] truncate block" title={item.discountName}>
-                            🏷️ -{formatRp(item.discountAmount * item.qty)}
-                          </span>
-                          <span className="text-[8px] text-slate-500 font-bold truncate max-w-[120px] mt-1 block text-center" title={item.discountName}>
-                            {item.discountName}
-                          </span>
+                      {isProductSelected ? (
+                        <div className="w-full px-1">
+                          {item.isEditingDiscount ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                placeholder="0 / 10%"
+                                value={item.discountInputStr !== undefined ? item.discountInputStr : ''}
+                                onChange={(e) => handleUpdateDiscountInput(idx, e.target.value)}
+                                autoFocus
+                                className="w-full px-2.5 py-2 text-center bg-white border border-slate-200 rounded-xl text-sm font-bold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500 shadow-3xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleEditDiscount(idx, false)}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200 shadow-3xs bg-emerald-50/50"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="w-full px-2.5 py-2 text-center bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-rose-600 shadow-3xs flex justify-between items-center group cursor-pointer hover:bg-white transition-colors"
+                              onClick={() => handleToggleEditDiscount(idx, true)}
+                              title={item.discountName}
+                            >
+                              <span className="truncate flex-1 text-center">
+                                {item.discountInputStr ? item.discountInputStr : (item.discountAmount && item.discountAmount > 0 ? `-${formatRp(item.discountAmount)}` : '-')}
+                              </span>
+                              <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-rose-500 flex-shrink-0 ml-1" />
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <span className={`text-xs font-bold text-slate-400 block text-center ${idx === 0 ? 'mt-2.5' : ''}`}>-</span>
+                        <div className="w-full px-1 py-2">
+                          <span className="text-sm font-bold text-slate-400 block text-center">-</span>
+                        </div>
                       )}
                     </div>
 
                     {/* Column 5: Locked price and Subtotal value */}
-                    <div className="w-[135px] text-right font-mono pr-1 flex flex-col justify-center gap-0.5">
+                    <div className="w-[160px] text-right font-mono pr-1 flex flex-col justify-center gap-0.5">
                       {idx === 0 && (
-                        <span className="block text-[9px] text-slate-600 font-extrabold uppercase tracking-wide leading-none mb-2">SUBTOTAL</span>
+                        <span className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide leading-none mb-2">SUBTOTAL</span>
                       )}
                       <div className="flex items-center justify-end gap-2">
                         {isProductSelected ? (
                           <div className="flex flex-col items-end leading-none">
                             {item.discountAmount && item.discountAmount > 0 ? (
-                              <span className="text-[10px] text-slate-500 line-through font-normal mb-1">
+                              <span className="text-sm text-slate-500 line-through font-normal mb-1">
                                 {formatRp((item.originalPrice || item.price + item.discountAmount) * item.qty)}
                               </span>
                             ) : null}
-                            <span className="text-xs font-black text-slate-950 leading-none">
+                            <span className="text-sm font-black text-slate-950 leading-none">
                               {formatRp(item.price * item.qty)}
                             </span>
                           </div>
                         ) : (
-                          <span className={`text-xs font-bold text-slate-400 block ${idx === 0 ? 'mt-2' : ''}`}>-</span>
+                          <span className={`text-sm font-bold text-slate-400 block ${idx === 0 ? 'mt-2' : ''}`}>-</span>
                         )}
                       </div>
                     </div>
@@ -976,7 +1145,7 @@ export default function OrderModal({
                     <div className="absolute top-2 right-2 md:relative md:top-auto md:right-auto flex flex-col items-center">
                       {idx === 0 ? (
                         <>
-                          <label className="hidden md:block text-[9px] text-slate-400 font-bold uppercase tracking-wide mb-2 opacity-0 select-none pointer-events-none">Aksi</label>
+                          <label className="hidden md:block text-sm text-slate-400 font-bold uppercase tracking-wide mb-2 opacity-0 select-none pointer-events-none">Aksi</label>
                           <button
                             type="button"
                             onClick={handleAddCartRow}
@@ -1009,28 +1178,28 @@ export default function OrderModal({
             
             {/* Store Discounts & COD checking coordinates */}
             <div className="space-y-4">
-              <h4 className="font-extrabold text-slate-900 border-b border-slate-100 pb-1.5 text-xs uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
+              <h4 className="font-extrabold text-slate-900 border-b border-slate-100 pb-1.5 text-sm uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block text-xs">Potongan Toko (Rp):</label>
+                  <label className="font-bold text-slate-700 block text-sm">Potongan Toko (Rp):</label>
                   <input
                     type="number"
                     min="0"
                     step="1000"
                     value={discounts}
                     onChange={(e) => setDiscounts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
 
                 {/* Payment Method selector */}
                 <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block text-xs">Metode Pembayaran:</label>
+                  <label className="font-bold text-slate-700 block text-sm">Metode Pembayaran:</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
                     {availablePaymentMethods.map(m => (
                       <option key={m} value={m}>{m}</option>
@@ -1043,12 +1212,12 @@ export default function OrderModal({
             {/* F-04 Automatic Fees Calculator Recap ledger */}
             <div className={`bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
               <div className="flex items-center justify-between border-b border-slate-200 pb-2 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
-                <h4 className="font-extrabold text-slate-800 text-xs">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
-                <span className="text-[9px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
+                <h4 className="font-extrabold text-slate-800 text-sm">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
+                <span className="text-sm text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2.5 py-0.5 rounded-md">{selectedChannel.name}</span>
               </div>
 
               {showDiscountCalculator && (
-                <div className="space-y-2.5 text-slate-600 font-bold font-mono text-[11px] leading-relaxed">
+                <div className="space-y-2.5 text-slate-600 font-bold font-mono text-sm leading-relaxed">
                   {/* Harga Produk Awal */}
                   <div className="flex justify-between text-slate-500">
                     <span>Harga Produk (Awal):</span>
@@ -1062,7 +1231,7 @@ export default function OrderModal({
                         <span>Diskon Otomatis:</span>
                         <span>-{formatRp(cart.reduce((sum, item) => sum + ((item.discountAmount ?? 0) * item.qty), 0))}</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 font-sans mt-1.5 space-y-1 pl-2">
+                      <div className="text-sm text-slate-400 font-sans mt-1.5 space-y-1 pl-2">
                         {cart.filter(item => (item.discountAmount ?? 0) > 0).map((item, idx) => (
                           <div key={idx} className="flex justify-between font-medium">
                             <span>• {item.discountName} ({item.qty}x)</span>
@@ -1112,7 +1281,7 @@ export default function OrderModal({
                 </div>
               )}
               
-                <div className="flex justify-between border-t border-slate-300 pt-3 text-xs text-emerald-800 font-black font-sans">
+                <div className="flex justify-between border-t border-slate-300 pt-3 text-sm text-emerald-800 font-black font-sans">
                   <span>Omset Bersih:</span>
                   <span>{formatRp(Math.max(0, grossTotalPrice - discounts - totalDeductions))}</span>
                 </div>
