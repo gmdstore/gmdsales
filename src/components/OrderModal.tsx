@@ -85,6 +85,7 @@ export default function OrderModal({
   const [orderNumberError, setOrderNumberError] = useState<string | null>(null);
   const [stockError, setStockError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
+  const [confirmDiscountIndex, setConfirmDiscountIndex] = useState<number | null>(null);
 
   // Validate Stock in real-time
   useEffect(() => {
@@ -148,6 +149,7 @@ export default function OrderModal({
         
         const mappedCart = editingOrder.products.map(p => {
           const matchedProduct = products.find(prod => prod.id === p.productId);
+          const isManual = p.discountName === 'Manual' || (!p.discountName && p.discountAmount ? p.discountAmount > 0 : false);
           return {
             productId: p.productId,
             productName: matchedProduct ? matchedProduct.name : 'Produk Master',
@@ -161,7 +163,9 @@ export default function OrderModal({
             showDropdown: false,
             originalPrice: p.originalPrice,
             discountAmount: p.discountAmount,
-            discountName: p.discountName
+            discountName: p.discountName,
+            isManualDiscount: isManual,
+            discountInputStr: isManual ? (p.discountAmount ? p.discountAmount.toString() : '') : undefined
           };
         });
         
@@ -477,7 +481,7 @@ export default function OrderModal({
   const handleUpdateQty = (index: number, qty: number) => {
     const next = [...cart];
     next[index].qty = Math.max(1, qty);
-    setCart(next);
+    setCart(applyAutoDiscountsToCart(next, channelId));
   };
 
   // Dynamically calculate subtotals, gross omset before fees
@@ -529,8 +533,8 @@ export default function OrderModal({
         // Find first matching active automatic discount rule
         const discount = autoDiscounts?.find(d => 
           d.isActive &&
-          (d.channelIds.includes('all') || d.channelIds.includes(chanId)) &&
-          (d.productIds.includes('all') || d.productIds.includes(item.productId))
+          Array.isArray(d.channelIds) && (d.channelIds.includes('all') || d.channelIds.includes(chanId)) &&
+          Array.isArray(d.productIds) && (d.productIds.includes('all') || d.productIds.includes(item.productId))
         );
 
         if (discount) {
@@ -766,32 +770,32 @@ export default function OrderModal({
 
         {/* Input Form Body */}
         {!showSuccess && (
-          <form onSubmit={handleSaveSubmit} className="p-6 space-y-6 flex-1 text-sm">
+          <form onSubmit={handleSaveSubmit} className="p-5 space-y-5 flex-1 text-xs">
           
           {/* Section 1: Transaction Coordinates info */}
-          <div className="bg-slate-50 border border-slate-200/80 rounded-3xl p-5 grid grid-cols-1 md:grid-cols-5 gap-4 items-start shadow-3xs">
+          <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-5 gap-3.5 items-start shadow-3xs">
             
             {/* Datetime Field Defaults Automatic */}
-            <div className="space-y-1.5 col-span-1">
-              <label className="font-bold text-slate-700 block flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5 text-slate-400" />
+            <div className="space-y-1 col-span-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-slate-400" />
                 Tanggal & Jam
               </label>
               <input
                 type="datetime-local"
                 value={getDatetimeInputValue(dateTime)}
                 onChange={(e) => handleDateTimeChange(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-center cursor-pointer"
               />
             </div>
 
             {/* Central Transaction Invoice No Validation */}
-            <div className="space-y-1.5 col-span-2">
-              <label className="font-bold text-slate-700 block flex items-center gap-1.5">
+            <div className="space-y-1 col-span-2">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1.5">
                 No. Pesanan ID
                 <span className="text-rose-500 font-extrabold">*</span>
                 {orderNumberError && (
-                  <span className="text-sm text-rose-500 font-extrabold block bg-rose-50 px-2.5 py-0.5 rounded border border-rose-100/80 animate-pulse">
+                  <span className="text-[10px] text-rose-500 font-extrabold block bg-rose-50 px-2 py-0.5 rounded border border-rose-100/80 animate-pulse">
                     Spasi/ID Ganda Terdeteksi!
                   </span>
                 )}
@@ -809,23 +813,23 @@ export default function OrderModal({
                   })()}-XYZ`}
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value)}
-                  className={`flex-1 px-3 py-2 bg-white border rounded-xl text-sm font-mono font-black focus:outline-none focus:ring-1 focus:ring-emerald-500 tracking-wider transition-all ${orderNumberError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800' : 'border-slate-200 text-slate-800'}`}
+                  className={`flex-1 px-2.5 py-1.5 bg-white border rounded-lg text-xs font-mono font-bold focus:outline-none focus:ring-1 focus:ring-emerald-500 tracking-wider transition-all ${orderNumberError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30 text-rose-800' : 'border-slate-200 text-slate-800'}`}
                 />
                 <button
                   type="button"
                   onClick={handlePasteOrderNumber}
-                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl text-sm font-black flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
+                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-all shadow-3xs"
                   title="Salin No Pesanan otomatis dari clipboard (atau klik untuk buat dummy id)"
                 >
-                  <Clipboard className="h-3.5 w-3.5 text-slate-500" />
+                  <Clipboard className="h-3 w-3 text-slate-500" />
                   PASTE
                 </button>
               </div>
             </div>
 
             {/* Sales Medium Choice */}
-            <div className="space-y-1.5 col-span-1">
-              <label className="font-bold text-slate-700 block">Saluran Penjualan</label>
+            <div className="space-y-1 col-span-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Saluran Penjualan</label>
               <select
                 value={channelId}
                 onChange={(e) => {
@@ -833,7 +837,7 @@ export default function OrderModal({
                   setChannelId(nextChan);
                   setCart(prev => applyAutoDiscountsToCart(prev, nextChan));
                 }}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-extrabold text-slate-800 shadow-3xs cursor-pointer"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 shadow-3xs cursor-pointer"
               >
                 {channels.map(chan => (
                   <option key={chan.id} value={chan.id}>{chan.name}</option>
@@ -842,15 +846,15 @@ export default function OrderModal({
             </div>
 
             {/* Pencatat / PIC Choice */}
-            <div className="space-y-1.5 col-span-1">
-              <label className="font-bold text-slate-700 block">Pencatat / PIC</label>
+            <div className="space-y-1 col-span-1">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Pencatat / PIC</label>
               <select
                 value={pencatat}
                 onChange={(e) => {
                   setPencatat(e.target.value);
                   localStorage.setItem('lastPencatat', e.target.value);
                 }}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-extrabold text-slate-800 shadow-3xs cursor-pointer"
+                className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 shadow-3xs cursor-pointer"
               >
                 <option value="">-- Pilih PIC --</option>
                 {pencatatList.map(p => (
@@ -918,18 +922,17 @@ export default function OrderModal({
                 return (
                   <div 
                     key={idx} 
-                    className={`p-3.5 rounded-2xl relative flex flex-col md:flex-row md:items-end gap-3 shadow-sm transition-all border ${
+                    className={`p-3 rounded-xl relative flex flex-col md:flex-row md:items-end gap-2.5 shadow-3xs transition-all border ${
                       item.qty > 1 
                         ? 'bg-amber-50/60 border-amber-300 hover:border-amber-400 ring-1 ring-amber-400/20' 
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs'
                     }`}
                     style={{ zIndex: item.showDropdown ? 50 : (cart.length - idx) }}
                   >
-                    
-                    {/* Column 1: Autocomplete Product name */}
+                                 {/* Column 1: Autocomplete Product name */}
                     <div className="flex-1 min-w-[280px] relative">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Nama Produk</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Nama Produk</label>
                       )}
                       <input
                         type="text"
@@ -956,24 +959,24 @@ export default function OrderModal({
                           }, 200);
                         }}
                         onChange={(e) => handleProductSearchTextChange(idx, e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors shadow-3xs"
                       />
 
                       {/* Floating Autocomplete Dropdown List */}
                       {item.showDropdown && filteredSearchProducts.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-slate-200 z-30 max-h-64 overflow-y-auto py-1 text-left animate-fade-in">
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-slate-200 z-30 max-h-64 overflow-y-auto py-1 text-left animate-fade-in">
                           {filteredSearchProducts.map(p => (
                             <button
                               key={p.id}
                               type="button"
                               onClick={() => handleSelectProduct(idx, p)}
-                              className="w-full px-3 py-2 text-left text-sm font-bold hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
+                              className="w-full px-3 py-1.5 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 block truncate cursor-pointer flex items-center justify-between"
                             >
                               <span className="truncate">
                                 {p.name}
                               </span>
                               {p.sku && (
-                                <span className="text-sm font-mono font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
+                                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
                                   {p.sku}
                                 </span>
                               )}
@@ -986,13 +989,13 @@ export default function OrderModal({
                     {/* Column 2: Color selection */}
                     <div className="w-[130px]">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Warna</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Warna</label>
                       )}
                       <select
                         disabled={!isProductSelected}
                         value={item.color}
                         onChange={(e) => handleUpdateColor(idx, e.target.value)}
-                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors shadow-3xs"
                       >
                         {!isProductSelected && <option value="">Pilih Produk</option>}
                         {isProductSelected && !item.color && <option value="">Pilih Warna</option>}
@@ -1005,13 +1008,13 @@ export default function OrderModal({
                     {/* Column 3: Sizes dropdown */}
                     <div className="w-[90px]">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Ukuran</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Ukuran</label>
                       )}
                       <select
                         disabled={!isProductSelected}
                         value={item.size}
                         onChange={(e) => handleUpdateSize(idx, e.target.value)}
-                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 cursor-pointer"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-semibold text-slate-700 text-center disabled:opacity-40 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors shadow-3xs"
                       >
                         {!isProductSelected && <option value="">-</option>}
                         {isProductSelected && !item.size && <option value="">Pilih</option>}
@@ -1034,7 +1037,7 @@ export default function OrderModal({
                     {/* Column 4: Qty Input */}
                     <div className="w-[100px]">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Qty</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Qty</label>
                       )}
                       <input
                         type="number"
@@ -1051,22 +1054,22 @@ export default function OrderModal({
                             e.preventDefault();
                           }
                         }}
-                        className="w-full px-2.5 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-slate-800 text-center disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-semibold text-slate-700 text-center disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-colors shadow-3xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                     </div>
 
                     {/* Column 4.5: Available Stock Info */}
                     <div className="w-[100px] text-center">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2">Sisa Stok</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Sisa Stok</label>
                       )}
-                      <span className={`inline-block w-full py-2 px-2.5 rounded-xl text-sm font-mono font-extrabold text-center border ${
+                      <span className={`inline-block w-full py-1.5 px-2 rounded-lg text-xs font-mono font-semibold text-center border transition-colors shadow-3xs ${
                         !isProductSelected 
                           ? 'bg-slate-100 text-slate-500 border-slate-205'
                           : availableStockStr === '0 pcs' 
                             ? 'bg-rose-50 text-rose-600 border-rose-200' 
                             : parseInt(availableStockStr) < 5 
-                              ? 'bg-amber-50 text-amber-600 border-amber-250 font-black' 
+                              ? 'bg-amber-50 text-amber-600 border-amber-250 font-semibold' 
                               : 'bg-emerald-50 text-emerald-700 border-emerald-250'
                       }`}>
                         {availableStockStr}
@@ -1076,7 +1079,7 @@ export default function OrderModal({
                     {/* Column 4.6: Automatic Discount Column */}
                     <div className="w-[150px] relative">
                       {idx === 0 && (
-                        <label className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide mb-2 text-center">Diskon</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 text-center">Diskon</label>
                       )}
                       {isProductSelected ? (
                         <div className="w-full px-1">
@@ -1087,33 +1090,45 @@ export default function OrderModal({
                                 placeholder="0 / 10%"
                                 value={item.discountInputStr !== undefined ? item.discountInputStr : ''}
                                 onChange={(e) => handleUpdateDiscountInput(idx, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    setConfirmDiscountIndex(idx);
+                                  }
+                                }}
                                 autoFocus
-                                className="w-full px-2.5 py-2 text-center bg-white border border-slate-200 rounded-xl text-sm font-bold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500 shadow-3xs"
+                                className="w-full px-2 py-1.5 text-center bg-white border border-slate-200 rounded-lg text-xs font-medium text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:border-rose-500 transition-colors shadow-3xs"
                               />
                               <button
                                 type="button"
-                                onClick={() => handleToggleEditDiscount(idx, false)}
-                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200 shadow-3xs bg-emerald-50/50"
+                                onClick={() => setConfirmDiscountIndex(idx)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors border border-emerald-200 shadow-3xs bg-emerald-50/50 cursor-pointer"
                               >
                                 <Check className="w-3 h-3" />
                               </button>
                             </div>
                           ) : (
                             <div 
-                              className="w-full px-2.5 py-2 text-center bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-rose-600 shadow-3xs flex justify-between items-center group cursor-pointer hover:bg-white transition-colors"
-                              onClick={() => handleToggleEditDiscount(idx, true)}
+                              className="w-full pl-2.5 pr-1 py-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-rose-600 shadow-xs flex justify-between items-center"
                               title={item.discountName}
                             >
-                              <span className="truncate flex-1 text-center">
+                              <span className="truncate flex-1 text-center pr-1 select-none">
                                 {item.discountInputStr ? item.discountInputStr : (item.discountAmount && item.discountAmount > 0 ? `-${formatRp(item.discountAmount)}` : '-')}
                               </span>
-                              <Edit2 className="w-3 h-3 text-slate-400 group-hover:text-rose-500 flex-shrink-0 ml-1" />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleEditDiscount(idx, true)}
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-all cursor-pointer flex-shrink-0"
+                                title="Edit diskon manual"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
                             </div>
                           )}
                         </div>
                       ) : (
-                        <div className="w-full px-1 py-2">
-                          <span className="text-sm font-bold text-slate-400 block text-center">-</span>
+                        <div className="w-full px-1 py-1.5">
+                          <span className="text-xs font-semibold text-slate-400 block text-center">-</span>
                         </div>
                       )}
                     </div>
@@ -1121,22 +1136,22 @@ export default function OrderModal({
                     {/* Column 5: Locked price and Subtotal value */}
                     <div className="w-[160px] text-right font-mono pr-1 flex flex-col justify-center gap-0.5">
                       {idx === 0 && (
-                        <span className="block text-sm text-slate-600 font-extrabold uppercase tracking-wide leading-none mb-2">SUBTOTAL</span>
+                        <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider leading-none mb-1.5">SUBTOTAL</span>
                       )}
                       <div className="flex items-center justify-end gap-2">
                         {isProductSelected ? (
                           <div className="flex flex-col items-end leading-none">
                             {item.discountAmount && item.discountAmount > 0 ? (
-                              <span className="text-sm text-slate-500 line-through font-normal mb-1">
+                              <span className="text-[10px] text-slate-500 line-through font-normal mb-1">
                                 {formatRp((item.originalPrice || item.price + item.discountAmount) * item.qty)}
                               </span>
                             ) : null}
-                            <span className="text-sm font-black text-slate-950 leading-none">
+                            <span className="text-xs font-bold text-slate-950 leading-none">
                               {formatRp(item.price * item.qty)}
                             </span>
                           </div>
                         ) : (
-                          <span className={`text-sm font-bold text-slate-400 block ${idx === 0 ? 'mt-2' : ''}`}>-</span>
+                          <span className={`text-xs font-bold text-slate-400 block ${idx === 0 ? 'mt-1.5' : ''}`}>-</span>
                         )}
                       </div>
                     </div>
@@ -1145,14 +1160,14 @@ export default function OrderModal({
                     <div className="absolute top-2 right-2 md:relative md:top-auto md:right-auto flex flex-col items-center">
                       {idx === 0 ? (
                         <>
-                          <label className="hidden md:block text-sm text-slate-400 font-bold uppercase tracking-wide mb-2 opacity-0 select-none pointer-events-none">Aksi</label>
+                          <label className="hidden md:block text-xs text-slate-400 font-bold uppercase tracking-wide mb-1.5 opacity-0 select-none pointer-events-none">Aksi</label>
                           <button
                             type="button"
                             onClick={handleAddCartRow}
                             className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-full bg-white border border-slate-200 hover:border-emerald-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
                             title="Tambah baris item baru"
                           >
-                            <Plus className="h-3.5 w-3.5" />
+                            <Plus className="h-3 w-3" />
                           </button>
                         </>
                       ) : (
@@ -1162,7 +1177,7 @@ export default function OrderModal({
                           className="p-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-full bg-white border border-slate-200 hover:border-rose-200 cursor-pointer transition-all shadow-3xs hover:scale-105 active:scale-95"
                           title="Hapus baris item"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3 w-3" />
                         </button>
                       )}
                     </div>
@@ -1174,32 +1189,32 @@ export default function OrderModal({
           </div>
 
           {/* Section 3: Financial settings discounts & COD switch */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start border-t border-slate-150 pt-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start border-t border-slate-150 pt-4">
             
             {/* Store Discounts & COD checking coordinates */}
             <div className="space-y-4">
-              <h4 className="font-extrabold text-slate-900 border-b border-slate-100 pb-1.5 text-sm uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
+              <h4 className="font-extrabold text-slate-500 border-b border-slate-100 pb-1 text-xs uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
               
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block text-sm">Potongan Toko (Rp):</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Potongan Toko (Rp):</label>
                   <input
                     type="number"
                     min="0"
                     step="1000"
                     value={discounts}
                     onChange={(e) => setDiscounts(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-mono font-extrabold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
 
                 {/* Payment Method selector */}
-                <div className="space-y-1.5">
-                  <label className="font-bold text-slate-700 block text-sm">Metode Pembayaran:</label>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Metode Pembayaran:</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
                     {availablePaymentMethods.map(m => (
                       <option key={m} value={m}>{m}</option>
@@ -1210,14 +1225,14 @@ export default function OrderModal({
             </div>
 
             {/* F-04 Automatic Fees Calculator Recap ledger */}
-            <div className={`bg-slate-50 border border-slate-200 rounded-3xl p-5 space-y-4 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
-                <h4 className="font-extrabold text-slate-800 text-sm">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
-                <span className="text-sm text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2.5 py-0.5 rounded-md">{selectedChannel.name}</span>
+            <div className={`bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
+                <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
+                <span className="text-[10px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
               </div>
 
               {showDiscountCalculator && (
-                <div className="space-y-2.5 text-slate-600 font-bold font-mono text-sm leading-relaxed">
+                <div className="space-y-2 text-slate-600 font-bold font-mono text-xs leading-relaxed">
                   {/* Harga Produk Awal */}
                   <div className="flex justify-between text-slate-500">
                     <span>Harga Produk (Awal):</span>
@@ -1226,12 +1241,12 @@ export default function OrderModal({
 
                   {/* Detail Diskon Otomatis */}
                   {cart.reduce((sum, item) => sum + ((item.discountAmount ?? 0) * item.qty), 0) > 0 && (
-                    <div className="bg-rose-50/50 rounded-xl p-2.5 border border-rose-100/40">
+                    <div className="bg-rose-50/50 rounded-lg p-2 border border-rose-100/40">
                       <div className="flex justify-between text-rose-600 font-extrabold">
                         <span>Diskon Otomatis:</span>
                         <span>-{formatRp(cart.reduce((sum, item) => sum + ((item.discountAmount ?? 0) * item.qty), 0))}</span>
                       </div>
-                      <div className="text-sm text-slate-400 font-sans mt-1.5 space-y-1 pl-2">
+                      <div className="text-[11px] text-slate-400 font-sans mt-1 space-y-0.5 pl-2">
                         {cart.filter(item => (item.discountAmount ?? 0) > 0).map((item, idx) => (
                           <div key={idx} className="flex justify-between font-medium">
                             <span>• {item.discountName} ({item.qty}x)</span>
@@ -1257,7 +1272,7 @@ export default function OrderModal({
                   </div>
 
                   {/* Fees */}
-                  <div className="flex justify-between border-t border-slate-150 pt-2 text-slate-500 font-medium">
+                  <div className="flex justify-between border-t border-slate-150 pt-1.5 text-slate-500 font-medium">
                     <span>Komisi ({selectedChannel.commissionPercent}%):</span>
                     <span>{commission > 0 ? `-${formatRp(commission)}` : '-'}</span>
                   </div>
@@ -1274,14 +1289,14 @@ export default function OrderModal({
                     <span>{freeShippingSubsidy > 0 ? `-${formatRp(freeShippingSubsidy)}` : '-'}</span>
                   </div>
                   {/* Total Deductions */}
-                  <div className="flex justify-between border-t border-slate-200 pt-2.5 text-slate-750 font-sans font-bold">
+                  <div className="flex justify-between border-t border-slate-200 pt-2 text-slate-750 font-sans font-bold">
                     <span>Total Pemotongan:</span>
                     <span className="font-extrabold text-rose-600">-{formatRp(totalDeductions)}</span>
                   </div>
                 </div>
               )}
               
-                <div className="flex justify-between border-t border-slate-300 pt-3 text-sm text-emerald-800 font-black font-sans">
+                <div className="flex justify-between border-t border-slate-300 pt-2 text-xs text-emerald-800 font-black font-sans">
                   <span>Omset Bersih:</span>
                   <span>{formatRp(Math.max(0, grossTotalPrice - discounts - totalDeductions))}</span>
                 </div>
@@ -1291,8 +1306,8 @@ export default function OrderModal({
 
           {/* STOCK ERROR BANNER INSTANT BLOCK */}
           {stockError && (
-            <div className="bg-rose-50 border border-rose-200 p-4.5 rounded-2xl text-rose-800 flex items-start gap-2.5 animate-bounce shadow-sm">
-              <AlertTriangle className="h-5 w-5 text-rose-600 flex-shrink-0 mt-0.5" />
+            <div className="bg-rose-50 border border-rose-200 p-4 rounded-xl text-rose-800 flex items-start gap-2 animate-bounce shadow-sm text-xs">
+              <AlertTriangle className="h-4 w-4 text-rose-600 flex-shrink-0 mt-0.5" />
               <div>
                 <span className="font-black text-rose-900 block">GAGAL SIMPAN: Masalah Integritas Gudang</span>
                 <span className="font-mono mt-1 block leading-relaxed">{stockError}</span>
@@ -1302,25 +1317,25 @@ export default function OrderModal({
 
           {/* Duplicates/Validations Warning banner */}
           {orderNumberError && (
-            <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl text-amber-900 flex items-center gap-2.5 shadow-3xs">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
+            <div className="bg-amber-50 border border-amber-200/80 p-3 rounded-xl text-amber-900 flex items-center gap-2 shadow-3xs text-xs">
+              <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
               <span className="font-bold leading-normal">Form Terkunci: ID Invoice bermasalah. Perbaiki spasi atau selesaikan no pesanan yang sudah terekam.</span>
             </div>
           )}
 
           {/* Modal Buttons Form Control Footer */}
-          <div className="border-t border-slate-150 pt-5 flex items-center justify-end gap-3 sticky bottom-0 bg-white z-20">
+          <div className="border-t border-slate-150 pt-4 flex items-center justify-end gap-2.5 sticky bottom-0 bg-white z-20">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-250 text-slate-700 font-bold rounded-xl cursor-pointer transition-all shadow-3xs"
+              className="px-4 py-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-250 text-slate-700 font-bold rounded-lg cursor-pointer transition-all shadow-3xs text-xs"
             >
               Batalkan
             </button>
             <button
               type="submit"
               disabled={!!orderNumberError || !!stockError || !orderNumber.trim()}
-              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-850 text-white font-extrabold rounded-xl shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all scale-100 hover:scale-[1.01] active:scale-[0.99]"
+              className="px-5 py-2 bg-slate-900 hover:bg-slate-850 text-white font-extrabold rounded-lg shadow-md disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-all scale-100 hover:scale-[1.01] active:scale-[0.99] text-xs"
             >
               Simpan Entri & Potong Stok
             </button>
@@ -1329,6 +1344,45 @@ export default function OrderModal({
         </form>
         )}
       </div>
+
+      {confirmDiscountIndex !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-100 animate-scale-in">
+            <div className="text-center">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 text-rose-600 mb-4 border border-rose-100">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">Konfirmasi Diskon Manual</h3>
+              <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+                Apakah Anda yakin ingin menetapkan diskon manual sebesar{' '}
+                <span className="font-bold text-rose-600 font-mono">
+                  {cart[confirmDiscountIndex]?.discountInputStr || '0'}
+                </span>{' '}
+                untuk produk <span className="font-semibold text-slate-800">"{cart[confirmDiscountIndex]?.productName}"</span>?
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDiscountIndex(null)}
+                  className="flex-1 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleEditDiscount(confirmDiscountIndex, false);
+                    setConfirmDiscountIndex(null);
+                  }}
+                  className="flex-1 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-md shadow-emerald-600/10 cursor-pointer"
+                >
+                  Ya, Simpan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

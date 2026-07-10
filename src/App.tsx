@@ -346,7 +346,7 @@ export default function App() {
             loadedDiscounts.push({ id: doc.id, ...doc.data() } as AutoDiscount);
           });
           loadedDiscounts.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-        } else if (isFirstTimeInit) {
+        } else {
           const defaultDiscounts: AutoDiscount[] = [
             {
               id: 'disc_default_1',
