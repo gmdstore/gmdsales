@@ -903,7 +903,7 @@ export default function SettingsComponent({
                                   }
                                 }}
                                 placeholder="#ffffff"
-                                className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
                               />
                             </div>
                           </div>
@@ -929,7 +929,7 @@ export default function SettingsComponent({
                                   }
                                 }}
                                 placeholder="#000000"
-                                className="w-full px-2 py-1 bg-slate-50 border border-slate-250 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
+                                className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-normal text-slate-850 outline-none"
                               />
                             </div>
                           </div>
@@ -1071,7 +1071,7 @@ export default function SettingsComponent({
                       className={`p-4 border rounded-2xl transition-all relative overflow-hidden flex flex-col justify-between md:flex-row md:items-center gap-4 ${
                         discount.isActive
                           ? 'bg-white border-slate-200 shadow-3xs'
-                          : 'bg-slate-50/55 border-slate-150 opacity-65'
+                          : 'bg-slate-50/55 border-slate-200 opacity-65'
                       }`}
                     >
                       <div className="space-y-1.5 flex-1">
@@ -1084,7 +1084,7 @@ export default function SettingsComponent({
                           </h5>
                           <span className={`text-[9px] font-normal px-1.5 py-0.2 rounded-full border uppercase leading-tight ${
                             discount.isActive
-                              ? 'bg-emerald-50 border-emerald-250 text-emerald-700'
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
                               : 'bg-slate-100 border-slate-200 text-slate-500'
                           }`}>
                             {discount.isActive ? 'Aktif' : 'Nonaktif'}
@@ -1151,8 +1151,8 @@ export default function SettingsComponent({
                           }}
                           className={`px-3 py-1 text-[9.5px] font-normal rounded-lg border transition-all cursor-pointer ${
                             discount.isActive
-                              ? 'bg-rose-50 border-rose-250 text-rose-700 hover:bg-rose-100'
-                              : 'bg-emerald-50 border-emerald-250 text-emerald-700 hover:bg-emerald-100'
+                              ? 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                              : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                           }`}
                         >
                           {discount.isActive ? '⛔ Nonaktifkan' : '⚡ Aktifkan'}
@@ -1225,7 +1225,7 @@ export default function SettingsComponent({
                             onClick={() => {
                               setPendingDeleteDiscount(discount);
                             }}
-                            className="flex-1 md:flex-initial p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-250/60 rounded-lg cursor-pointer transition-colors"
+                            className="flex-1 md:flex-initial p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg cursor-pointer transition-colors"
                             title="Hapus"
                           >
                             <Trash2 className="h-3.5 w-3.5 mx-auto" />
@@ -1333,7 +1333,7 @@ export default function SettingsComponent({
               setShowDiscForm(false);
 
               setTimeout(() => setDiscountSuccessMsg(null), 3000);
-            }} className="space-y-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-150">
+            }} className="space-y-4 bg-slate-50/60 p-5 rounded-2xl border border-slate-200">
             <h4 className="font-normal text-xs text-slate-800 uppercase tracking-wider">
               {editingDiscId ? '📝 Edit Aturan Diskon' : '✨ Buat Aturan Diskon Baru'}
             </h4>
@@ -1437,7 +1437,7 @@ export default function SettingsComponent({
                 </div>
               )}
               {discSelectedChannels.includes('all') && (
-                <div className="bg-emerald-50/50 border border-emerald-150 rounded-xl p-2.5 text-[10px] text-emerald-800 font-normal leading-relaxed">
+                <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-2.5 text-[10px] text-emerald-800 font-normal leading-relaxed">
                   📢 Aturan diskon ini berlaku otomatis untuk <strong>Semua Saluran Penjualan</strong> yang aktif.
                 </div>
               )}
@@ -1548,7 +1548,7 @@ export default function SettingsComponent({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card 1: Metode Pembayaran */}
-          <div className="bg-slate-50/55 border border-slate-150/70 rounded-2xl p-4.5 space-y-4">
+          <div className="bg-slate-50/55 border border-slate-200 rounded-2xl p-4.5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                 💳 Pilihan Metode Pembayaran
@@ -1712,7 +1712,7 @@ export default function SettingsComponent({
           </div>
 
           {/* Card 2: PIC / Operator / Pencatat */}
-          <div className="bg-slate-50/55 border border-slate-150/70 rounded-2xl p-4.5 space-y-4">
+          <div className="bg-slate-50/55 border border-slate-200 rounded-2xl p-4.5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                 👤 Daftar PIC & Operator
@@ -1912,7 +1912,7 @@ export default function SettingsComponent({
           </div>
 
           <div className="space-y-3">
-            <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-2 font-mono text-[10px] text-slate-600">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2 font-mono text-[10px] text-slate-600">
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400">Project ID:</span>
                 <span className="text-slate-800 font-medium">omniorder-c5bf4</span>
@@ -1961,7 +1961,7 @@ export default function SettingsComponent({
               type="button"
               onClick={handleTestFirebase}
               disabled={firebaseStatus === 'testing'}
-              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-250 text-slate-800 font-medium rounded-xl shadow-3xs transition-all cursor-pointer flex items-center justify-center gap-2 font-sans disabled:opacity-50 text-xs"
+              className="w-full py-2.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-800 font-medium rounded-xl shadow-3xs transition-all cursor-pointer flex items-center justify-center gap-2 font-sans disabled:opacity-50 text-xs"
             >
               {firebaseStatus === 'testing' ? (
                 <>
@@ -1982,7 +1982,7 @@ export default function SettingsComponent({
       {/* Warning Modal for Sales Channels Limit */}
       {channelWarningMsg && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="channel_warning_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             
             <div className="flex items-start gap-4">
@@ -2014,7 +2014,7 @@ export default function SettingsComponent({
       {/* Confirmation Modal for Delete Sales Channel */}
       {pendingDeleteChannel && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_channel_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
             <div className="flex items-start gap-4">
@@ -2029,7 +2029,7 @@ export default function SettingsComponent({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
               Data perhitungan transaksi sebelumnya yang terkait saluran ini mungkin menggunakan skema fallback/bawaan.
             </div>
 
@@ -2037,7 +2037,7 @@ export default function SettingsComponent({
               <button
                 type="button"
                 onClick={() => setPendingDeleteChannel(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>
@@ -2062,7 +2062,7 @@ export default function SettingsComponent({
       {/* Confirmation Modal for Delete Auto Discount */}
       {pendingDeleteDiscount && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_discount_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
             <div className="flex items-start gap-4">
@@ -2077,7 +2077,7 @@ export default function SettingsComponent({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
               Diskon ini tidak akan lagi diterapkan secara otomatis pada transaksi baru. Transaksi lama tidak akan terpengaruh.
             </div>
 
@@ -2085,7 +2085,7 @@ export default function SettingsComponent({
               <button
                 type="button"
                 onClick={() => setPendingDeleteDiscount(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>

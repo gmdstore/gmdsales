@@ -719,7 +719,7 @@ export default function OrdersList({
       {/* Confirmation Modal for Delete Order */}
       {pendingDeleteOrder && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
             <div className="flex items-start gap-4">
@@ -734,7 +734,7 @@ export default function OrdersList({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 space-y-2 text-xs">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4 space-y-2 text-xs">
               <div className="text-slate-500 text-[11px] leading-relaxed">
                 Tindakan ini akan mengembalikan semua alokasi kuantitas item pesanan (<span className="font-bold text-slate-950">{pendingDeleteOrder.products.reduce((sum, p) => sum + p.qty, 0)} pcs</span>) kembali menjadi sediaan di matriks stok gudang.
               </div>
@@ -744,7 +744,7 @@ export default function OrdersList({
               <button
                 type="button"
                 onClick={() => setPendingDeleteOrder(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>

@@ -1180,7 +1180,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans selection:bg-emerald-100 selection:text-emerald-950">
       
       {/* Mobile Top Navigation Header */}
-      <div className="flex md:hidden items-center justify-between px-5 h-16 bg-white border-b border-slate-205 sticky top-0 z-40 shadow-xs">
+      <div className="flex md:hidden items-center justify-between px-5 h-16 bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
         <div className="flex items-center gap-2.5">
           <span className="text-xl font-emoji select-none">{brandLogo}</span>
           <span className="font-extrabold tracking-tight text-slate-900 text-sm">{brandName}</span>

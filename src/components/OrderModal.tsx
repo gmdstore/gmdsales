@@ -724,11 +724,11 @@ export default function OrderModal({
       />
 
       {/* Modal Surface Body Wrapper */}
-      <div className={`bg-white rounded-3xl w-full max-w-6xl shadow-xl border border-gray-100 z-10 transition-all duration-300 ${showSuccess ? 'max-h-fit overflow-hidden' : 'max-h-[88vh] overflow-y-auto'} flex flex-col scale-in relative`}>
+      <div className={`bg-white rounded-3xl w-full max-w-6xl shadow-xl border border-slate-200 z-10 transition-all duration-300 ${showSuccess ? 'max-h-fit overflow-hidden' : 'max-h-[88vh] overflow-y-auto'} flex flex-col scale-in relative`}>
         
         {/* Modal Header */}
         {!showSuccess && (
-        <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-20 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-200 sticky top-0 bg-white z-20 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-extrabold text-gray-950 flex items-center gap-2">
               {editingOrder ? (
@@ -976,7 +976,7 @@ export default function OrderModal({
                                 {p.name}
                               </span>
                               {p.sku && (
-                                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-205 uppercase tracking-wide ml-1.5 shrink-0">
+                                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200 uppercase tracking-wide ml-1.5 shrink-0">
                                   {p.sku}
                                 </span>
                               )}
@@ -1065,12 +1065,12 @@ export default function OrderModal({
                       )}
                       <span className={`inline-block w-full py-1.5 px-2 rounded-lg text-xs font-mono font-semibold text-center border transition-colors shadow-3xs ${
                         !isProductSelected 
-                          ? 'bg-slate-100 text-slate-500 border-slate-205'
+                          ? 'bg-slate-100 text-slate-500 border-slate-200'
                           : availableStockStr === '0 pcs' 
                             ? 'bg-rose-50 text-rose-600 border-rose-200' 
                             : parseInt(availableStockStr) < 5 
-                              ? 'bg-amber-50 text-amber-600 border-amber-250 font-semibold' 
-                              : 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                              ? 'bg-amber-50 text-amber-600 border-amber-200 font-semibold' 
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       }`}>
                         {availableStockStr}
                       </span>
@@ -1189,11 +1189,11 @@ export default function OrderModal({
           </div>
 
           {/* Section 3: Financial settings discounts & COD switch */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start border-t border-slate-150 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start border-t border-slate-200 pt-4">
             
             {/* Store Discounts & COD checking coordinates */}
             <div className="space-y-4">
-              <h4 className="font-extrabold text-slate-500 border-b border-slate-100 pb-1 text-xs uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
+              <h4 className="font-extrabold text-slate-500 border-b border-slate-200 pb-1 text-xs uppercase tracking-wider">Opsi Transaksi & Diskon</h4>
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -1207,7 +1207,7 @@ export default function OrderModal({
                     className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-rose-600 focus:outline-none focus:ring-1 focus:ring-rose-500"
                   />
                 </div>
-
+ 
                 {/* Payment Method selector */}
                 <div className="space-y-1">
                   <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Metode Pembayaran:</label>
@@ -1223,12 +1223,12 @@ export default function OrderModal({
                 </div>
               </div>
             </div>
-
+ 
             {/* F-04 Automatic Fees Calculator Recap ledger */}
             <div className={`bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 font-sans max-w-full shadow-3xs ${showDiscountCalculator ? '' : 'opacity-70'}`}>
               <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 cursor-pointer" onClick={() => setShowDiscountCalculator(!showDiscountCalculator)}>
                 <h4 className="font-extrabold text-slate-800 text-xs uppercase tracking-wider">Kalkulator Potongan Otomatis {showDiscountCalculator ? '(Sembunyikan)' : '(Tampilkan)'}</h4>
-                <span className="text-[10px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-300 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
+                <span className="text-[10px] text-slate-400 font-extrabold uppercase bg-slate-200 border border-slate-200 px-2 py-0.5 rounded-md">{selectedChannel.name}</span>
               </div>
 
               {showDiscountCalculator && (
@@ -1266,13 +1266,13 @@ export default function OrderModal({
                   )}
 
                   {/* Harga Jual (Bayar Pembeli) */}
-                  <div className="flex justify-between text-slate-900 font-extrabold border-t border-slate-150 pt-1.5">
+                  <div className="flex justify-between text-slate-900 font-extrabold border-t border-slate-200 pt-1.5">
                     <span>Harga Jual (Bayar Pembeli):</span>
                     <span className="text-emerald-700 font-black">{formatRp(buyerPaidPrice)}</span>
                   </div>
 
                   {/* Fees */}
-                  <div className="flex justify-between border-t border-slate-150 pt-1.5 text-slate-500 font-medium">
+                  <div className="flex justify-between border-t border-slate-200 pt-1.5 text-slate-500 font-medium">
                     <span>Komisi ({selectedChannel.commissionPercent}%):</span>
                     <span>{commission > 0 ? `-${formatRp(commission)}` : '-'}</span>
                   </div>
@@ -1296,7 +1296,7 @@ export default function OrderModal({
                 </div>
               )}
               
-                <div className="flex justify-between border-t border-slate-300 pt-2 text-xs text-emerald-800 font-black font-sans">
+                <div className="flex justify-between border-t border-slate-200 pt-2 text-xs text-emerald-800 font-black font-sans">
                   <span>Omset Bersih:</span>
                   <span>{formatRp(Math.max(0, grossTotalPrice - discounts - totalDeductions))}</span>
                 </div>
@@ -1324,11 +1324,11 @@ export default function OrderModal({
           )}
 
           {/* Modal Buttons Form Control Footer */}
-          <div className="border-t border-slate-150 pt-4 flex items-center justify-end gap-2.5 sticky bottom-0 bg-white z-20">
+          <div className="border-t border-slate-200 pt-4 flex items-center justify-end gap-2.5 sticky bottom-0 bg-white z-20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-250 text-slate-700 font-bold rounded-lg cursor-pointer transition-all shadow-3xs text-xs"
+              className="px-4 py-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 text-slate-700 font-bold rounded-lg cursor-pointer transition-all shadow-3xs text-xs"
             >
               Batalkan
             </button>
@@ -1347,7 +1347,7 @@ export default function OrderModal({
 
       {confirmDiscountIndex !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-100 animate-scale-in">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-200 animate-scale-in">
             <div className="text-center">
               <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-rose-50 text-rose-600 mb-4 border border-rose-100">
                 <AlertTriangle className="h-6 w-6" />

@@ -196,7 +196,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
       {/* Consolidation Stats Panel */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Item Terjual */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
           <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
             <ShoppingBag className="h-5 w-5" />
           </div>
@@ -210,7 +210,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         </div>
 
         {/* Omset Bersih */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
             <TrendingUp className="h-5 w-5" />
           </div>
@@ -223,7 +223,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         </div>
 
         {/* Laba Bersih */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
           <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl">
             <Coins className="h-5 w-5" />
           </div>
@@ -236,7 +236,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
         </div>
 
         {/* Transaksi Terpencatat */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-3xs flex items-center gap-4">
           <div className="p-3 bg-slate-100 text-slate-600 rounded-2xl">
             <Layers className="h-5 w-5" />
           </div>
@@ -251,7 +251,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
       </div>
 
       {/* Matrix Recapitulation Table */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-3xs">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-3xs">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="font-extrabold text-slate-900 text-sm">🗓️ Sebaran Saluran Harian – {formatMonthLabel(selectedMonth)}</h3>
@@ -259,10 +259,10 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
           </div>
         </div>
 
-        <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-100/60 rounded-2xl relative">
+        <div ref={tableContainerRef} className="overflow-x-auto lg:overflow-visible border border-slate-200 rounded-2xl relative">
           <table className="w-full text-left border-collapse text-xs select-none">
             <thead>
-              <tr className="bg-slate-50 font-normal text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-100">
+              <tr className="bg-slate-50 font-normal text-slate-600 tracking-wide uppercase text-[9px] border-b border-slate-200">
                 <th className="py-3.5 px-4 w-32 font-normal bg-slate-50 sticky top-0 z-20">Tanggal</th>
                 
                 {/* Dynamically List Channels as Columns */}
@@ -270,7 +270,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                   const hasPipe = chan.color && chan.color.includes('|');
                   const [bg, text] = hasPipe ? chan.color.split('|') : ['', ''];
                   return (
-                    <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-100/80 sticky top-0 z-20 bg-slate-50">
+                    <th key={chan.id} className="py-3.5 px-4 text-center min-w-[130px] border-r border-slate-200 sticky top-0 z-20 bg-slate-50">
                       {hasPipe ? (
                         <span 
                           style={{ backgroundColor: bg, color: text }}
@@ -287,14 +287,14 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                   );
                 })}
                 
-                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-normal border-l border-slate-205 sticky top-0 z-20 bg-slate-50">
+                <th className="py-3.5 px-4 text-center min-w-[140px] text-emerald-800 font-normal border-l border-slate-200 sticky top-0 z-20 bg-slate-50">
                   <span className="inline-block px-2 py-0.5 text-[8px] font-normal rounded bg-emerald-100 text-emerald-800">
                     Total Harian
                   </span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {datesInMonth.map(date => {
                 const dateMeta = formatDateLabel(date);
                 
@@ -325,7 +325,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                       const isBlank = qty === 0 && netRev === 0;
 
                       return (
-                        <td key={chan.id} className="py-2.5 px-4 text-center font-mono border-r border-slate-100/40">
+                        <td key={chan.id} className="py-2.5 px-4 text-center font-mono border-r border-slate-200">
                           {!isBlank ? (
                             <div className="space-y-0.5 leading-tight">
                               <span className="block font-normal text-slate-900 text-xs">{qty} <span className="text-[9px] text-slate-400 font-normal">pcs</span></span>
@@ -339,7 +339,7 @@ export default function Recapitulation({ orders, channels }: RecapitulationProps
                     })}
 
                     {/* Combined Row Level Total Column */}
-                    <td className="py-2.5 px-4 text-center font-mono bg-emerald-50/5 border-l border-slate-205">
+                    <td className="py-2.5 px-4 text-center font-mono bg-emerald-50/5 border-l border-slate-200">
                       {rowTotalQty > 0 || rowTotalNetRevenue > 0 ? (
                         <div className="space-y-0.5 leading-tight">
                           <span className="block font-normal text-slate-900 text-xs">

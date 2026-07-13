@@ -201,7 +201,7 @@ export default function AkunComponent({
         <div className="space-y-8">
           {/* User Settings & Account Card */}
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm">
-            <div className="border-b border-slate-100 pb-3">
+            <div className="border-b border-slate-200 pb-3">
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                 👤 Pengaturan Akun & Keamanan Sesi
               </h3>
@@ -223,12 +223,12 @@ export default function AkunComponent({
 
             <div className="space-y-4">
               {/* Account details readonly info */}
-              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-3.5 space-y-1.5 font-sans text-[11px]">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-1.5 font-sans text-[11px]">
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
                   <span className="text-slate-400">Email Akun:</span>
                   <span className="text-slate-800 font-medium">{currentUser?.email}</span>
                 </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
                   <span className="text-slate-400">Hak Akses (Role):</span>
                   <span className="text-slate-800 font-bold uppercase">{currentUserProfile?.role || 'staff'}</span>
                 </div>
@@ -239,7 +239,7 @@ export default function AkunComponent({
               </div>
 
               {/* Form 1: Profile Name Update */}
-              <form onSubmit={handleUpdateUserProfile} className="space-y-2 pt-2 border-t border-slate-100">
+              <form onSubmit={handleUpdateUserProfile} className="space-y-2 pt-2 border-t border-slate-200">
                 <label className="block font-normal text-slate-800 text-xs">Ubah Nama Profil:</label>
                 <div className="flex gap-2">
                   <input
@@ -261,7 +261,7 @@ export default function AkunComponent({
               </form>
 
               {/* Form 2: Password Update */}
-              <form onSubmit={handleUpdateUserPassword} className="space-y-2.5 pt-3 border-t border-slate-100">
+              <form onSubmit={handleUpdateUserPassword} className="space-y-2.5 pt-3 border-t border-slate-200">
                 <label className="block font-normal text-slate-800 text-xs">Ubah Kata Sandi:</label>
                 <div className="space-y-2">
                   <input
@@ -291,7 +291,7 @@ export default function AkunComponent({
               </form>
 
               {/* Log Out Session Button */}
-              <div className="pt-4 border-t border-slate-100 flex justify-end">
+              <div className="pt-4 border-t border-slate-200 flex justify-end">
                 <button
                   type="button"
                   onClick={handleSignOut}
@@ -306,7 +306,7 @@ export default function AkunComponent({
           {/* Admin User Management Card */}
           {isAdmin ? (
             <div className="bg-white border border-slate-200/80 rounded-3xl p-6 space-y-5 shadow-sm">
-              <div className="border-b border-slate-100 pb-3">
+              <div className="border-b border-slate-200 pb-3">
                 <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                   👥 Manajemen Pengguna
                 </h3>
@@ -330,7 +330,7 @@ export default function AkunComponent({
               )}
 
               {!usersLoading && !usersError && usersList.length > 0 && (
-                <div className="border border-slate-150 rounded-2xl overflow-hidden bg-slate-50/25">
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/25">
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[500px]">
                       <thead>

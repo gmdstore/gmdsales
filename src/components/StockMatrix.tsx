@@ -388,7 +388,7 @@ export default function StockMatrix({
             className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 cursor-pointer select-none transition-all duration-200 border text-xs font-bold shadow-3xs ${
               isManagingProducts 
                 ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600 scale-[1.01]' 
-                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-205 hover:border-slate-300'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 hover:border-slate-300'
             }`}
           >
             <span>👕</span>
@@ -409,7 +409,7 @@ export default function StockMatrix({
             className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 cursor-pointer select-none transition-all duration-200 border text-xs font-bold shadow-3xs ${
               isManagingGroups 
                 ? 'bg-rose-500 text-white border-rose-500 hover:bg-rose-600 scale-[1.01]' 
-                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-205 hover:border-slate-300'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200 hover:border-slate-300'
             }`}
           >
             <span>⚙️</span>
@@ -424,7 +424,7 @@ export default function StockMatrix({
       </div>
 
       {/* Visibility Control & Tools Card (Auto-Hidden / Collapsible) */}
-      <div className="bg-white border border-slate-205 rounded-3xl p-4 shadow-3xs transition-all duration-300">
+      <div className="bg-white border border-slate-200 rounded-3xl p-4 shadow-3xs transition-all duration-300">
         <button
           onClick={() => setShowConfig(!showConfig)}
           className="w-full flex items-center justify-between font-bold text-slate-800 text-xs cursor-pointer select-none py-1 px-2 hover:bg-slate-50 rounded-xl transition-all"
@@ -477,7 +477,7 @@ export default function StockMatrix({
       </div>
 
       {/* Product Group Category Tabs Navigation */}
-      <div className="flex flex-col gap-3.5 pb-2 border-b border-slate-250/60">
+      <div className="flex flex-col gap-3.5 pb-2">
         {/* Dynamic Category Tabs */}
         <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 max-w-full">
           <button
@@ -599,7 +599,7 @@ export default function StockMatrix({
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Create Category Group Form */}
-            <form onSubmit={handleAddGroupSubmit} className="space-y-3 bg-white p-5 rounded-2xl border border-slate-150">
+            <form onSubmit={handleAddGroupSubmit} className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200">
               <label className="block font-bold text-slate-800">Tambah Grup Baru:</label>
               <div className="flex gap-2">
                 <input
@@ -620,7 +620,7 @@ export default function StockMatrix({
             </form>
 
             {/* List and Delete dynamic Categories */}
-            <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-150">
+            <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200">
               <label className="block font-bold text-slate-800">Daftar Grup Aktif (Klik Sampah untuk Hapus):</label>
               <div className="flex flex-wrap gap-2">
                 {groups.map(g => (
@@ -640,7 +640,7 @@ export default function StockMatrix({
           </div>
 
           {/* Product Re-categorization Option */}
-          <div className="border-t border-amber-250/45 pt-5 space-y-3">
+          <div className="border-t border-amber-200/40 pt-5 space-y-3">
             <span className="block font-extrabold text-amber-950">Relokasi Kategori Produk Fast-Edit:</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {products.map(p => (
@@ -682,7 +682,7 @@ export default function StockMatrix({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
             {/* Left: Master Products List (7 span) */}
-            <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-150 space-y-4 max-h-[450px] overflow-y-auto">
+            <div className="lg:col-span-7 bg-white p-5 rounded-2xl border border-slate-200 space-y-4 max-h-[450px] overflow-y-auto">
               <span className="block font-bold text-slate-800 text-xs">Daftar Produk Master ({products.length}):</span>
               
               <div className="divide-y divide-slate-100">
@@ -734,7 +734,7 @@ export default function StockMatrix({
             </div>
 
             {/* Right: Add/Edit Product form (5 span) */}
-            <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-150 space-y-4 shadow-3xs">
+            <div className="lg:col-span-5 bg-white p-5 rounded-2xl border border-slate-200 space-y-4 shadow-3xs">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <span className="font-extrabold text-slate-900 text-xs">
                   {editingProductId ? '📝 Edit Produk Master' : '✨ Tambah Produk Baru'}
@@ -926,7 +926,7 @@ export default function StockMatrix({
       )}
 
       {/* Matriks Stok Main Table Representation */}
-      <div className="bg-white border border-slate-205 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 lg:overflow-visible" id="stock_matrix_table_panel">
+      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 lg:overflow-visible" id="stock_matrix_table_panel">
         <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
           <div>
             <span className="font-extrabold text-slate-900 text-sm">Grup: <span className="text-emerald-700 font-black">{activeGroup}</span></span>
@@ -1190,7 +1190,7 @@ export default function StockMatrix({
       {/* Confirmation Modal for Stock Updates */}
       {pendingStockSave && createPortal(
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-fade-in" id="confirm_stock_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-105 shadow-2xl relative overflow-hidden animate-scale-up">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-emerald-500" />
             
             <div className="flex items-start gap-4 animate-fade-in">
@@ -1205,7 +1205,7 @@ export default function StockMatrix({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4.5 space-y-2 text-xs">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4.5 space-y-2 text-xs">
               <div className="flex justify-between items-baseline gap-2">
                 <span className="text-slate-400 font-medium whitespace-nowrap">Produk:</span>
                 <span className="font-semibold text-slate-800 text-right truncate max-w-[200px]" title={pendingStockSave.productName}>
@@ -1234,7 +1234,7 @@ export default function StockMatrix({
               <button
                 type="button"
                 onClick={() => setPendingStockSave(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-705 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>
@@ -1257,7 +1257,7 @@ export default function StockMatrix({
       {/* Warning Modal for Minimum Categories */}
       {groupWarningMsg && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="group_warning_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
             
             <div className="flex items-start gap-4">
@@ -1289,7 +1289,7 @@ export default function StockMatrix({
       {/* Confirmation Modal for Group Deletion */}
       {pendingDeleteGroup && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_group_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
             <div className="flex items-start gap-4">
@@ -1304,7 +1304,7 @@ export default function StockMatrix({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
               Semua produk di dalam grup ini akan secara otomatis direlokasi/dipindahkan ke grup alternatif: <strong className="text-slate-800 font-bold">"{groups.find(g => g !== pendingDeleteGroup)}"</strong>.
             </div>
 
@@ -1312,7 +1312,7 @@ export default function StockMatrix({
               <button
                 type="button"
                 onClick={() => setPendingDeleteGroup(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-755 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>
@@ -1337,7 +1337,7 @@ export default function StockMatrix({
       {/* Confirmation Modal for Product Deletion */}
       {pendingDeleteProduct && createPortal(
         <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-xs flex items-center justify-center z-[100] p-4" id="confirm_delete_product_modal">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-100 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl relative overflow-hidden animate-scale-up text-xs">
             <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
             
             <div className="flex items-start gap-4">
@@ -1352,7 +1352,7 @@ export default function StockMatrix({
               </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 my-4 text-[11px] leading-relaxed text-slate-500">
                Tindakan ini akan menghapus semua sediaan stok ukuran (<span className="font-mono font-bold">S, M, L, XL, XXL, 3XL, 4XL</span>) dari diagram matriks secara permanen.
             </div>
 
@@ -1360,7 +1360,7 @@ export default function StockMatrix({
               <button
                 type="button"
                 onClick={() => setPendingDeleteProduct(null)}
-                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-755 bg-slate-100 hover:bg-slate-150 rounded-xl cursor-pointer select-none transition-all active:scale-95"
+                className="flex-1 py-2.5 px-4 text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer select-none transition-all active:scale-95"
               >
                 Batal
               </button>

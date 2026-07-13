@@ -488,12 +488,12 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-100/80 text-xs text-slate-600">
-            <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+          <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-200 text-xs text-slate-600">
+            <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200">
               <span className="block text-[10px] text-slate-400 font-normal uppercase">Total Pesanan</span>
               <span className="text-sm font-normal text-slate-800 mt-0.5 block">{todayStats.count} Transaksi</span>
             </div>
-            <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+            <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200">
               <span className="block text-[10px] text-slate-400 font-normal uppercase">Total Terjual</span>
               <span className="text-sm font-normal text-slate-800 mt-0.5 block">{todayStats.totalItems} Pcs</span>
             </div>
@@ -523,16 +523,16 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-slate-100/80 text-xs text-slate-600">
+          <div className="grid grid-cols-3 gap-3 mt-6 pt-4 border-t border-slate-200 text-xs text-slate-600">
             <div className="bg-emerald-50/30 p-2.5 rounded-2xl border border-emerald-100/50 transition-all duration-200">
               <span className="block text-[9px] text-emerald-800 font-normal uppercase tracking-wider">Avg / Hari</span>
               <span className="text-xs font-normal text-emerald-600 mt-0.5 block truncate font-sans">{formatRp(avgNetPerDayFiltered || 0)}</span>
             </div>
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
+            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200">
               <span className="block text-[9px] text-slate-400 font-normal uppercase">Transaksi</span>
               <span className="text-sm font-normal text-slate-800 mt-0.5 block">{filteredStats.count}</span>
             </div>
-            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-100">
+            <div className="bg-slate-50/80 p-2.5 rounded-2xl border border-slate-200">
               <span className="block text-[9px] text-slate-400 font-normal uppercase">Item</span>
               <span className="text-sm font-normal text-slate-800 mt-0.5 block">{filteredStats.totalItems} Pcs</span>
             </div>
@@ -581,7 +581,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-100/80 text-[10px] text-slate-400 font-normal uppercase flex justify-between items-center">
+          <div className="mt-4 pt-3 border-t border-slate-200 text-[10px] text-slate-400 font-normal uppercase flex justify-between items-center">
             <span>Total Saluran</span>
             <span className="text-xs font-normal text-sky-600 font-mono">{channelContributionSorted.length} Aktif</span>
           </div>
@@ -602,7 +602,7 @@ export default function Dashboard({ orders, channels, products, onOpenOrderModal
         </div>
 
         {/* SVG Bar Chart */}
-        <div className="relative w-full overflow-hidden flex justify-center bg-slate-50/50 border border-slate-100 rounded-2xl p-3 select-none">
+        <div className="relative w-full overflow-hidden flex justify-center bg-slate-50/50 border border-slate-200 rounded-2xl p-3 select-none">
           <svg
             viewBox={`0 0 ${containerWidth} ${containerHeight}`}
             className="w-full h-auto max-h-[340px]"
